@@ -14,55 +14,55 @@ export function Header({ onMenuClick }: HeaderProps) {
   const [userMenuOpen, setUserMenuOpen] = useState(false);
 
   return (
-    <header className="h-14 bg-white border-b border-gray-200 flex items-center justify-between px-4 sticky top-0 z-30">
+    <header className="sticky top-0 z-30 flex h-[52px] items-center justify-between border-b border-[#e5e2dc] bg-white/95 px-4 backdrop-blur">
       <div className="flex items-center gap-3">
-        <button onClick={onMenuClick} className="text-gray-500 hover:text-gray-700 lg:hidden">
+        <button onClick={onMenuClick} className="rounded-md p-1.5 text-[#6b7280] hover:bg-[#eef3f5] hover:text-[#1f2937] lg:hidden">
           <Menu className="h-5 w-5" />
         </button>
         <div className="relative hidden sm:block">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+          <Search className="absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-[#9aa3af]" />
           <input
             type="text"
-            placeholder="Search..."
-            className="pl-9 pr-4 py-1.5 text-sm border border-gray-200 rounded-lg bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 w-56"
+            placeholder="Search or jump to..."
+            className="h-8 w-64 rounded-md border border-[#e5e2dc] bg-[#f8faf9] py-1 pl-8 pr-3 text-sm text-[#1f2937] outline-none transition focus:border-[#2490ef] focus:bg-white focus:ring-2 focus:ring-[#2490ef]/15"
           />
         </div>
       </div>
 
       <div className="flex items-center gap-3">
-        <button className="relative text-gray-500 hover:text-gray-700 p-1.5 rounded-lg hover:bg-gray-100">
+        <button className="relative rounded-md p-1.5 text-[#6b7280] hover:bg-[#eef3f5] hover:text-[#1f2937]">
           <Bell className="h-5 w-5" />
-          <span className="absolute top-1 right-1 h-2 w-2 bg-red-500 rounded-full" />
+          <span className="absolute right-1 top-1 h-2 w-2 rounded-full bg-[#c3423f]" />
         </button>
 
         <div className="relative">
           <button
             onClick={() => setUserMenuOpen(!userMenuOpen)}
-            className="flex items-center gap-2 p-1.5 rounded-lg hover:bg-gray-100"
+            className="flex items-center gap-2 rounded-md p-1 hover:bg-[#eef3f5]"
           >
-            <div className="h-7 w-7 rounded-full bg-blue-600 flex items-center justify-center">
-              <span className="text-white text-xs font-semibold">
+            <div className="flex h-7 w-7 items-center justify-center rounded-md bg-[#2490ef]">
+              <span className="text-xs font-semibold text-white">
                 {user ? getInitials(user.firstName, user.lastName) : 'U'}
               </span>
             </div>
             <div className="hidden sm:block text-left">
-              <p className="text-sm font-medium text-gray-700 leading-none">
+              <p className="text-sm font-medium leading-none text-[#1f2937]">
                 {user?.firstName} {user?.lastName}
               </p>
-              <p className="text-xs text-gray-400">{user?.role?.replace('_', ' ')}</p>
+              <p className="text-xs text-[#7c8591]">{user?.role?.replace('_', ' ')}</p>
             </div>
-            <ChevronDown className="h-4 w-4 text-gray-400" />
+            <ChevronDown className="h-4 w-4 text-[#9aa3af]" />
           </button>
 
           {userMenuOpen && (
-            <div className="absolute right-0 mt-1 w-48 bg-white rounded-lg border border-gray-200 shadow-lg z-50 py-1">
-              <div className="px-3 py-2 border-b border-gray-100">
-                <p className="text-sm font-medium text-gray-700">{user?.firstName} {user?.lastName}</p>
-                <p className="text-xs text-gray-400">{user?.email}</p>
+            <div className="absolute right-0 z-50 mt-1 w-52 rounded-md border border-[#e5e2dc] bg-white py-1 shadow-lg shadow-gray-900/10">
+              <div className="border-b border-[#f0ede8] px-3 py-2">
+                <p className="text-sm font-medium text-[#1f2937]">{user?.firstName} {user?.lastName}</p>
+                <p className="truncate text-xs text-[#7c8591]">{user?.email}</p>
               </div>
               <button
                 onClick={logout}
-                className="w-full flex items-center gap-2 px-3 py-2 text-sm text-red-600 hover:bg-red-50"
+                className="flex w-full items-center gap-2 px-3 py-2 text-sm text-[#c3423f] hover:bg-[#fff1f0]"
               >
                 <LogOut className="h-4 w-4" />
                 Sign out

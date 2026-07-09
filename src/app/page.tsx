@@ -1,87 +1,79 @@
 import Link from 'next/link';
+import {
+  BarChart3,
+  BookOpen,
+  Building2,
+  FileText,
+  FolderOpen,
+  Package,
+  ShoppingBag,
+  Users,
+} from 'lucide-react';
 
 const modules = [
-  { icon: '📊', title: 'Dashboard', desc: 'Revenue, expenses, KPIs and charts at a glance' },
-  { icon: '📒', title: 'Accounting', desc: 'Chart of accounts, journal entries, trial balance' },
-  { icon: '📦', title: 'Inventory', desc: 'Products, warehouses, stock movements & alerts' },
-  { icon: '👥', title: 'HR', desc: 'Employees, payroll, attendance and leave management' },
-  { icon: '🎯', title: 'CRM', desc: 'Leads, contacts, opportunities and activity tracking' },
-  { icon: '🧾', title: 'Sales', desc: 'Quotations and sales orders with status workflows' },
-  { icon: '💳', title: 'Invoicing', desc: 'Sales invoices, payment recording and tracking' },
-  { icon: '🛒', title: 'Procurement', desc: 'Purchase orders and supplier invoice management' },
-  { icon: '🗂️', title: 'Projects', desc: 'Kanban board, tasks, milestones and team workspace' },
-  { icon: '🏢', title: 'Customers', desc: 'Customer directory with credit limits and terms' },
-  { icon: '🤝', title: 'Suppliers', desc: 'Supplier management with payment terms and banking' },
+  { icon: BarChart3, title: 'Dashboard', desc: 'Revenue, invoices, stock, and lead movement.' },
+  { icon: BookOpen, title: 'Accounting', desc: 'Accounts, journals, and reporting workflows.' },
+  { icon: Package, title: 'Inventory', desc: 'Products, warehouses, and stock movement.' },
+  { icon: Users, title: 'HR', desc: 'Employees, attendance, leave, and payroll.' },
+  { icon: FileText, title: 'Sales', desc: 'Quotations, orders, invoices, and payments.' },
+  { icon: ShoppingBag, title: 'Procurement', desc: 'Purchase orders and supplier invoices.' },
+  { icon: FolderOpen, title: 'Projects', desc: 'Tasks, milestones, and execution status.' },
+  { icon: Building2, title: 'Parties', desc: 'Customers, suppliers, contacts, and terms.' },
 ];
 
 export default function LandingPage() {
   return (
-    <div className="min-h-screen bg-slate-900 text-white">
-      {/* Nav */}
-      <nav className="flex items-center justify-between px-8 py-4 border-b border-slate-800">
+    <div className="min-h-screen bg-[#f8faf9] text-[#1f2937]">
+      <nav className="mx-auto flex max-w-6xl items-center justify-between px-5 py-4">
         <div className="flex items-center gap-2.5">
-          <div className="h-8 w-8 rounded-lg bg-blue-600 flex items-center justify-center font-bold text-lg">O</div>
-          <span className="font-semibold text-lg tracking-tight">Orus ERP</span>
+          <div className="flex h-8 w-8 items-center justify-center rounded-md bg-[#2490ef] font-bold text-white">O</div>
+          <span className="text-base font-semibold">Orus ERP</span>
         </div>
-        <div className="flex items-center gap-3">
-          <Link href="/dashboard" className="text-sm text-slate-400 hover:text-white transition-colors">Sign in</Link>
-          <Link href="/dashboard" className="text-sm bg-blue-600 hover:bg-blue-500 transition-colors px-4 py-2 rounded-lg font-medium">
-            Go to Dashboard
+        <div className="flex items-center gap-2">
+          <Link href="/login" className="rounded-md px-3 py-2 text-sm font-medium text-[#4b5563] hover:bg-[#eef3f5]">
+            Sign in
+          </Link>
+          <Link href="/dashboard" className="rounded-md bg-[#2490ef] px-3 py-2 text-sm font-medium text-white shadow-sm shadow-[#2490ef]/20 hover:bg-[#1674c4]">
+            Open Desk
           </Link>
         </div>
       </nav>
 
-      {/* Hero */}
-      <section className="text-center px-6 pt-20 pb-16">
-        <div className="inline-flex items-center gap-2 bg-blue-600/10 border border-blue-600/20 text-blue-400 text-xs font-medium px-3 py-1.5 rounded-full mb-6">
-          Full-stack ERP · Built with Next.js + Express + Prisma
-        </div>
-        <h1 className="text-4xl sm:text-5xl font-bold tracking-tight mb-4">
-          One platform for your<br />
-          <span className="text-blue-400">entire business</span>
-        </h1>
-        <p className="text-slate-400 text-lg max-w-xl mx-auto mb-8">
-          Accounting, inventory, HR, sales, CRM, procurement and project management — all in one place.
-        </p>
-        <div className="flex items-center justify-center gap-3">
-          <Link
-            href="/dashboard"
-            className="bg-blue-600 hover:bg-blue-500 transition-colors px-6 py-3 rounded-lg font-semibold text-sm"
-          >
-            Open Dashboard
-          </Link>
-          <Link
-            href="/register"
-            className="border border-slate-700 hover:border-slate-500 transition-colors px-6 py-3 rounded-lg font-semibold text-sm text-slate-300"
-          >
-            Create Account
-          </Link>
-        </div>
-      </section>
+      <main className="mx-auto grid max-w-6xl gap-8 px-5 pb-14 pt-8 lg:grid-cols-[0.95fr_1.05fr] lg:items-start">
+        <section className="pt-8">
+          <p className="mb-3 text-xs font-semibold uppercase text-[#1674c4]">ERP Desk</p>
+          <h1 className="max-w-xl text-3xl font-semibold leading-tight sm:text-4xl">
+            Orus ERP
+          </h1>
+          <p className="mt-4 max-w-xl text-base leading-7 text-[#6b7280]">
+            A focused workspace for accounting, inventory, sales, HR, CRM, procurement, and projects.
+          </p>
+          <div className="mt-6 flex flex-wrap gap-2">
+            <Link href="/dashboard" className="rounded-md bg-[#2490ef] px-4 py-2 text-sm font-medium text-white shadow-sm shadow-[#2490ef]/20 hover:bg-[#1674c4]">
+              Open Dashboard
+            </Link>
+            <Link href="/register" className="rounded-md border border-[#d9d4cc] bg-white px-4 py-2 text-sm font-medium text-[#383838] shadow-sm hover:bg-[#f8faf9]">
+              Create Account
+            </Link>
+          </div>
+        </section>
 
-      {/* Modules grid */}
-      <section className="max-w-5xl mx-auto px-6 pb-20">
-        <p className="text-center text-xs font-semibold uppercase tracking-widest text-slate-500 mb-8">
-          {modules.length} modules included
-        </p>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-          {modules.map((m) => (
-            <div
-              key={m.title}
-              className="bg-slate-800/60 border border-slate-700/50 rounded-xl p-5 hover:border-slate-600 hover:bg-slate-800 transition-all"
-            >
-              <div className="text-2xl mb-3">{m.icon}</div>
-              <h3 className="font-semibold text-sm mb-1">{m.title}</h3>
-              <p className="text-slate-400 text-xs leading-relaxed">{m.desc}</p>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      {/* Footer */}
-      <div className="border-t border-slate-800 text-center py-6 text-xs text-slate-600">
-        Orus ERP — powered by Next.js 16, Express 5, Prisma 7, PostgreSQL
-      </div>
+        <section className="rounded-md border border-[#e5e2dc] bg-white shadow-[0_18px_50px_rgba(16,24,40,0.08)]">
+          <div className="border-b border-[#f0ede8] px-4 py-3">
+            <p className="text-sm font-semibold">Workspace Modules</p>
+            <p className="text-xs text-[#6b7280]">The same structure your desk opens into.</p>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2">
+            {modules.map((module) => (
+              <div key={module.title} className="border-b border-r border-[#f0ede8] p-4 last:border-b-0 even:border-r-0">
+                <module.icon className="mb-3 h-5 w-5 text-[#1674c4]" />
+                <h2 className="text-sm font-semibold">{module.title}</h2>
+                <p className="mt-1 text-xs leading-5 text-[#6b7280]">{module.desc}</p>
+              </div>
+            ))}
+          </div>
+        </section>
+      </main>
     </div>
   );
 }

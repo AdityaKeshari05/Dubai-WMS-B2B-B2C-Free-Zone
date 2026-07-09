@@ -30,21 +30,20 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-800 to-slate-900 p-4">
+    <div className="flex min-h-screen items-center justify-center bg-[#f8faf9] p-4">
       <div className="w-full max-w-md">
-        {/* Logo */}
-        <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-14 h-14 bg-blue-600 rounded-2xl mb-4">
-            <span className="text-white text-2xl font-bold">O</span>
+        <div className="mb-6 text-center">
+          <div className="mb-3 inline-flex h-12 w-12 items-center justify-center rounded-md bg-[#2490ef] shadow-sm shadow-[#2490ef]/25">
+            <span className="text-xl font-bold text-white">O</span>
           </div>
-          <h1 className="text-white text-2xl font-bold">Orus ERP</h1>
-          <p className="text-slate-400 text-sm mt-1">Enterprise Resource Planning</p>
+          <h1 className="text-xl font-semibold text-[#1f2937]">Orus ERP</h1>
+          <p className="mt-1 text-sm text-[#6b7280]">Sign in to your business desk</p>
         </div>
 
-        <Card className="shadow-2xl border-0">
-          <CardHeader className="pb-4">
-            <CardTitle className="text-xl">Sign in</CardTitle>
-            <CardDescription>Enter your credentials to access the ERP system</CardDescription>
+        <Card className="shadow-[0_18px_50px_rgba(16,24,40,0.08)]">
+          <CardHeader>
+            <CardTitle>Welcome back</CardTitle>
+            <CardDescription>Use your Orus account to continue.</CardDescription>
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-4">
@@ -76,14 +75,14 @@ export default function LoginPage() {
                 {isLoading ? 'Signing in...' : 'Sign in'}
               </Button>
             </form>
-            <div className="mt-4 p-3 bg-blue-50 rounded-lg">
-              <p className="text-xs text-blue-700 font-medium">Demo credentials:</p>
-              <p className="text-xs text-blue-600 mt-1">Email: admin@oruserp.com</p>
-              <p className="text-xs text-blue-600">Password: Admin@123</p>
+            <div className="mt-4 rounded-md border border-[#cde6fb] bg-[#eef6fd] p-3">
+              <p className="text-xs font-medium text-[#1674c4]">Demo credentials</p>
+              <p className="mt-1 text-xs text-[#256f9f]">Email: admin@oruserp.com</p>
+              <p className="text-xs text-[#256f9f]">Password: Admin@123</p>
             </div>
-            <p className="text-center text-sm text-gray-500 mt-4">
+            <p className="mt-4 text-center text-sm text-[#6b7280]">
               Don&apos;t have an account?{' '}
-              <a href="/register" className="text-blue-600 hover:underline font-medium">Register</a>
+              <a href="/register" className="font-medium text-[#1674c4] hover:underline">Register</a>
             </p>
           </CardContent>
         </Card>

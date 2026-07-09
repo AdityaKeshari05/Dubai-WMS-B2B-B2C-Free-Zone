@@ -29,21 +29,21 @@ export function DataTable<T extends Record<string, any>>({ columns, data, isLoad
   }
 
   return (
-    <div className="overflow-x-auto rounded-lg border border-gray-200">
+    <div className="overflow-x-auto rounded-md border border-[#e5e2dc] bg-white shadow-[0_1px_2px_rgba(16,24,40,0.04)]">
       <table className="w-full text-sm">
-        <thead className="bg-gray-50 border-b border-gray-200">
+        <thead className="border-b border-[#e5e2dc] bg-[#f8faf9]">
           <tr>
             {columns.map((col) => (
-              <th key={col.key} className={`px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider ${col.className || ''}`}>
+              <th key={col.key} className={`px-3 py-2.5 text-left text-xs font-semibold uppercase text-[#6b7280] ${col.className || ''}`}>
                 {col.header}
               </th>
             ))}
           </tr>
         </thead>
-        <tbody className="bg-white divide-y divide-gray-100">
+        <tbody className="divide-y divide-[#f0ede8] bg-white">
           {data.length === 0 ? (
             <tr>
-              <td colSpan={columns.length} className="px-4 py-12 text-center text-gray-400 text-sm">
+              <td colSpan={columns.length} className="px-4 py-12 text-center text-sm text-[#8a929d]">
                 {emptyMessage}
               </td>
             </tr>
@@ -51,11 +51,11 @@ export function DataTable<T extends Record<string, any>>({ columns, data, isLoad
             data.map((item) => (
               <tr
                 key={item[keyField]}
-                className={`hover:bg-gray-50 transition-colors ${onRowClick ? 'cursor-pointer' : ''}`}
+                className={`transition-colors hover:bg-[#f8faf9] ${onRowClick ? 'cursor-pointer' : ''}`}
                 onClick={() => onRowClick?.(item)}
               >
                 {columns.map((col) => (
-                  <td key={col.key} className={`px-4 py-3 text-gray-700 ${col.className || ''}`}>
+                  <td key={col.key} className={`px-3 py-2.5 text-[#374151] ${col.className || ''}`}>
                     {col.render ? col.render(item) : item[col.key]}
                   </td>
                 ))}

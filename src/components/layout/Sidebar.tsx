@@ -6,7 +6,7 @@ import { cn } from '@/lib/utils';
 import {
   LayoutDashboard, BookOpen, Package, Users, ShoppingCart, UserCheck,
   TrendingUp, FileText, ShoppingBag, FolderOpen, Building2, Truck,
-  ChevronDown, ChevronRight, X, Settings, Bell
+  ChevronDown, ChevronRight, X, Settings
 } from 'lucide-react';
 import { useState } from 'react';
 
@@ -102,8 +102,8 @@ function NavItemComponent({ item, depth = 0 }: { item: NavItem; depth?: number }
         <button
           onClick={() => setIsExpanded(!isExpanded)}
           className={cn(
-            'w-full flex items-center justify-between px-3 py-2 rounded-lg text-sm transition-colors',
-            'text-slate-300 hover:bg-slate-700 hover:text-white',
+            'w-full flex items-center justify-between rounded-md px-2.5 py-1.5 text-sm transition-colors',
+            'text-[#4b5563] hover:bg-[#eef3f5] hover:text-[#1f2937]',
             depth === 0 ? 'font-medium' : 'font-normal'
           )}
         >
@@ -114,7 +114,7 @@ function NavItemComponent({ item, depth = 0 }: { item: NavItem; depth?: number }
           {isExpanded ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
         </button>
         {isExpanded && (
-          <div className="ml-4 mt-1 space-y-1 border-l border-slate-700 pl-3">
+          <div className="ml-4 mt-1 space-y-0.5 border-l border-[#e5e2dc] pl-2">
             {item.children.map((child) => (
               <NavItemComponent key={child.label} item={child} depth={depth + 1} />
             ))}
@@ -128,10 +128,10 @@ function NavItemComponent({ item, depth = 0 }: { item: NavItem; depth?: number }
     <Link
       href={item.href!}
       className={cn(
-        'flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors',
+        'flex items-center gap-2.5 rounded-md px-2.5 py-1.5 text-sm transition-colors',
         isActive
-          ? 'bg-blue-600 text-white font-medium'
-          : 'text-slate-300 hover:bg-slate-700 hover:text-white',
+          ? 'bg-[#e8f3ff] text-[#1674c4] font-medium'
+          : 'text-[#4b5563] hover:bg-[#eef3f5] hover:text-[#1f2937]',
         depth === 0 ? 'font-medium' : 'font-normal'
       )}
     >
@@ -151,38 +151,38 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
 
       {/* Sidebar */}
       <aside className={cn(
-        'fixed top-0 left-0 h-full w-64 bg-slate-800 z-50 flex flex-col transition-transform duration-300',
+        'fixed top-0 left-0 z-50 flex h-full w-64 flex-col border-r border-[#e5e2dc] bg-[#fbfaf8] transition-transform duration-300',
         'lg:translate-x-0 lg:static lg:z-auto',
         isOpen ? 'translate-x-0' : '-translate-x-full'
       )}>
         {/* Logo */}
-        <div className="flex items-center justify-between px-4 py-4 border-b border-slate-700">
+        <div className="flex items-center justify-between border-b border-[#e5e2dc] px-4 py-3">
           <div className="flex items-center gap-2">
-            <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
-              <span className="text-white font-bold text-sm">O</span>
+            <div className="flex h-8 w-8 items-center justify-center rounded-md bg-[#2490ef] shadow-sm shadow-[#2490ef]/25">
+              <span className="text-sm font-bold text-white">O</span>
             </div>
             <div>
-              <span className="text-white font-bold text-lg">Orus</span>
-              <span className="text-slate-400 text-xs block -mt-1">ERP System</span>
+              <span className="text-base font-semibold text-[#1f2937]">Orus</span>
+              <span className="block -mt-1 text-xs text-[#7c8591]">ERP Desk</span>
             </div>
           </div>
           {onClose && (
-            <button onClick={onClose} className="text-slate-400 hover:text-white lg:hidden">
+            <button onClick={onClose} className="text-[#7c8591] hover:text-[#1f2937] lg:hidden">
               <X className="h-5 w-5" />
             </button>
           )}
         </div>
 
         {/* Navigation */}
-        <nav className="flex-1 overflow-y-auto py-4 px-3 space-y-1">
+        <nav className="flex-1 space-y-0.5 overflow-y-auto px-3 py-3">
           {navItems.map((item) => (
             <NavItemComponent key={item.label} item={item} />
           ))}
         </nav>
 
         {/* Footer */}
-        <div className="px-4 py-3 border-t border-slate-700">
-          <p className="text-xs text-slate-500 text-center">Orus ERP v1.0</p>
+        <div className="border-t border-[#e5e2dc] px-4 py-3">
+          <p className="text-center text-xs text-[#8a929d]">Orus ERP v1.0</p>
         </div>
       </aside>
     </>

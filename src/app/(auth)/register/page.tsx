@@ -30,18 +30,19 @@ export default function RegisterPage() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-800 to-slate-900 p-4">
+    <div className="flex min-h-screen items-center justify-center bg-[#f8faf9] p-4">
       <div className="w-full max-w-md">
-        <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-14 h-14 bg-blue-600 rounded-2xl mb-4">
-            <span className="text-white text-2xl font-bold">O</span>
+        <div className="mb-6 text-center">
+          <div className="mb-3 inline-flex h-12 w-12 items-center justify-center rounded-md bg-[#2490ef] shadow-sm shadow-[#2490ef]/25">
+            <span className="text-xl font-bold text-white">O</span>
           </div>
-          <h1 className="text-white text-2xl font-bold">Orus ERP</h1>
+          <h1 className="text-xl font-semibold text-[#1f2937]">Orus ERP</h1>
+          <p className="mt-1 text-sm text-[#6b7280]">Create your business desk account</p>
         </div>
-        <Card className="shadow-2xl border-0">
-          <CardHeader className="pb-4">
-            <CardTitle className="text-xl">Create account</CardTitle>
-            <CardDescription>Set up your ERP system account</CardDescription>
+        <Card className="shadow-[0_18px_50px_rgba(16,24,40,0.08)]">
+          <CardHeader>
+            <CardTitle>Create account</CardTitle>
+            <CardDescription>Set up access to Orus ERP.</CardDescription>
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-4">
@@ -71,9 +72,9 @@ export default function RegisterPage() {
                 {isLoading ? 'Creating account...' : 'Create account'}
               </Button>
             </form>
-            <p className="text-center text-sm text-gray-500 mt-4">
+            <p className="mt-4 text-center text-sm text-[#6b7280]">
               Already have an account?{' '}
-              <a href="/login" className="text-blue-600 hover:underline font-medium">Sign in</a>
+              <a href="/login" className="font-medium text-[#1674c4] hover:underline">Sign in</a>
             </p>
           </CardContent>
         </Card>

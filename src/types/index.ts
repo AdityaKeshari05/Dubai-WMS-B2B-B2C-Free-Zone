@@ -392,20 +392,24 @@ export interface Supplier {
 // Sales
 export type QuotationStatus = 'DRAFT' | 'SENT' | 'ACCEPTED' | 'REJECTED' | 'EXPIRED';
 export type SalesOrderStatus = 'DRAFT' | 'CONFIRMED' | 'PROCESSING' | 'SHIPPED' | 'DELIVERED' | 'CANCELLED';
-export type InvoiceStatus = 'DRAFT' | 'SENT' | 'PARTIAL' | 'PAID' | 'OVERDUE' | 'CANCELLED';
+export type InvoiceStatus = 'DRAFT' | 'SUBMITTED' | 'SENT' | 'PARTIAL' | 'PAID' | 'OVERDUE' | 'CANCELLED';
 export type PaymentType = 'RECEIVED' | 'MADE';
-export type PaymentMethod = 'CASH' | 'BANK_TRANSFER' | 'CREDIT_CARD' | 'CHEQUE' | 'ONLINE';
+export type PaymentMethod = 'CASH' | 'BANK_TRANSFER' | 'UPI' | 'CARD' | 'CREDIT_CARD' | 'CHEQUE' | 'ONLINE';
 export type PurchaseOrderStatus = 'DRAFT' | 'SENT' | 'CONFIRMED' | 'RECEIVING' | 'RECEIVED' | 'CANCELLED';
 
 export interface OrderItem {
   id?: string;
   productId: string;
   product?: Product;
+  itemCode?: string;
   description?: string;
   quantity: number;
   unitPrice: number;
+  rate?: number;
   taxRate: number;
   discount: number;
+  netAmount?: number;
+  taxAmount?: number;
   total: number;
 }
 
@@ -460,9 +464,12 @@ export interface SalesInvoice {
   taxAmount: number;
   discount: number;
   total: number;
+  grandTotal?: number;
   amountPaid: number;
+  outstandingAmount?: number;
   currency: string;
   notes?: string;
+  terms?: string;
   items: OrderItem[];
   payments?: Payment[];
   createdAt: string;

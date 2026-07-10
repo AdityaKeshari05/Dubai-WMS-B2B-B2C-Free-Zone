@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { Plus, Building2 } from 'lucide-react';
 import { PageHeader } from '@/components/shared/PageHeader';
 import { DataTable } from '@/components/shared/DataTable';
@@ -15,6 +16,7 @@ import { Customer } from '@/types';
 import toast from 'react-hot-toast';
 
 export default function CustomersPage() {
+  const router = useRouter();
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
@@ -72,7 +74,7 @@ export default function CustomersPage() {
         <EmptyState icon={Building2} title="No customers yet" description="Add your first customer to get started" action={{ label: 'Add Customer', onClick: () => setShowModal(true) }} />
       ) : (
         <>
-          <DataTable columns={columns} data={customers} isLoading={isLoading} />
+          <DataTable columns={columns} data={customers} isLoading={isLoading} onRowClick={customer => router.push(`/customers/${customer.id}`)} />
           {total > limit && <Pagination page={page} totalPages={Math.ceil(total / limit)} total={total} limit={limit} onPageChange={setPage} />}
         </>
       )}

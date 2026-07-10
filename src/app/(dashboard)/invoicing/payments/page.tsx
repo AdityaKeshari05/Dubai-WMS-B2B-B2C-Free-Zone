@@ -38,7 +38,10 @@ export default function PaymentsPage() {
       ]);
       setPayments(payRes.data.data.items);
       setTotal(payRes.data.data.total);
-      setInvoices(invRes.data.data.items.filter((i: SalesInvoice) => ['SENT','OVERDUE','PARTIAL'].includes(i.status)));
+      setInvoices(invRes.data.data.items.filter((i: SalesInvoice) => {
+        const outstanding = Number(i.outstandingAmount ?? Number(i.total || 0) - Number(i.amountPaid || 0));
+        return !['DRAFT', 'CANCELLED', 'PAID'].includes(i.status) && outstanding > 0;
+      }));
     } catch { toast.error('Failed'); }
     finally { setIsLoading(false); }
   };
@@ -86,7 +89,7 @@ export default function PaymentsPage() {
                 <SelectContent>
                   {invoices.map(i => (
                     <SelectItem key={i.id} value={i.id}>
-                      {i.invoiceNo} — {i.customer?.name} — {formatCurrency(i.total - i.amountPaid, i.currency)} due
+                      {i.invoiceNo} — {i.customer?.name} — {formatCurrency(Number(i.outstandingAmount ?? i.total - i.amountPaid), i.currency)} due
                     </SelectItem>
                   ))}
                 </SelectContent>

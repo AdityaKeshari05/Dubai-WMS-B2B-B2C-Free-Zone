@@ -32,7 +32,7 @@ export default function AttendancePage() {
         api.get('/hr/attendance'),
         api.get('/hr/employees', { params: { limit: 200 } }),
       ]);
-      setRecords(attRes.data.data);
+      setRecords(attRes.data.data.items || attRes.data.data || []);
       setEmployees(empRes.data.data.items);
     } catch { toast.error('Failed'); }
     finally { setIsLoading(false); }

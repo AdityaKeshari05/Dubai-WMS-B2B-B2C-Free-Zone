@@ -10,7 +10,7 @@ export interface User {
   createdAt: string;
 }
 
-export type UserRole = 'SUPER_ADMIN' | 'ADMIN' | 'MANAGER' | 'EMPLOYEE' | 'ACCOUNTANT' | 'HR_MANAGER' | 'SALES_REP' | 'PURCHASE_MANAGER';
+export type UserRole = 'SUPER_ADMIN' | 'ADMIN' | 'MANAGER' | 'EMPLOYEE' | 'ACCOUNTANT' | 'HR_MANAGER' | 'HR_OFFICER' | 'PAYROLL_OFFICER' | 'SALES_REP' | 'PURCHASE_MANAGER';
 
 export interface AuthResponse {
   user: User;

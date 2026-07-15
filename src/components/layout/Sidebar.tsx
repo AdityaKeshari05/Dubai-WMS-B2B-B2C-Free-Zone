@@ -6,7 +6,7 @@ import { cn } from '@/lib/utils';
 import {
   LayoutDashboard, BookOpen, Package, Users, ShoppingCart, UserCheck,
   TrendingUp, FileText, ShoppingBag, FolderOpen, Building2, Truck,
-  ChevronDown, ChevronRight, X, Settings
+  ChevronDown, ChevronRight, X, Settings, Clock
 } from 'lucide-react';
 import { useState } from 'react';
 
@@ -39,10 +39,18 @@ const navItems: NavItem[] = [
   {
     label: 'HR', icon: Users,
     children: [
+      { label: 'HR Desk', href: '/hr/desk', icon: LayoutDashboard },
+      { label: 'My Profile', href: '/hr/my-profile', icon: UserCheck },
       { label: 'Employees', href: '/hr/employees', icon: Users },
       { label: 'Departments', href: '/hr/departments', icon: Building2 },
       { label: 'Attendance', href: '/hr/attendance', icon: UserCheck },
+      { label: 'Shifts', href: '/hr/shifts', icon: Clock },
       { label: 'Leave Management', href: '/hr/leave', icon: FileText },
+      { label: 'Leave Ledger', href: '/hr/leave-ledger', icon: BookOpen },
+      { label: 'Lifecycle', href: '/hr/lifecycle', icon: TrendingUp },
+      { label: 'Salary Structures', href: '/hr/salary-structures', icon: BookOpen },
+      { label: 'Payroll Entries', href: '/hr/payroll-entries', icon: FileText },
+      { label: 'Salary Slips', href: '/hr/salary-slips', icon: FileText },
       { label: 'Payroll', href: '/hr/payroll', icon: FileText },
     ],
   },

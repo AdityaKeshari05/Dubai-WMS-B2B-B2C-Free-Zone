@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Plus, Users } from 'lucide-react';
+import { Building2, Plus, ShieldCheck, Users } from 'lucide-react';
 import { PageHeader } from '@/components/shared/PageHeader';
 import { DataTable } from '@/components/shared/DataTable';
 import { Pagination } from '@/components/shared/Pagination';
@@ -21,31 +21,38 @@ export default function EmployeesPage() {
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [departments, setDepartments] = useState<Department[]>([]);
   const [positions, setPositions] = useState<Position[]>([]);
+  const [roles, setRoles] = useState<any[]>([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
   const [isLoading, setIsLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [showModal, setShowModal] = useState(false);
+  const [showDepartmentForm, setShowDepartmentForm] = useState(false);
+  const [showPositionForm, setShowPositionForm] = useState(false);
   const [form, setForm] = useState({
     firstName: '', lastName: '', email: '', password: 'Employee@123', phone: '',
     departmentId: '', positionId: '', hireDate: new Date().toISOString().split('T')[0],
     salary: '', salaryType: 'MONTHLY', address: '', city: '', country: '',
-    emergencyName: '', emergencyPhone: '',
+    emergencyName: '', emergencyPhone: '', roleIds: [] as string[],
   });
+  const [departmentForm, setDepartmentForm] = useState({ name: '', code: '', description: '' });
+  const [positionForm, setPositionForm] = useState({ title: '', departmentId: '', description: '', minSalary: '', maxSalary: '' });
   const limit = 20;
 
   const fetchAll = async () => {
     setIsLoading(true);
     try {
-      const [empRes, deptRes, posRes] = await Promise.all([
+      const [empRes, deptRes, posRes, rolesRes] = await Promise.all([
         api.get('/hr/employees', { params: { page, limit, search: search || undefined } }),
         api.get('/hr/departments'),
         api.get('/hr/positions'),
+        api.get('/access/roles').catch(() => ({ data: { data: [] } })),
       ]);
       setEmployees(empRes.data.data.items);
       setTotal(empRes.data.data.total);
       setDepartments(deptRes.data.data);
       setPositions(posRes.data.data);
+      setRoles(rolesRes.data.data || []);
     } catch { toast.error('Failed to load employees'); }
     finally { setIsLoading(false); }
   };
@@ -55,12 +62,62 @@ export default function EmployeesPage() {
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      await api.post('/hr/employees', { ...form, salary: Number(form.salary), departmentId: form.departmentId || undefined, positionId: form.positionId || undefined });
+      await api.post('/hr/employees', {
+        ...form,
+        email: form.email.trim().toLowerCase(),
+        salary: Number(form.salary || 0),
+        departmentId: form.departmentId || undefined,
+        positionId: form.positionId || undefined,
+      });
       toast.success('Employee created');
       setShowModal(false);
+      setForm({
+        firstName: '', lastName: '', email: '', password: 'Employee@123', phone: '',
+        departmentId: '', positionId: '', hireDate: new Date().toISOString().split('T')[0],
+        salary: '', salaryType: 'MONTHLY', address: '', city: '', country: '',
+        emergencyName: '', emergencyPhone: '', roleIds: [],
+      });
       fetchAll();
     } catch (err: any) { toast.error(err.response?.data?.message || 'Failed to create employee'); }
   };
+
+  const handleQuickDepartment = async () => {
+    try {
+      const res = await api.post('/hr/departments', { ...departmentForm, code: departmentForm.code.toUpperCase() });
+      const created = res.data.data;
+      setDepartments(prev => [...prev, created].sort((a, b) => a.name.localeCompare(b.name)));
+      setForm(f => ({ ...f, departmentId: created.id, positionId: '' }));
+      setPositionForm(f => ({ ...f, departmentId: created.id }));
+      setDepartmentForm({ name: '', code: '', description: '' });
+      setShowDepartmentForm(false);
+      toast.success('Department created');
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || 'Failed to create department');
+    }
+  };
+
+  const handleQuickPosition = async () => {
+    try {
+      const departmentId = positionForm.departmentId || form.departmentId;
+      if (!departmentId) return toast.error('Select or create a department first');
+      const res = await api.post('/hr/positions', {
+        ...positionForm,
+        departmentId,
+        minSalary: positionForm.minSalary ? Number(positionForm.minSalary) : undefined,
+        maxSalary: positionForm.maxSalary ? Number(positionForm.maxSalary) : undefined,
+      });
+      const created = res.data.data;
+      setPositions(prev => [...prev, created].sort((a, b) => a.title.localeCompare(b.title)));
+      setForm(f => ({ ...f, departmentId, positionId: created.id }));
+      setPositionForm({ title: '', departmentId, description: '', minSalary: '', maxSalary: '' });
+      setShowPositionForm(false);
+      toast.success('Position created');
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || 'Failed to create position');
+    }
+  };
+
+  const filteredPositions = form.departmentId ? positions.filter(p => p.departmentId === form.departmentId) : positions;
 
   const columns = [
     { key: 'employee', header: 'Employee', render: (e: Employee) => (
@@ -98,38 +155,85 @@ export default function EmployeesPage() {
       )}
 
       <Dialog open={showModal} onOpenChange={setShowModal}>
-        <DialogContent className="max-w-2xl">
-          <DialogHeader><DialogTitle>New Employee</DialogTitle></DialogHeader>
-          <form onSubmit={handleCreate} className="grid grid-cols-2 gap-4 mt-2 max-h-[70vh] overflow-y-auto pr-2">
+	        <DialogContent className="max-w-3xl">
+	          <DialogHeader><DialogTitle>New Employee</DialogTitle></DialogHeader>
+	          <form onSubmit={handleCreate} className="grid grid-cols-2 gap-4 mt-2 max-h-[70vh] overflow-y-auto pr-2">
             <div className="space-y-1.5"><Label>First Name *</Label><Input value={form.firstName} onChange={e => setForm(f => ({ ...f, firstName: e.target.value }))} required /></div>
             <div className="space-y-1.5"><Label>Last Name *</Label><Input value={form.lastName} onChange={e => setForm(f => ({ ...f, lastName: e.target.value }))} required /></div>
             <div className="space-y-1.5"><Label>Email *</Label><Input type="email" value={form.email} onChange={e => setForm(f => ({ ...f, email: e.target.value }))} required /></div>
             <div className="space-y-1.5"><Label>Phone</Label><Input value={form.phone} onChange={e => setForm(f => ({ ...f, phone: e.target.value }))} /></div>
-            <div className="space-y-1.5">
-              <Label>Department</Label>
-              <Select value={form.departmentId} onValueChange={v => setForm(f => ({ ...f, departmentId: v }))}>
-                <SelectTrigger><SelectValue placeholder="Select department" /></SelectTrigger>
-                <SelectContent>{departments.map(d => <SelectItem key={d.id} value={d.id}>{d.name}</SelectItem>)}</SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-1.5">
-              <Label>Position</Label>
-              <Select value={form.positionId} onValueChange={v => setForm(f => ({ ...f, positionId: v }))}>
-                <SelectTrigger><SelectValue placeholder="Select position" /></SelectTrigger>
-                <SelectContent>{positions.map(p => <SelectItem key={p.id} value={p.id}>{p.title}</SelectItem>)}</SelectContent>
-              </Select>
-            </div>
+	            <div className="space-y-1.5">
+	              <div className="flex items-center justify-between">
+	                <Label>Department</Label>
+	                <Button type="button" size="sm" variant="ghost" onClick={() => setShowDepartmentForm(v => !v)}><Building2 className="mr-1 h-3.5 w-3.5" />New</Button>
+	              </div>
+	              <Select value={form.departmentId} onValueChange={v => setForm(f => ({ ...f, departmentId: v }))}>
+	                <SelectTrigger><SelectValue placeholder="Select department" /></SelectTrigger>
+	                <SelectContent>{departments.map(d => <SelectItem key={d.id} value={d.id}>{d.name}</SelectItem>)}</SelectContent>
+	              </Select>
+	            </div>
+	            <div className="space-y-1.5">
+	              <div className="flex items-center justify-between">
+	                <Label>Position</Label>
+	                <Button type="button" size="sm" variant="ghost" onClick={() => setShowPositionForm(v => !v)}><Plus className="mr-1 h-3.5 w-3.5" />New</Button>
+	              </div>
+	              <Select value={form.positionId} onValueChange={v => setForm(f => ({ ...f, positionId: v }))}>
+	                <SelectTrigger><SelectValue placeholder={form.departmentId ? 'Select position' : 'Select department first'} /></SelectTrigger>
+	                <SelectContent>{filteredPositions.map(p => <SelectItem key={p.id} value={p.id}>{p.title}</SelectItem>)}</SelectContent>
+	              </Select>
+	            </div>
+	            {showDepartmentForm && (
+	              <div className="col-span-2 rounded-md border border-[#e5e2dc] bg-[#f8faf9] p-3">
+	                <p className="mb-3 text-sm font-semibold text-[#1f2937]">Create Department</p>
+	                <div className="grid grid-cols-[1fr_120px] gap-3">
+	                  <Input placeholder="Department name" value={departmentForm.name} onChange={e => setDepartmentForm(f => ({ ...f, name: e.target.value }))} />
+	                  <Input placeholder="Code" value={departmentForm.code} onChange={e => setDepartmentForm(f => ({ ...f, code: e.target.value.toUpperCase() }))} />
+	                </div>
+	                <div className="mt-3 flex justify-end"><Button type="button" size="sm" onClick={handleQuickDepartment}>Create Department</Button></div>
+	              </div>
+	            )}
+	            {showPositionForm && (
+	              <div className="col-span-2 rounded-md border border-[#e5e2dc] bg-[#f8faf9] p-3">
+	                <p className="mb-3 text-sm font-semibold text-[#1f2937]">Create Position</p>
+	                <div className="grid grid-cols-2 gap-3">
+	                  <Input placeholder="Position title" value={positionForm.title} onChange={e => setPositionForm(f => ({ ...f, title: e.target.value }))} />
+	                  <Select value={positionForm.departmentId || form.departmentId} onValueChange={v => setPositionForm(f => ({ ...f, departmentId: v }))}>
+	                    <SelectTrigger><SelectValue placeholder="Department" /></SelectTrigger>
+	                    <SelectContent>{departments.map(d => <SelectItem key={d.id} value={d.id}>{d.name}</SelectItem>)}</SelectContent>
+	                  </Select>
+	                </div>
+	                <div className="mt-3 flex justify-end"><Button type="button" size="sm" onClick={handleQuickPosition}>Create Position</Button></div>
+	              </div>
+	            )}
             <div className="space-y-1.5"><Label>Hire Date *</Label><Input type="date" value={form.hireDate} onChange={e => setForm(f => ({ ...f, hireDate: e.target.value }))} required /></div>
             <div className="space-y-1.5"><Label>Salary *</Label><Input type="number" value={form.salary} onChange={e => setForm(f => ({ ...f, salary: e.target.value }))} required /></div>
-            <div className="space-y-1.5">
-              <Label>Salary Type</Label>
+	            <div className="space-y-1.5">
+	              <Label>Salary Type</Label>
               <Select value={form.salaryType} onValueChange={v => setForm(f => ({ ...f, salaryType: v }))}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
                   {['HOURLY','DAILY','MONTHLY','ANNUAL'].map(t => <SelectItem key={t} value={t}>{t}</SelectItem>)}
                 </SelectContent>
-              </Select>
-            </div>
+	              </Select>
+	            </div>
+	            <div className="col-span-2 space-y-1.5">
+	              <div className="flex items-center gap-2">
+	                <ShieldCheck className="h-4 w-4 text-[#1674c4]" />
+	                <Label>Access Roles</Label>
+	              </div>
+	              <div className="grid max-h-32 grid-cols-2 gap-2 overflow-y-auto rounded-md border border-[#e5e2dc] p-2">
+	                {roles.length ? roles.map(role => (
+	                  <label key={role.id} className="flex items-center gap-2 text-sm text-[#374151]">
+	                    <input
+	                      type="checkbox"
+	                      checked={form.roleIds.includes(role.id)}
+	                      onChange={() => setForm(f => ({ ...f, roleIds: f.roleIds.includes(role.id) ? f.roleIds.filter(id => id !== role.id) : [...f.roleIds, role.id] }))}
+	                    />
+	                    {role.title || role.name}
+	                  </label>
+	                )) : <p className="col-span-2 text-sm text-[#6b7280]">No access roles visible. The backend will assign Employee Self Service by default.</p>}
+	              </div>
+	            </div>
             <div className="col-span-2 space-y-1.5"><Label>Address</Label><Input value={form.address} onChange={e => setForm(f => ({ ...f, address: e.target.value }))} /></div>
             <div className="space-y-1.5"><Label>City</Label><Input value={form.city} onChange={e => setForm(f => ({ ...f, city: e.target.value }))} /></div>
             <div className="space-y-1.5"><Label>Country</Label><Input value={form.country} onChange={e => setForm(f => ({ ...f, country: e.target.value }))} /></div>

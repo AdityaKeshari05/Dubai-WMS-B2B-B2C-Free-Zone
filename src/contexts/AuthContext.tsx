@@ -19,6 +19,10 @@ interface RegisterData {
   firstName: string;
   lastName: string;
   phone?: string;
+  companyName: string;
+  companyPhone?: string;
+  country?: string;
+  currency?: string;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);

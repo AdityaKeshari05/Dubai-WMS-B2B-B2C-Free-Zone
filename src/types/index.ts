@@ -6,6 +6,14 @@ export interface User {
   phone?: string;
   avatar?: string;
   role: UserRole;
+  companyId?: string;
+  company?: Company;
+  access?: {
+    isSuperAdmin: boolean;
+    permissions: string[];
+    deniedPermissions: string[];
+    roles: Array<{ id: string; name: string; title?: string; isSuperAdmin?: boolean }>;
+  };
   isActive: boolean;
   createdAt: string;
 }

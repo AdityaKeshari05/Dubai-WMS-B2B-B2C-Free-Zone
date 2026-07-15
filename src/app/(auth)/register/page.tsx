@@ -10,7 +10,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import toast from 'react-hot-toast';
 
 export default function RegisterPage() {
-  const [form, setForm] = useState({ firstName: '', lastName: '', email: '', password: '', phone: '' });
+  const [form, setForm] = useState({ firstName: '', lastName: '', email: '', password: '', phone: '', companyName: '', companyPhone: '', country: '', currency: 'USD' });
   const [isLoading, setIsLoading] = useState(false);
   const { register } = useAuth();
   const router = useRouter();
@@ -37,7 +37,7 @@ export default function RegisterPage() {
             <span className="text-xl font-bold text-white">O</span>
           </div>
           <h1 className="text-xl font-semibold text-[#1f2937]">Orus ERP</h1>
-          <p className="mt-1 text-sm text-[#6b7280]">Create your business desk account</p>
+          <p className="mt-1 text-sm text-[#6b7280]">Create your company workspace and Super Admin account</p>
         </div>
         <Card className="shadow-[0_18px_50px_rgba(16,24,40,0.08)]">
           <CardHeader>
@@ -45,8 +45,22 @@ export default function RegisterPage() {
             <CardDescription>Set up access to Orus ERP.</CardDescription>
           </CardHeader>
           <CardContent>
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div className="grid grid-cols-2 gap-3">
+	            <form onSubmit={handleSubmit} className="space-y-4">
+	              <div className="space-y-1.5">
+	                <Label>Company Name</Label>
+	                <Input placeholder="Acme Pvt Ltd" value={form.companyName} onChange={e => setForm(f => ({ ...f, companyName: e.target.value }))} required />
+	              </div>
+	              <div className="grid grid-cols-2 gap-3">
+	                <div className="space-y-1.5">
+	                  <Label>Company Phone</Label>
+	                  <Input placeholder="+1 (555) 000-0000" value={form.companyPhone} onChange={e => setForm(f => ({ ...f, companyPhone: e.target.value }))} />
+	                </div>
+	                <div className="space-y-1.5">
+	                  <Label>Currency</Label>
+	                  <Input placeholder="USD" value={form.currency} onChange={e => setForm(f => ({ ...f, currency: e.target.value.toUpperCase() }))} />
+	                </div>
+	              </div>
+	              <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1.5">
                   <Label>First Name</Label>
                   <Input placeholder="John" value={form.firstName} onChange={e => setForm(f => ({ ...f, firstName: e.target.value }))} required />

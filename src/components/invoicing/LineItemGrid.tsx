@@ -7,26 +7,11 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { cn, formatCurrency } from '@/lib/utils';
 
-export interface LineItemRow {
-  id?: string;
-  productId: string;
-  itemCode?: string;
-  description: string;
-  quantity: number;
-  unitPrice: number;
-  discount: number;
-  taxRate: number;
-  total: number;
-}
+import { LineItemSummary } from './LineItemSummary';
+import { blankRow, calculateLineSummary, computeRow, type LineItemRow, type ProductOption } from './LineItemGrid.helpers';
 
-interface ProductOption {
-  id: string;
-  sku: string;
-  name: string;
-  salePrice: number;
-  taxRate: number;
-  unitId?: string | null;
-}
+export type { LineItemRow } from './LineItemGrid.helpers';
+export { calculateLineSummary } from './LineItemGrid.helpers';
 
 interface LineItemGridProps {
   value: LineItemRow[];
@@ -34,48 +19,6 @@ interface LineItemGridProps {
   currency?: string;
   readOnly?: boolean;
   className?: string;
-}
-
-const blankRow = (): LineItemRow => ({
-  productId: '',
-  itemCode: '',
-  description: '',
-  quantity: 1,
-  unitPrice: 0,
-  discount: 0,
-  taxRate: 0,
-  total: 0,
-});
-
-function computeRow(row: LineItemRow): LineItemRow {
-  const quantity = Number(row.quantity) || 0;
-  const unitPrice = Number(row.unitPrice) || 0;
-  const discount = Number(row.discount) || 0;
-  const taxRate = Number(row.taxRate) || 0;
-  const net = quantity * unitPrice * (1 - discount / 100);
-  const tax = net * (taxRate / 100);
-  return { ...row, total: Number((net + tax).toFixed(2)) };
-}
-
-export function calculateLineSummary(rows: LineItemRow[]) {
-  return rows.reduce(
-    (acc, row) => {
-      const quantity = Number(row.quantity) || 0;
-      const unitPrice = Number(row.unitPrice) || 0;
-      const discount = Number(row.discount) || 0;
-      const taxRate = Number(row.taxRate) || 0;
-      const gross = quantity * unitPrice;
-      const discountAmount = gross * (discount / 100);
-      const net = gross - discountAmount;
-      const tax = net * (taxRate / 100);
-      acc.subtotal += net;
-      acc.discount += discountAmount;
-      acc.taxAmount += tax;
-      acc.total += net + tax;
-      return acc;
-    },
-    { subtotal: 0, discount: 0, taxAmount: 0, total: 0 }
-  );
 }
 
 export function LineItemGrid({ value, onChange, currency = 'USD', readOnly = false, className }: LineItemGridProps) {
@@ -202,7 +145,7 @@ export function LineItemGrid({ value, onChange, currency = 'USD', readOnly = fal
             ))}
           </tbody>
         </table>
-        <Summary summary={summary} currency={currency} />
+        <LineItemSummary summary={summary} currency={currency} />
       </div>
     );
   }
@@ -299,24 +242,7 @@ export function LineItemGrid({ value, onChange, currency = 'USD', readOnly = fal
         </Button>
         <Button type="button" variant="ghost" size="sm">Add Multiple</Button>
       </div>
-      <Summary summary={summary} currency={currency} />
-    </div>
-  );
-}
-
-function Summary({ summary, currency }: { summary: ReturnType<typeof calculateLineSummary>; currency: string }) {
-  return (
-    <div className="border-t border-[#f0ede8] bg-[#fbfaf8] px-4 py-3">
-      <div className="ml-auto grid max-w-sm grid-cols-2 gap-y-1 text-sm">
-        <span className="text-[#6b7280]">Subtotal</span>
-        <span className="text-right font-medium">{formatCurrency(summary.subtotal, currency)}</span>
-        <span className="text-[#6b7280]">Discount</span>
-        <span className="text-right font-medium">{formatCurrency(summary.discount, currency)}</span>
-        <span className="text-[#6b7280]">Tax</span>
-        <span className="text-right font-medium">{formatCurrency(summary.taxAmount, currency)}</span>
-        <span className="pt-1 font-semibold text-[#1f2937]">Total</span>
-        <span className="pt-1 text-right font-semibold text-[#1f2937]">{formatCurrency(summary.total, currency)}</span>
-      </div>
+      <LineItemSummary summary={summary} currency={currency} />
     </div>
   );
 }

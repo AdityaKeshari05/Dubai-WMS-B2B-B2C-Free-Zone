@@ -5,15 +5,14 @@ import { ClipboardList, FileClock, PackageCheck, Play, Plus } from 'lucide-react
 import toast from 'react-hot-toast';
 import api from '@/lib/api';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { DataTable } from '@/components/shared/DataTable';
 import { EmptyState } from '@/components/shared/EmptyState';
 import { StatusBadge } from '@/components/shared/StatusBadge';
 import { formatCurrency, formatDate } from '@/lib/utils';
+import { DeskPage, Field } from './AdvancedInvoicingShell';
 
 function items(payload: any) {
   if (Array.isArray(payload?.data?.items)) return payload.data.items;
@@ -236,29 +235,4 @@ export function RecurringRunnerButton({ onDone }: { onDone?: () => void }) {
     }
   };
   return <Button variant="outline" onClick={run}><Play className="mr-2 h-4 w-4" />Run Due Now</Button>;
-}
-
-function DeskPage({ title, description, action, meta, children }: { title: string; description: string; action?: React.ReactNode; meta?: string; children: React.ReactNode }) {
-  return (
-    <div className="space-y-4">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <div className="flex items-center gap-2">
-            <h1 className="text-xl font-semibold text-[#1f2937]">{title}</h1>
-            {meta && <span className="rounded-full bg-[#eef3f5] px-2 py-0.5 text-xs text-[#6b7280]">{meta}</span>}
-          </div>
-          <p className="text-sm text-[#6b7280]">{description}</p>
-        </div>
-        {action}
-      </div>
-      <Card className="rounded-md border-[#dfe3e8] shadow-none">
-        <CardHeader className="border-b border-[#edf0f2] py-3"><CardTitle className="text-sm">{title}</CardTitle></CardHeader>
-        <CardContent className="p-0">{children}</CardContent>
-      </Card>
-    </div>
-  );
-}
-
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
-  return <div className="space-y-1.5"><Label>{label}</Label>{children}</div>;
 }

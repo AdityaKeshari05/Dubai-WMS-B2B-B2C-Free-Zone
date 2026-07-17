@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import toast from 'react-hot-toast';
-import { History, KeyRound, Plus, RefreshCcw, ShieldCheck, UserRoundCog, Users } from 'lucide-react';
+import { History, KeyRound, Plus, RefreshCcw, ShieldCheck, Users } from 'lucide-react';
 import api from '@/lib/api';
 import { formatDateTime } from '@/lib/utils';
 import { PageHeader } from '@/components/shared/PageHeader';
@@ -15,101 +15,17 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Textarea } from '@/components/ui/textarea';
-
-const actions = ['READ', 'CREATE', 'WRITE', 'DELETE', 'SUBMIT', 'CANCEL', 'AMEND', 'APPROVE', 'PRINT', 'REPORT', 'EXPORT', 'IMPORT', 'MANAGE'];
+import { PermissionMatrix } from './PermissionMatrix';
+import { EmployeeAccessTab } from './EmployeeAccessTab';
 
 function nameOf(user: any) {
   return `${user?.firstName || ''} ${user?.lastName || ''}`.trim() || user?.email || '-';
-}
-
-function groupedPermissions(permissions: any[]) {
-  return permissions.reduce((acc: Record<string, any[]>, permission) => {
-    acc[permission.module] = acc[permission.module] || [];
-    acc[permission.module].push(permission);
-    return acc;
-  }, {});
 }
 
 function toggleSet(set: Set<string>, id: string) {
   const next = new Set(set);
   next.has(id) ? next.delete(id) : next.add(id);
   return next;
-}
-
-function PermissionMatrix({
-  permissions,
-  allowed,
-  denied,
-  onAllow,
-  onDeny,
-  readOnly = false,
-}: {
-  permissions: any[];
-  allowed: Set<string>;
-  denied: Set<string>;
-  onAllow: (id: string) => void;
-  onDeny: (id: string) => void;
-  readOnly?: boolean;
-}) {
-  const grouped = groupedPermissions(permissions);
-  return (
-    <div className="space-y-3">
-      {Object.entries(grouped).map(([module, rows]) => (
-        <div key={module} className="rounded-md border border-[#e5e2dc] bg-white">
-          <div className="border-b border-[#f0ede8] px-3 py-2">
-            <p className="text-sm font-semibold capitalize text-[#1f2937]">{module.replace(/-/g, ' ')}</p>
-          </div>
-          <div className="overflow-x-auto">
-            <table className="w-full text-xs">
-              <thead className="bg-[#f8faf9] text-[#6b7280]">
-                <tr>
-                  <th className="min-w-40 px-3 py-2 text-left">Resource</th>
-                  {actions.map((action) => <th key={action} className="px-2 py-2 text-center">{action}</th>)}
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-[#f0ede8]">
-                {Array.from(new Set(rows.map((r) => r.resource))).map((resource) => (
-                  <tr key={resource}>
-                    <td className="px-3 py-2 font-medium text-[#374151]">{String(resource).replace(/-/g, ' ')}</td>
-                    {actions.map((action) => {
-                      const permission = rows.find((r) => r.resource === resource && r.action === action);
-                      if (!permission) return <td key={action} className="px-2 py-2 text-center text-[#d1d5db]">-</td>;
-                      const isAllowed = allowed.has(permission.id);
-                      const isDenied = denied.has(permission.id);
-                      return (
-                        <td key={action} className="px-2 py-2 text-center">
-                          <div className="flex justify-center gap-1">
-                            <button
-                              type="button"
-                              disabled={readOnly}
-                              onClick={() => onAllow(permission.id)}
-                              className={`h-5 w-5 rounded border text-[10px] disabled:cursor-default ${isAllowed ? 'border-[#16a34a] bg-[#dcfce7] text-[#166534]' : 'border-[#d1d5db] bg-white text-[#9ca3af]'}`}
-                              title="Allow"
-                            >
-                              A
-                            </button>
-                            <button
-                              type="button"
-                              disabled={readOnly}
-                              onClick={() => onDeny(permission.id)}
-                              className={`h-5 w-5 rounded border text-[10px] disabled:cursor-default ${isDenied ? 'border-[#dc2626] bg-[#fee2e2] text-[#991b1b]' : 'border-[#d1d5db] bg-white text-[#9ca3af]'}`}
-                              title="Deny"
-                            >
-                              D
-                            </button>
-                          </div>
-                        </td>
-                      );
-                    })}
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      ))}
-    </div>
-  );
 }
 
 export function AccessControlPage() {
@@ -253,74 +169,26 @@ export function AccessControlPage() {
           <TabsTrigger value="audit">Audit</TabsTrigger>
         </TabsList>
 
-        <TabsContent value="users" className="space-y-4">
-          <Card>
-            <CardContent className="flex flex-col gap-2 p-4 text-sm text-[#4b5563] md:flex-row md:items-center md:justify-between">
-              <div className="flex items-center gap-2">
-                <UserRoundCog className="h-4 w-4 text-[#1674c4]" />
-                Employees are created in <span className="font-semibold text-[#1f2937]">HR → Employees</span> with email and password. This page only changes their roles and permission overrides.
-              </div>
-            </CardContent>
-          </Card>
-
-          <div className="grid gap-4 xl:grid-cols-[1fr_430px]">
-            <DataTable isLoading={loading} data={users} columns={userColumns} onRowClick={(user) => setSelectedUserId(user.id)} />
-            <Card>
-              <CardHeader><CardTitle>{selectedUser ? `Access for ${nameOf(selectedUser)}` : 'Select Employee User'}</CardTitle></CardHeader>
-              <CardContent className="space-y-4">
-                {!selectedUser ? (
-                  <p className="text-sm leading-6 text-[#6b7280]">Choose an employee user from the table to add/remove roles or apply a direct allow/deny override.</p>
-                ) : (
-                  <>
-                    <div className="rounded-md border border-[#e5e2dc] bg-[#f8faf9] p-3 text-sm">
-                      <p className="font-medium text-[#1f2937]">{selectedUser.email}</p>
-                      <p className="mt-1 text-[#6b7280]">{selectedUser.employee?.department?.name || 'No department'} / {selectedUser.employee?.position?.title || 'No position'}</p>
-                    </div>
-                    <label className="flex items-center gap-2 text-sm">
-                      <input type="checkbox" checked={userIsActive} onChange={(event) => setUserIsActive(event.target.checked)} />
-                      Login active
-                    </label>
-                    <div className="space-y-1.5">
-                      <Label>Assigned Roles</Label>
-                      <div className="max-h-48 space-y-1 overflow-auto rounded-md border border-[#e5e2dc] p-2">
-                        {roles.map((role) => (
-                          <label key={role.id} className="flex items-center gap-2 text-sm">
-                            <input
-                              type="checkbox"
-                              checked={userRoleIds.has(role.id)}
-                              onChange={() => setUserRoleIds((set) => toggleSet(set, role.id))}
-                            />
-                            {role.title || role.name}
-                          </label>
-                        ))}
-                      </div>
-                    </div>
-                    <Button onClick={saveUserAccess}>Save User Access</Button>
-                  </>
-                )}
-              </CardContent>
-            </Card>
-          </div>
-
-          {selectedUser && (
-            <div>
-              <div className="mb-2 flex items-center justify-between">
-                <div>
-                  <h3 className="text-sm font-semibold text-[#1f2937]">Direct Permission Overrides</h3>
-                  <p className="text-xs text-[#6b7280]">Use this only for exceptions. Role permissions should handle normal access.</p>
-                </div>
-              </div>
-              <PermissionMatrix
-                permissions={permissions}
-                allowed={userAllowed}
-                denied={userDenied}
-                onAllow={(id) => { setUserDenied((s) => { const n = new Set(s); n.delete(id); return n; }); setUserAllowed((s) => toggleSet(s, id)); }}
-                onDeny={(id) => { setUserAllowed((s) => { const n = new Set(s); n.delete(id); return n; }); setUserDenied((s) => toggleSet(s, id)); }}
-              />
-            </div>
-          )}
+        <TabsContent value="users">
+          <EmployeeAccessTab
+            loading={loading}
+            users={users}
+            userColumns={userColumns}
+            selectedUser={selectedUser}
+            setSelectedUserId={setSelectedUserId}
+            userIsActive={userIsActive}
+            setUserIsActive={setUserIsActive}
+            roles={roles}
+            userRoleIds={userRoleIds}
+            setUserRoleIds={setUserRoleIds}
+            saveUserAccess={saveUserAccess}
+            permissions={permissions}
+            userAllowed={userAllowed}
+            userDenied={userDenied}
+            setUserAllowed={setUserAllowed}
+            setUserDenied={setUserDenied}
+          />
         </TabsContent>
-
         <TabsContent value="roles" className="space-y-4">
           <div className="grid gap-4 xl:grid-cols-[360px_1fr]">
             <Card>

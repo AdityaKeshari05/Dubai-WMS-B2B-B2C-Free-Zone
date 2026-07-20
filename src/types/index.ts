@@ -134,6 +134,15 @@ export interface Product {
   taxRate: number;
   minStockLevel: number;
   maxStockLevel?: number;
+  valuationMethod?: 'FIFO' | 'MOVING_AVERAGE' | 'STANDARD';
+  maintainStock?: boolean;
+  allowNegativeStock?: boolean;
+  hasBatchNo?: boolean;
+  hasSerialNo?: boolean;
+  reorderLevel?: number;
+  reorderQty?: number;
+  brand?: string;
+  manufacturer?: string;
   isActive: boolean;
   image?: string;
   barcode?: string;
@@ -141,10 +150,92 @@ export interface Product {
   createdAt: string;
 }
 
+export interface StockLedgerEntry {
+  id: string;
+  productId: string;
+  product?: { sku: string; name: string };
+  warehouseId: string;
+  warehouse?: { code?: string; name: string };
+  postingDate: string;
+  voucherType: string;
+  voucherNo: string;
+  actualQty: number;
+  qtyAfterTransaction: number;
+  valuationRate: number;
+  stockValue: number;
+  stockValueDifference: number;
+  remarks?: string;
+}
+
+export interface StockEntry {
+  id: string;
+  entryNo: string;
+  purpose: 'MATERIAL_RECEIPT' | 'MATERIAL_ISSUE' | 'MATERIAL_TRANSFER' | 'STOCK_RECONCILIATION' | 'OPENING_STOCK' | 'REPACK';
+  status: 'DRAFT' | 'SUBMITTED' | 'CANCELLED';
+  postingDate: string;
+  fromWarehouseId?: string;
+  toWarehouseId?: string;
+  fromWarehouse?: Warehouse;
+  toWarehouse?: Warehouse;
+  remarks?: string;
+  items?: StockEntryItem[];
+}
+
+export interface StockEntryItem {
+  id: string;
+  productId: string;
+  product?: Product;
+  warehouseId?: string;
+  warehouse?: Warehouse;
+  quantity: number;
+  valuationRate: number;
+}
+
+export interface PriceList {
+  id: string;
+  name: string;
+  currency: string;
+  selling: boolean;
+  buying: boolean;
+  isActive: boolean;
+}
+
+export interface ItemPrice {
+  id: string;
+  productId: string;
+  product?: Product;
+  priceListId: string;
+  priceList?: PriceList;
+  customerId?: string;
+  currency: string;
+  price: number;
+}
+
+export interface PricingRule {
+  id: string;
+  name: string;
+  priceListId?: string;
+  priceList?: PriceList;
+  productId?: string;
+  categoryId?: string;
+  customerId?: string;
+  minQty?: number;
+  maxQty?: number;
+  discountPercent: number;
+  marginPercent: number;
+  priority: number;
+  isActive: boolean;
+}
+
 export interface Warehouse {
   id: string;
   code: string;
   name: string;
+  parentId?: string;
+  parent?: Warehouse;
+  type?: 'COMPANY' | 'BRANCH' | 'ROOM' | 'BIN' | 'WAREHOUSE';
+  companyId?: string;
+  isDefault?: boolean;
   address?: string;
   city?: string;
   country?: string;
@@ -284,11 +375,27 @@ export interface PayrollItem {
 
 // CRM
 export type LeadStatus = 'NEW' | 'CONTACTED' | 'QUALIFIED' | 'UNQUALIFIED' | 'CONVERTED';
-export type LeadSource = 'WEBSITE' | 'REFERRAL' | 'SOCIAL_MEDIA' | 'EMAIL' | 'PHONE' | 'ADVERTISEMENT' | 'OTHER';
+export type LeadSource = 'WEBSITE' | 'REFERRAL' | 'SOCIAL_MEDIA' | 'EMAIL' | 'PHONE' | 'ADVERTISEMENT' | 'CSV_IMPORT' | 'OTHER';
 export type Priority = 'LOW' | 'MEDIUM' | 'HIGH' | 'URGENT';
 export type OpportunityStage = 'PROSPECTING' | 'QUALIFICATION' | 'PROPOSAL' | 'NEGOTIATION' | 'CLOSED_WON' | 'CLOSED_LOST';
-export type ActivityType = 'CALL' | 'EMAIL' | 'MEETING' | 'TASK' | 'NOTE' | 'FOLLOW_UP';
-export type ActivityStatus = 'PLANNED' | 'IN_PROGRESS' | 'COMPLETED' | 'CANCELLED';
+export type ActivityType = 'CALL' | 'EMAIL' | 'MEETING' | 'TASK' | 'NOTE' | 'FOLLOW_UP' | 'STATUS_CHANGE' | 'IMPORT' | 'CONVERSION';
+export type ActivityStatus = 'OPEN' | 'PLANNED' | 'IN_PROGRESS' | 'COMPLETED' | 'CANCELLED';
+export type LeadImportStatus = 'PENDING' | 'PROCESSING' | 'COMPLETED' | 'FAILED';
+export type LeadImportRowStatus = 'CREATED' | 'SKIPPED' | 'FAILED' | 'DUPLICATE';
+
+export interface CrmOrganization {
+  id: string;
+  name: string;
+  industry?: string;
+  website?: string;
+  email?: string;
+  phone?: string;
+  city?: string;
+  country?: string;
+  owner?: { firstName: string; lastName: string };
+  _count?: { leads: number; contacts: number; opportunities: number };
+  createdAt: string;
+}
 
 export interface Lead {
   id: string;
@@ -298,15 +405,26 @@ export interface Lead {
   email?: string;
   phone?: string;
   company?: string;
+  city?: string;
+  country?: string;
+  organizationId?: string;
+  organization?: CrmOrganization;
   source: LeadSource;
   status: LeadStatus;
   priority: Priority;
   value?: number;
+  score?: number;
+  tags?: string[];
+  lostReason?: string;
   notes?: string;
   createdById: string;
   createdBy?: { firstName: string; lastName: string };
   assignedToId?: string;
   assignedTo?: { firstName: string; lastName: string };
+  contacts?: Contact[];
+  activities?: Activity[];
+  opportunity?: Opportunity;
+  _count?: { activities: number };
   createdAt: string;
 }
 
@@ -318,6 +436,10 @@ export interface Contact {
   phone?: string;
   mobile?: string;
   company?: string;
+  leadId?: string;
+  lead?: Lead;
+  organizationId?: string;
+  organization?: CrmOrganization;
   position?: string;
   address?: string;
   city?: string;
@@ -327,19 +449,59 @@ export interface Contact {
   createdAt: string;
 }
 
+export interface CrmAssignmentRule {
+  id: string;
+  name: string;
+  isActive: boolean;
+  priority: number;
+  source?: LeadSource;
+  city?: string;
+  country?: string;
+  minValue?: number;
+  maxValue?: number;
+  assignToId: string;
+  assignTo?: { id: string; firstName: string; lastName: string; email: string };
+  createdAt: string;
+}
+
 export interface Opportunity {
   id: string;
   title: string;
   leadId?: string;
+  lead?: Lead;
   contactId?: string;
   contact?: Contact;
+  organizationId?: string;
+  organization?: CrmOrganization;
+  customerId?: string;
+  customer?: { id: string; customerNo: string; name: string };
+  quotationId?: string;
+  quotation?: { id: string; quotationNo: string; status: string; total: number };
+  salesOrderId?: string;
+  salesOrder?: { id: string; orderNo: string; status: string; total: number };
   value: number;
   currency: string;
   stage: OpportunityStage;
   probability: number;
   expectedClose?: string;
+  lostReason?: string;
+  erpSyncStatus?: 'NOT_SYNCED' | 'QUEUED' | 'SYNCED' | 'FAILED';
+  items?: OpportunityItem[];
+  activities?: Activity[];
   notes?: string;
   createdAt: string;
+}
+
+export interface OpportunityItem {
+  id?: string;
+  productId?: string;
+  itemCode?: string;
+  description: string;
+  quantity: number;
+  rate: number;
+  discount: number;
+  taxRate: number;
+  amount: number;
 }
 
 export interface Activity {
@@ -352,9 +514,40 @@ export interface Activity {
   status: ActivityStatus;
   leadId?: string;
   contactId?: string;
+  opportunityId?: string;
+  organizationId?: string;
+  organization?: CrmOrganization;
+  lead?: Lead;
+  contact?: Contact;
+  opportunity?: Opportunity;
+  metadata?: any;
   userId: string;
   user?: { firstName: string; lastName: string };
   createdAt: string;
+}
+
+export interface LeadImportBatch {
+  id: string;
+  fileName: string;
+  status: LeadImportStatus;
+  totalRows: number;
+  createdRows: number;
+  skippedRows: number;
+  failedRows: number;
+  duplicateRows: number;
+  rows?: LeadImportRow[];
+  createdAt: string;
+}
+
+export interface LeadImportRow {
+  id: string;
+  rowNo: number;
+  status: LeadImportRowStatus;
+  rawData: any;
+  normalizedData?: any;
+  error?: string;
+  leadId?: string;
+  duplicateLeadId?: string;
 }
 
 // Customers & Suppliers
@@ -399,7 +592,7 @@ export interface Supplier {
 
 // Sales
 export type QuotationStatus = 'DRAFT' | 'SENT' | 'ACCEPTED' | 'REJECTED' | 'EXPIRED';
-export type SalesOrderStatus = 'DRAFT' | 'CONFIRMED' | 'PROCESSING' | 'SHIPPED' | 'DELIVERED' | 'CANCELLED';
+export type SalesOrderStatus = 'DRAFT' | 'CONFIRMED' | 'PROCESSING' | 'SHIPPED' | 'DELIVERED' | 'ON_HOLD' | 'CLOSED' | 'CANCELLED';
 export type InvoiceStatus = 'DRAFT' | 'SUBMITTED' | 'SENT' | 'PARTIAL' | 'PAID' | 'OVERDUE' | 'CANCELLED';
 export type PaymentType = 'RECEIVED' | 'MADE';
 export type PaymentMethod = 'CASH' | 'BANK_TRANSFER' | 'UPI' | 'CARD' | 'CREDIT_CARD' | 'CHEQUE' | 'ONLINE';
@@ -446,6 +639,8 @@ export interface SalesOrder {
   customerId: string;
   customer?: { name: string; email?: string };
   quotationId?: string;
+  customerPoNo?: string;
+  sourceWarehouseId?: string;
   date: string;
   deliveryDate?: string;
   status: SalesOrderStatus;
@@ -453,6 +648,10 @@ export interface SalesOrder {
   taxAmount: number;
   discount: number;
   total: number;
+  deliveredPercent?: number;
+  billedPercent?: number;
+  amountBilled?: number;
+  holdReason?: string;
   currency: string;
   notes?: string;
   items: OrderItem[];

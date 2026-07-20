@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { Plus, Users } from 'lucide-react';
 import { PageHeader } from '@/components/shared/PageHeader';
 import { DataTable } from '@/components/shared/DataTable';
@@ -9,19 +10,23 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { EmptyState } from '@/components/shared/EmptyState';
 import api from '@/lib/api';
-import { Contact } from '@/types';
+import { Contact, Lead } from '@/types';
 import toast from 'react-hot-toast';
 
 export default function ContactsPage() {
   const [contacts, setContacts] = useState<Contact[]>([]);
+  const [leads, setLeads] = useState<Lead[]>([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
   const [isLoading, setIsLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [showModal, setShowModal] = useState(false);
-  const [form, setForm] = useState({ firstName: '', lastName: '', email: '', phone: '', mobile: '', company: '', position: '', city: '', country: '' });
+  const emptyForm = { leadId: '', firstName: '', lastName: '', email: '', phone: '', mobile: '', company: '', position: '', city: '', country: '' };
+  const [form, setForm] = useState(emptyForm);
+  const router = useRouter();
   const limit = 20;
 
   const fetchContacts = async () => {
@@ -36,12 +41,34 @@ export default function ContactsPage() {
 
   useEffect(() => { fetchContacts(); }, [page, search]);
 
+  useEffect(() => {
+    api.get('/crm/leads', { params: { limit: 100 } })
+      .then((res) => setLeads(res.data.data.items || []))
+      .catch(() => undefined);
+  }, []);
+
+  const selectLead = (leadId: string) => {
+    const lead = leads.find((item) => item.id === leadId);
+    setForm((prev) => ({
+      ...prev,
+      leadId,
+      firstName: lead?.firstName || prev.firstName,
+      lastName: lead?.lastName || prev.lastName,
+      email: lead?.email || prev.email,
+      phone: lead?.phone || prev.phone,
+      company: lead?.company || lead?.organization?.name || prev.company,
+      city: lead?.city || prev.city,
+      country: lead?.country || prev.country,
+    }));
+  };
+
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
       await api.post('/crm/contacts', form);
       toast.success('Contact created');
       setShowModal(false);
+      setForm(emptyForm);
       fetchContacts();
     } catch (err: any) { toast.error(err.response?.data?.message || 'Failed'); }
   };
@@ -49,6 +76,7 @@ export default function ContactsPage() {
   const columns = [
     { key: 'name', header: 'Name', render: (c: Contact) => <span className="font-medium text-gray-900">{c.firstName} {c.lastName}</span> },
     { key: 'company', header: 'Company', render: (c: Contact) => c.company || '—' },
+    { key: 'lead', header: 'Source Lead', render: (c: Contact) => c.lead ? c.lead.title : '—' },
     { key: 'position', header: 'Position', render: (c: Contact) => c.position || '—' },
     { key: 'email', header: 'Email', render: (c: Contact) => c.email || '—' },
     { key: 'phone', header: 'Phone', render: (c: Contact) => c.phone || c.mobile || '—' },
@@ -63,7 +91,7 @@ export default function ContactsPage() {
         <EmptyState icon={Users} title="No contacts" description="Add your first contact" action={{ label: 'Add Contact', onClick: () => setShowModal(true) }} />
       ) : (
         <>
-          <DataTable columns={columns} data={contacts} isLoading={isLoading} />
+          <DataTable columns={columns} data={contacts} isLoading={isLoading} onRowClick={(contact) => router.push(`/crm/contacts/${contact.id}`)} />
           {total > limit && <Pagination page={page} totalPages={Math.ceil(total / limit)} total={total} limit={limit} onPageChange={setPage} />}
         </>
       )}
@@ -71,6 +99,19 @@ export default function ContactsPage() {
         <DialogContent className="max-w-xl">
           <DialogHeader><DialogTitle>New Contact</DialogTitle></DialogHeader>
           <form onSubmit={handleCreate} className="grid grid-cols-2 gap-4 mt-2">
+            <div className="col-span-2 space-y-1.5">
+              <Label>Source Lead</Label>
+              <Select value={form.leadId || 'none'} onValueChange={(value) => value === 'none' ? setForm(emptyForm) : selectLead(value)}>
+                <SelectTrigger><SelectValue placeholder="Select the lead this contact belongs to" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">No source lead</SelectItem>
+                  {leads.map((lead) => (
+                    <SelectItem key={lead.id} value={lead.id}>{lead.title} · {lead.email || lead.phone || lead.company || 'No contact info'}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-[#6b7280]">Select a lead to auto-fill the contact and keep the CRM chain connected.</p>
+            </div>
             <div className="space-y-1.5"><Label>First Name *</Label><Input value={form.firstName} onChange={e => setForm(f => ({ ...f, firstName: e.target.value }))} required /></div>
             <div className="space-y-1.5"><Label>Last Name *</Label><Input value={form.lastName} onChange={e => setForm(f => ({ ...f, lastName: e.target.value }))} required /></div>
             <div className="space-y-1.5"><Label>Email</Label><Input type="email" value={form.email} onChange={e => setForm(f => ({ ...f, email: e.target.value }))} /></div>

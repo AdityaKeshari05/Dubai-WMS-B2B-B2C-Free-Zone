@@ -1,7 +1,8 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Plus, TrendingUp } from 'lucide-react';
+import { Plus, TrendingUp, Upload } from 'lucide-react';
+import { useRouter } from 'next/navigation';
 import { PageHeader } from '@/components/shared/PageHeader';
 import { DataTable } from '@/components/shared/DataTable';
 import { Pagination } from '@/components/shared/Pagination';
@@ -17,6 +18,7 @@ import api from '@/lib/api';
 import { Lead, LeadStatus, LeadSource } from '@/types';
 import { formatDate } from '@/lib/utils';
 import toast from 'react-hot-toast';
+import { LeadImportDialog } from '@/components/crm/LeadImportDialog';
 
 export default function LeadsPage() {
   const [leads, setLeads] = useState<Lead[]>([]);
@@ -26,7 +28,9 @@ export default function LeadsPage() {
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
   const [showModal, setShowModal] = useState(false);
-  const [form, setForm] = useState({ title: '', firstName: '', lastName: '', email: '', phone: '', company: '', source: 'WEBSITE', status: 'NEW', priority: 'MEDIUM', value: '', notes: '' });
+  const [showImport, setShowImport] = useState(false);
+  const [form, setForm] = useState({ title: '', firstName: '', lastName: '', email: '', phone: '', company: '', city: '', country: '', source: 'WEBSITE', status: 'NEW', priority: 'MEDIUM', value: '', notes: '' });
+  const router = useRouter();
   const limit = 20;
 
   const fetchLeads = async () => {
@@ -69,7 +73,9 @@ export default function LeadsPage() {
     { key: 'source', header: 'Source', render: (l: Lead) => <span className="text-xs text-gray-500">{l.source}</span> },
     { key: 'status', header: 'Status', render: (l: Lead) => <StatusBadge status={l.status} /> },
     { key: 'priority', header: 'Priority', render: (l: Lead) => <StatusBadge status={l.priority} /> },
+    { key: 'score', header: 'Score', render: (l: Lead) => l.score || 0 },
     { key: 'value', header: 'Value', render: (l: Lead) => l.value ? `$${l.value.toLocaleString()}` : '—' },
+    { key: 'owner', header: 'Owner', render: (l: Lead) => l.assignedTo ? `${l.assignedTo.firstName} ${l.assignedTo.lastName}` : '—' },
     { key: 'createdAt', header: 'Created', render: (l: Lead) => formatDate(l.createdAt) },
     { key: 'actions', header: '', render: (l: Lead) => (
       l.status !== 'CONVERTED' ? (
@@ -82,7 +88,9 @@ export default function LeadsPage() {
 
   return (
     <div>
-      <PageHeader title="Leads" description="Track and manage your sales leads" action={{ label: 'New Lead', onClick: () => setShowModal(true), icon: Plus }} />
+      <PageHeader title="Leads" description="Capture, import, qualify, and convert sales leads" action={{ label: 'New Lead', onClick: () => setShowModal(true), icon: Plus }}>
+        <Button variant="outline" onClick={() => setShowImport(true)}><Upload className="mr-2 h-4 w-4" />Import CSV</Button>
+      </PageHeader>
 
       <div className="flex gap-3 mb-4 flex-wrap">
         <Input placeholder="Search leads..." value={search} onChange={e => { setSearch(e.target.value); setPage(1); }} className="max-w-sm" />
@@ -100,7 +108,7 @@ export default function LeadsPage() {
         <EmptyState icon={TrendingUp} title="No leads yet" description="Start capturing leads to grow your business" action={{ label: 'Add Lead', onClick: () => setShowModal(true) }} />
       ) : (
         <>
-          <DataTable columns={columns} data={leads} isLoading={isLoading} />
+          <DataTable columns={columns} data={leads} isLoading={isLoading} onRowClick={(lead) => router.push(`/crm/leads/${lead.id}`)} />
           {total > limit && <Pagination page={page} totalPages={Math.ceil(total / limit)} total={total} limit={limit} onPageChange={setPage} />}
         </>
       )}
@@ -116,6 +124,8 @@ export default function LeadsPage() {
             <div className="space-y-1.5"><Label>Phone</Label><Input value={form.phone} onChange={e => setForm(f => ({ ...f, phone: e.target.value }))} /></div>
             <div className="space-y-1.5"><Label>Company</Label><Input value={form.company} onChange={e => setForm(f => ({ ...f, company: e.target.value }))} /></div>
             <div className="space-y-1.5"><Label>Estimated Value</Label><Input type="number" value={form.value} onChange={e => setForm(f => ({ ...f, value: e.target.value }))} /></div>
+            <div className="space-y-1.5"><Label>City</Label><Input value={form.city} onChange={e => setForm(f => ({ ...f, city: e.target.value }))} /></div>
+            <div className="space-y-1.5"><Label>Country</Label><Input value={form.country} onChange={e => setForm(f => ({ ...f, country: e.target.value }))} /></div>
             <div className="space-y-1.5">
               <Label>Source</Label>
               <Select value={form.source} onValueChange={v => setForm(f => ({ ...f, source: v }))}>
@@ -142,6 +152,7 @@ export default function LeadsPage() {
           </form>
         </DialogContent>
       </Dialog>
+      <LeadImportDialog open={showImport} onOpenChange={setShowImport} onImported={fetchLeads} />
     </div>
   );
 }

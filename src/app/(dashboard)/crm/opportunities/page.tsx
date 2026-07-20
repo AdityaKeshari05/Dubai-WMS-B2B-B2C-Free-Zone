@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { Plus, TrendingUp } from 'lucide-react';
 import { PageHeader } from '@/components/shared/PageHeader';
 import { DataTable } from '@/components/shared/DataTable';
@@ -21,12 +22,14 @@ const stages = ['PROSPECTING','QUALIFICATION','PROPOSAL','NEGOTIATION','CLOSED_W
 
 export default function OpportunitiesPage() {
   const [opps, setOpps] = useState<Opportunity[]>([]);
+  const [pipeline, setPipeline] = useState<any[]>([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
   const [isLoading, setIsLoading] = useState(true);
   const [stageFilter, setStageFilter] = useState('');
   const [showModal, setShowModal] = useState(false);
   const [form, setForm] = useState({ title: '', value: '', currency: 'USD', stage: 'PROSPECTING', probability: '10', expectedClose: '', notes: '' });
+  const router = useRouter();
   const limit = 20;
 
   const fetchOpps = async () => {
@@ -35,6 +38,8 @@ export default function OpportunitiesPage() {
       const res = await api.get('/crm/opportunities', { params: { page, limit, stage: stageFilter || undefined } });
       setOpps(res.data.data.items);
       setTotal(res.data.data.total);
+      const pipelineRes = await api.get('/crm/opportunities/pipeline');
+      setPipeline(pipelineRes.data.data || []);
     } catch { toast.error('Failed'); }
     finally { setIsLoading(false); }
   };
@@ -59,9 +64,41 @@ export default function OpportunitiesPage() {
     { key: 'expectedClose', header: 'Expected Close', render: (o: Opportunity) => o.expectedClose ? formatDate(o.expectedClose) : '—' },
   ];
 
+  const moveStage = async (id: string, stage: string) => {
+    try {
+      await api.patch(`/crm/opportunities/${id}`, { stage });
+      toast.success('Opportunity stage updated');
+      fetchOpps();
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || 'Stage update failed');
+    }
+  };
+
   return (
     <div>
       <PageHeader title="Opportunities" description="Track sales opportunities" action={{ label: 'New Opportunity', onClick: () => setShowModal(true), icon: Plus }} />
+      <div className="mb-4 grid gap-3 xl:grid-cols-6">
+        {pipeline.map((column) => (
+          <div key={column.stage} className="min-h-44 rounded-md border border-[#dfe3e8] bg-[#fbfaf8]">
+            <div className="border-b border-[#e5e2dc] p-3">
+              <StatusBadge status={column.stage} />
+              <p className="mt-1 text-xs text-[#6b7280]">{column.count} deals · {formatCurrency(column.totalValue || 0, 'USD')}</p>
+            </div>
+            <div className="space-y-2 p-2">
+              {column.items.slice(0, 4).map((opp: Opportunity) => (
+                <div key={opp.id} className="rounded-md border border-[#e5e2dc] bg-white p-2 text-sm">
+                  <p className="font-medium text-[#1f2937]">{opp.title}</p>
+                  <p className="text-xs text-[#6b7280]">{formatCurrency(opp.value, opp.currency)} · {opp.probability}%</p>
+                  <Select value={opp.stage} onValueChange={(stage) => moveStage(opp.id, stage)}>
+                    <SelectTrigger className="mt-2 h-7"><SelectValue /></SelectTrigger>
+                    <SelectContent>{stages.map(s => <SelectItem key={s} value={s}>{s.replace('_',' ')}</SelectItem>)}</SelectContent>
+                  </Select>
+                </div>
+              ))}
+            </div>
+          </div>
+        ))}
+      </div>
       <div className="flex gap-2 mb-4 flex-wrap">
         <Button variant={stageFilter === '' ? 'default' : 'outline'} size="sm" onClick={() => setStageFilter('')}>All</Button>
         {stages.map(s => <Button key={s} variant={stageFilter === s ? 'default' : 'outline'} size="sm" onClick={() => setStageFilter(s)}>{s.replace('_',' ')}</Button>)}
@@ -70,7 +107,7 @@ export default function OpportunitiesPage() {
         <EmptyState icon={TrendingUp} title="No opportunities" description="Start tracking sales opportunities" action={{ label: 'New Opportunity', onClick: () => setShowModal(true) }} />
       ) : (
         <>
-          <DataTable columns={columns} data={opps} isLoading={isLoading} />
+          <DataTable columns={columns} data={opps} isLoading={isLoading} onRowClick={(opp) => router.push(`/crm/opportunities/${opp.id}`)} />
           {total > limit && <Pagination page={page} totalPages={Math.ceil(total / limit)} total={total} limit={limit} onPageChange={setPage} />}
         </>
       )}

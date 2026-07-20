@@ -1,7 +1,7 @@
 import {
   LayoutDashboard, BookOpen, Package, Users, ShoppingCart, UserCheck,
   TrendingUp, FileText, ShoppingBag, FolderOpen, Building2, Truck,
-  ChevronDown, ChevronRight, X, Settings, Clock, ShieldCheck, BriefcaseBusiness
+  ChevronDown, ChevronRight, X, Settings, Clock, ShieldCheck, BriefcaseBusiness, ClipboardList, Tags
 } from 'lucide-react';
 
 export interface NavItem {
@@ -28,7 +28,17 @@ export const navItems: NavItem[] = [
 	      { label: 'Products', href: '/inventory/products', icon: Package, permission: 'inventory:products:read' },
 	      { label: 'Categories', href: '/inventory/categories', icon: FolderOpen, permission: 'inventory:categories:read' },
 	      { label: 'Warehouses', href: '/inventory/warehouses', icon: Building2, permission: 'inventory:warehouses:read' },
+	      { label: 'Stock Entries', href: '/inventory/stock-entries', icon: ClipboardList, permission: 'inventory:stock-entries:read' },
 	      { label: 'Stock Movements', href: '/inventory/stock-movements', icon: TrendingUp, permission: 'inventory:stock-movements:read' },
+	      { label: 'Pricing', href: '/inventory/pricing', icon: Tags, permission: 'inventory:price-lists:read' },
+	      { label: 'Stock Balance', href: '/inventory/reports/stock-balance', icon: BookOpen, permission: 'inventory:stock-balance:read' },
+	      { label: 'Stock Ledger', href: '/inventory/reports/stock-ledger', icon: BookOpen, permission: 'inventory:stock-ledger:read' },
+	      { label: 'Projected Stock', href: '/inventory/reports/projected-stock', icon: TrendingUp, permission: 'inventory:projected-stock:read' },
+	      { label: 'Reserved Stock', href: '/inventory/reports/reserved-stock', icon: BookOpen, permission: 'inventory:stock-balance:read' },
+	      { label: 'Warehouse Valuation', href: '/inventory/reports/warehouse-valuation', icon: BookOpen, permission: 'inventory:stock-balance:read' },
+	      { label: 'Item-wise Sales', href: '/inventory/reports/item-wise-sales', icon: TrendingUp, permission: 'inventory:stock-balance:read' },
+	      { label: 'Gross Profit', href: '/inventory/reports/gross-profit', icon: TrendingUp, permission: 'inventory:stock-balance:read' },
+	      { label: 'Slow Moving Stock', href: '/inventory/reports/slow-moving-stock', icon: Clock, permission: 'inventory:stock-balance:read' },
     ],
   },
   {
@@ -53,10 +63,14 @@ export const navItems: NavItem[] = [
   {
     label: 'CRM', icon: UserCheck,
     children: [
+      { label: 'CRM Dashboard', href: '/crm/dashboard', icon: LayoutDashboard, permission: 'crm:dashboard:read' },
       { label: 'Leads', href: '/crm/leads', icon: TrendingUp, permission: 'crm:leads:read' },
+      { label: 'Lead Imports', href: '/crm/imports', icon: FileText, permission: 'crm:imports:read' },
+      { label: 'Organizations', href: '/crm/organizations', icon: Building2, permission: 'crm:organizations:read' },
       { label: 'Contacts', href: '/crm/contacts', icon: Users },
       { label: 'Opportunities', href: '/crm/opportunities', icon: TrendingUp },
       { label: 'Activities', href: '/crm/activities', icon: FileText },
+      { label: 'Assignment Rules', href: '/crm/assignment-rules', icon: UserCheck, permission: 'crm:assignment-rules:read' },
     ],
   },
   {

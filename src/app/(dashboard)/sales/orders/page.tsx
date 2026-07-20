@@ -67,6 +67,16 @@ export default function SalesOrdersPage() {
     }
   };
 
+  const createDeliveryFromOrder = async (order: SalesOrder) => {
+    try {
+      const res = await api.post(`/delivery-notes/from-sales-order/${order.id}`);
+      toast.success('Draft delivery note created');
+      router.push(`/invoicing/delivery-notes?created=${res.data?.data?.id || ''}`);
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || 'Failed to create delivery note');
+    }
+  };
+
   const createOrder = async () => {
     if (!form.customerId) return toast.error('Select a customer');
     const items = rows.filter(row => row.productId || row.itemCode || row.description).map(row => ({
@@ -100,6 +110,7 @@ export default function SalesOrdersPage() {
     { key: 'actions', header: '', render: (o: SalesOrder) => (
       <div className="flex gap-1">
         {o.status === 'DRAFT' && <Button size="sm" variant="outline" onClick={(e) => { e.stopPropagation(); handleStatusUpdate(o.id, 'CONFIRMED'); }}>Confirm</Button>}
+        {['CONFIRMED','PROCESSING','SHIPPED'].includes(o.status) && <Button size="sm" variant="outline" onClick={(e) => { e.stopPropagation(); createDeliveryFromOrder(o); }}>Create Delivery</Button>}
         {['CONFIRMED','PROCESSING','SHIPPED','DELIVERED'].includes(o.status) && <Button size="sm" variant="outline" onClick={(e) => { e.stopPropagation(); setSourceOrder(o); }}>Create Invoice</Button>}
         {o.status === 'CONFIRMED' && <Button size="sm" onClick={(e) => { e.stopPropagation(); handleStatusUpdate(o.id, 'SHIPPED'); }}>Ship</Button>}
         {o.status === 'SHIPPED' && <Button size="sm" variant="success" onClick={(e) => { e.stopPropagation(); handleStatusUpdate(o.id, 'DELIVERED'); }}>Deliver</Button>}

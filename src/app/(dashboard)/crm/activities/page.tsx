@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { Plus, Calendar } from 'lucide-react';
 import { PageHeader } from '@/components/shared/PageHeader';
 import { DataTable } from '@/components/shared/DataTable';
@@ -29,6 +30,7 @@ export default function ActivitiesPage() {
   const [typeFilter, setTypeFilter] = useState('');
   const [showModal, setShowModal] = useState(false);
   const [form, setForm] = useState({ type: 'CALL', subject: '', description: '', dueDate: '', status: 'PLANNED' });
+  const router = useRouter();
   const limit = 20;
 
   const fetchActivities = async () => {
@@ -61,6 +63,13 @@ export default function ActivitiesPage() {
     { key: 'description', header: 'Notes', render: (a: Activity) => a.description ? a.description.slice(0, 60) + (a.description.length > 60 ? '…' : '') : '—' },
   ];
 
+  const openLinkedRecord = (activity: Activity) => {
+    if (activity.leadId) router.push(`/crm/leads/${activity.leadId}`);
+    else if (activity.opportunityId) router.push(`/crm/opportunities/${activity.opportunityId}`);
+    else if (activity.contactId) router.push(`/crm/contacts/${activity.contactId}`);
+    else if (activity.organizationId) router.push(`/crm/organizations/${activity.organizationId}`);
+  };
+
   return (
     <div>
       <PageHeader title="Activities" description="Track calls, emails, and meetings" action={{ label: 'Log Activity', onClick: () => setShowModal(true), icon: Plus }} />
@@ -72,7 +81,7 @@ export default function ActivitiesPage() {
         <EmptyState icon={Calendar} title="No activities" description="Log your first CRM activity" action={{ label: 'Log Activity', onClick: () => setShowModal(true) }} />
       ) : (
         <>
-          <DataTable columns={columns} data={activities} isLoading={isLoading} />
+          <DataTable columns={columns} data={activities} isLoading={isLoading} onRowClick={openLinkedRecord} />
           {total > limit && <Pagination page={page} totalPages={Math.ceil(total / limit)} total={total} limit={limit} onPageChange={setPage} />}
         </>
       )}

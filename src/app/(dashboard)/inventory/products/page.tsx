@@ -26,7 +26,7 @@ export default function ProductsPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [showModal, setShowModal] = useState(false);
-  const [form, setForm] = useState({ sku: '', name: '', description: '', categoryId: '', unitId: '', type: 'PRODUCT', costPrice: 0, salePrice: 0, taxRate: 0, minStockLevel: 0 });
+  const [form, setForm] = useState({ sku: '', name: '', description: '', categoryId: '', unitId: '', type: 'PRODUCT', costPrice: 0, salePrice: 0, taxRate: 0, minStockLevel: 0, valuationMethod: 'MOVING_AVERAGE', maintainStock: true, allowNegativeStock: false, hasBatchNo: false, hasSerialNo: false, reorderLevel: 0, reorderQty: 0, brand: '', manufacturer: '' });
   const limit = 20;
 
   const fetchAll = async () => {
@@ -73,6 +73,7 @@ export default function ProductsPage() {
       </div>
     )},
     { key: 'type', header: 'Type' },
+    { key: 'valuationMethod', header: 'Valuation', render: (p: Product) => p.valuationMethod?.replace('_', ' ') || '—' },
     { key: 'costPrice', header: 'Cost', render: (p: Product) => formatCurrency(p.costPrice) },
     { key: 'salePrice', header: 'Sale Price', render: (p: Product) => formatCurrency(p.salePrice) },
     { key: 'stock', header: 'Stock', render: (p: Product) => {
@@ -138,6 +139,25 @@ export default function ProductsPage() {
             <div className="space-y-1.5"><Label>Sale Price</Label><Input type="number" step="0.01" value={form.salePrice} onChange={e => setForm(f => ({ ...f, salePrice: Number(e.target.value) }))} /></div>
             <div className="space-y-1.5"><Label>Tax Rate (%)</Label><Input type="number" step="0.01" value={form.taxRate} onChange={e => setForm(f => ({ ...f, taxRate: Number(e.target.value) }))} /></div>
             <div className="space-y-1.5"><Label>Min Stock Level</Label><Input type="number" value={form.minStockLevel} onChange={e => setForm(f => ({ ...f, minStockLevel: Number(e.target.value) }))} /></div>
+            <div className="space-y-1.5">
+              <Label>Valuation Method</Label>
+              <Select value={form.valuationMethod} onValueChange={v => setForm(f => ({ ...f, valuationMethod: v }))}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="MOVING_AVERAGE">Moving Average</SelectItem>
+                  <SelectItem value="FIFO">FIFO</SelectItem>
+                  <SelectItem value="STANDARD">Standard</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1.5"><Label>Reorder Level</Label><Input type="number" value={form.reorderLevel} onChange={e => setForm(f => ({ ...f, reorderLevel: Number(e.target.value) }))} /></div>
+            <div className="space-y-1.5"><Label>Reorder Qty</Label><Input type="number" value={form.reorderQty} onChange={e => setForm(f => ({ ...f, reorderQty: Number(e.target.value) }))} /></div>
+            <div className="space-y-1.5"><Label>Brand</Label><Input value={form.brand} onChange={e => setForm(f => ({ ...f, brand: e.target.value }))} /></div>
+            <div className="space-y-1.5"><Label>Manufacturer</Label><Input value={form.manufacturer} onChange={e => setForm(f => ({ ...f, manufacturer: e.target.value }))} /></div>
+            <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={form.maintainStock} onChange={e => setForm(f => ({ ...f, maintainStock: e.target.checked }))} /> Maintain Stock</label>
+            <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={form.allowNegativeStock} onChange={e => setForm(f => ({ ...f, allowNegativeStock: e.target.checked }))} /> Allow Negative Stock</label>
+            <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={form.hasBatchNo} onChange={e => setForm(f => ({ ...f, hasBatchNo: e.target.checked }))} /> Track Batches</label>
+            <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={form.hasSerialNo} onChange={e => setForm(f => ({ ...f, hasSerialNo: e.target.checked }))} /> Track Serial Nos</label>
             <div className="col-span-2 flex justify-end gap-2 pt-2">
               <Button type="button" variant="outline" onClick={() => setShowModal(false)}>Cancel</Button>
               <Button type="submit">Create Product</Button>

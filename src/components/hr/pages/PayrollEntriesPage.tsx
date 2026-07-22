@@ -2,109 +2,115 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import toast from 'react-hot-toast';
-import {
-  BadgeCheck, BriefcaseBusiness, CalendarClock, ClipboardList, Clock,
-  FileText, Landmark, Plus, RefreshCcw, UserRoundCheck,
-} from 'lucide-react';
+import { RefreshCcw } from 'lucide-react';
 import api from '@/lib/api';
-import { formatCurrency, formatDate, formatDateTime } from '@/lib/utils';
+import { formatCurrency } from '@/lib/utils';
 import { PageHeader } from '@/components/shared/PageHeader';
 import { DataTable } from '@/components/shared/DataTable';
 import { StatusBadge } from '@/components/shared/StatusBadge';
-import { EmptyState } from '@/components/shared/EmptyState';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Textarea } from '@/components/ui/textarea';
-
-type EmployeeOption = {
-  id: string;
-  employeeId: string;
-  salary?: number;
-  user?: { firstName: string; lastName: string; email?: string };
-  department?: { name: string };
-  position?: { title: string };
-  status?: string;
-};
-
-type Option = { id: string; name?: string; title?: string; code?: string };
-
-function fullName(employee?: EmployeeOption) {
-  return `${employee?.user?.firstName || ''} ${employee?.user?.lastName || ''}`.trim() || 'Employee';
-}
 
 function num(value: any) {
   return Number(value || 0);
 }
 
-function useEmployees() {
-  const [employees, setEmployees] = useState<EmployeeOption[]>([]);
-  useEffect(() => {
-    api.get('/hr/employees', { params: { limit: 300 } })
-      .then((res) => setEmployees(res.data.data.items || []))
-      .catch(() => setEmployees([]));
-  }, []);
-  return employees;
-}
-
-function DeskStat({ label, value, icon: Icon }: { label: string; value: string | number; icon: any }) {
-  return (
-    <Card>
-      <CardContent className="flex items-center gap-3 p-4">
-        <div className="flex h-9 w-9 items-center justify-center rounded-md bg-[#eef6ff] text-[#1674c4]">
-          <Icon className="h-4 w-4" />
-        </div>
-        <div>
-          <p className="text-xs text-[#6b7280]">{label}</p>
-          <p className="text-xl font-semibold text-[#1f2937]">{value}</p>
-        </div>
-      </CardContent>
-    </Card>
-  );
-}
+const months = ['January','February','March','April','May','June','July','August','September','October','November','December'];
 
 export function PayrollEntriesPage() {
   const [items, setItems] = useState<any[]>([]);
   const [month, setMonth] = useState(String(new Date().getMonth() + 1));
   const [year, setYear] = useState(String(new Date().getFullYear()));
+  const [notes, setNotes] = useState('');
+  const [isGenerating, setIsGenerating] = useState(false);
+
+  const totals = useMemo(() => items.reduce((acc, row) => ({
+    gross: acc.gross + num(row.totalGross),
+    deduction: acc.deduction + num(row.totalDeduction),
+    net: acc.net + num(row.totalNet),
+    slips: acc.slips + Number(row.salarySlips?.length || 0),
+  }), { gross: 0, deduction: 0, net: 0, slips: 0 }), [items]);
 
   const fetchAll = async () => {
     const res = await api.get('/hr/payroll-entries', { params: { month, year } });
     setItems(res.data.data || []);
   };
+
   useEffect(() => { fetchAll().catch(() => toast.error('Failed to load payroll entries')); }, [month, year]);
 
   const generate = async () => {
-    const res = await api.post('/hr/payroll-entries', { month: Number(month), year: Number(year) });
-    toast.success(res.data.message || 'Payroll generated');
-    fetchAll();
+    setIsGenerating(true);
+    try {
+      const res = await api.post('/hr/payroll-entries', { month: Number(month), year: Number(year), notes });
+      toast.success(res.data.message || 'Payroll generated');
+      fetchAll();
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || 'Could not generate payroll');
+    } finally {
+      setIsGenerating(false);
+    }
   };
+
   const setStatus = async (id: string, status: string) => {
-    await api.patch(`/hr/payroll-entries/${id}/status`, { status });
-    toast.success('Payroll updated');
-    fetchAll();
+    try {
+      await api.patch(`/hr/payroll-entries/${id}/status`, { status });
+      toast.success(status === 'SUBMITTED' ? 'Payroll submitted' : status === 'PAID' ? 'Payroll marked paid' : 'Payroll cancelled');
+      fetchAll();
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || 'Could not update payroll');
+    }
   };
 
   return (
-    <div>
-      <PageHeader title="Payroll Entries" description="Generate payroll as a document, then submit or mark paid">
-        <Button onClick={generate}><RefreshCcw className="mr-2 h-4 w-4" />Generate</Button>
+    <div className="space-y-4">
+      <PageHeader title="Payroll Entries" description="Monthly payroll document that generates salary slips from assigned salary structures">
+        <Button onClick={generate} disabled={isGenerating}><RefreshCcw className="mr-2 h-4 w-4" />{isGenerating ? 'Generating...' : 'Generate Payroll'}</Button>
       </PageHeader>
-      <div className="mb-4 flex gap-3">
-        <Input className="w-28" type="number" value={month} onChange={(e) => setMonth(e.target.value)} />
-        <Input className="w-32" type="number" value={year} onChange={(e) => setYear(e.target.value)} />
+
+      <div className="grid gap-3 md:grid-cols-4">
+        <Metric label="Salary Slips" value={totals.slips.toLocaleString()} />
+        <Metric label="Gross Pay" value={formatCurrency(totals.gross)} />
+        <Metric label="Deductions" value={formatCurrency(totals.deduction)} />
+        <Metric label="Net Pay" value={formatCurrency(totals.net)} />
       </div>
+
+      <Card>
+        <CardContent className="grid gap-3 p-4 md:grid-cols-[180px_140px_1fr]">
+          <div className="space-y-1.5">
+            <Label>Month</Label>
+            <Select value={month} onValueChange={setMonth}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>{months.map((name, index) => <SelectItem key={name} value={String(index + 1)}>{name}</SelectItem>)}</SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-1.5"><Label>Year</Label><Input type="number" value={year} onChange={(event) => setYear(event.target.value)} /></div>
+          <div className="space-y-1.5"><Label>Notes</Label><Input value={notes} onChange={(event) => setNotes(event.target.value)} placeholder="Payroll remarks" /></div>
+        </CardContent>
+      </Card>
+
       <DataTable data={items} columns={[
-        { key: 'payrollNo', header: 'Payroll No' },
-        { key: 'period', header: 'Period', render: (r: any) => `${r.month}/${r.year}` },
-        { key: 'status', header: 'Status', render: (r: any) => <StatusBadge status={r.status} /> },
-        { key: 'salarySlips', header: 'Slips', render: (r: any) => r.salarySlips?.length || 0 },
-        { key: 'totalGross', header: 'Gross', render: (r: any) => formatCurrency(num(r.totalGross)) },
-        { key: 'totalNet', header: 'Net', render: (r: any) => <span className="font-semibold">{formatCurrency(num(r.totalNet))}</span> },
-        { key: 'actions', header: '', render: (r: any) => <div className="flex gap-1">{r.status === 'DRAFT' && <Button size="sm" variant="outline" onClick={() => setStatus(r.id, 'SUBMITTED')}>Submit</Button>}{r.status === 'SUBMITTED' && <Button size="sm" onClick={() => setStatus(r.id, 'PAID')}>Mark Paid</Button>}</div> },
+        { key: 'payrollNo', header: 'Payroll No', render: (row: any) => <span className="font-mono text-xs font-semibold">{row.payrollNo}</span> },
+        { key: 'period', header: 'Period', render: (row: any) => `${months[row.month - 1]} ${row.year}` },
+        { key: 'status', header: 'Status', render: (row: any) => <StatusBadge status={row.status} /> },
+        { key: 'salarySlips', header: 'Slips', render: (row: any) => row.salarySlips?.length || 0 },
+        { key: 'totalGross', header: 'Gross', render: (row: any) => formatCurrency(num(row.totalGross)) },
+        { key: 'totalDeduction', header: 'Deduction', render: (row: any) => formatCurrency(num(row.totalDeduction)) },
+        { key: 'totalNet', header: 'Net', render: (row: any) => <span className="font-semibold">{formatCurrency(num(row.totalNet))}</span> },
+        { key: 'actions', header: '', render: (row: any) => (
+          <div className="flex gap-1">
+            {row.status === 'DRAFT' && <Button size="sm" variant="outline" onClick={() => setStatus(row.id, 'SUBMITTED')}>Submit</Button>}
+            {row.status === 'SUBMITTED' && <Button size="sm" onClick={() => setStatus(row.id, 'PAID')}>Mark Paid</Button>}
+            {row.status === 'DRAFT' && <Button size="sm" variant="ghost" onClick={() => setStatus(row.id, 'CANCELLED')}>Cancel</Button>}
+          </div>
+        ) },
       ]} />
     </div>
   );
+}
+
+function Metric({ label, value }: { label: string; value: string }) {
+  return <Card><CardContent className="p-4"><p className="text-xs text-[#6b7280]">{label}</p><p className="mt-1 text-xl font-semibold text-[#1f2937]">{value}</p></CardContent></Card>;
 }

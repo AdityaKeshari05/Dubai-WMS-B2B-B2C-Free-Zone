@@ -2,12 +2,13 @@
 
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
-import { CalendarDays, FileText, Filter, ListFilter, PackagePlus, Plus, Search, SlidersHorizontal } from 'lucide-react';
+import { CalendarDays, FileText, Filter, ListFilter, PackagePlus, Plus, Search, X } from 'lucide-react';
 import { Pagination } from '@/components/shared/Pagination';
 import { StatusBadge } from '@/components/shared/StatusBadge';
 import { EmptyState } from '@/components/shared/EmptyState';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import api from '@/lib/api';
 import { InvoiceStatus, SalesInvoice } from '@/types';
 import { formatCurrency, formatDate } from '@/lib/utils';
@@ -22,6 +23,20 @@ const statuses: Array<{ label: string; value: '' | InvoiceStatus }> = [
   { label: 'Overdue', value: 'OVERDUE' },
   { label: 'Cancelled', value: 'CANCELLED' },
 ];
+
+type UserOption = { id: string; email: string; firstName: string; lastName: string };
+type SavedFilter = '' | 'not_cancelled' | 'outstanding';
+
+const savedFilters: Array<{ label: string; value: SavedFilter }> = [
+  { label: 'Status is Not Cancelled', value: 'not_cancelled' },
+  { label: 'Outstanding > 0', value: 'outstanding' },
+];
+
+function userLabel(user?: UserOption | null) {
+  if (!user) return '-';
+  const name = `${user.firstName || ''} ${user.lastName || ''}`.trim();
+  return name || user.email;
+}
 
 function readPagination(payload: any) {
   if (payload?.data?.items) return payload.data;
@@ -53,7 +68,29 @@ export default function SalesInvoicesPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [status, setStatus] = useState<'' | InvoiceStatus>('');
+  const [users, setUsers] = useState<UserOption[]>([]);
+  const [knownTags, setKnownTags] = useState<string[]>([]);
+  const [assignedFilter, setAssignedFilter] = useState('ALL');
+  const [createdByFilter, setCreatedByFilter] = useState('ALL');
+  const [createdOn, setCreatedOn] = useState('');
+  const [tagFilter, setTagFilter] = useState('');
+  const [showTaggedOnly, setShowTaggedOnly] = useState(false);
+  const [savedFilter, setSavedFilter] = useState<SavedFilter>('');
   const limit = 20;
+
+  const hasActiveFilters = Boolean(search || status || assignedFilter !== 'ALL' || createdByFilter !== 'ALL' || createdOn || tagFilter || showTaggedOnly || savedFilter);
+
+  useEffect(() => {
+    api.get('/invoices/filter-options')
+      .then(res => {
+        setUsers(res.data?.data?.users || []);
+        setKnownTags(res.data?.data?.tags || []);
+      })
+      .catch(() => {
+        setUsers([]);
+        setKnownTags([]);
+      });
+  }, []);
 
   useEffect(() => {
     const timeout = window.setTimeout(async () => {
@@ -65,6 +102,14 @@ export default function SalesInvoicesPage() {
             limit,
             search: search || undefined,
             status: status || undefined,
+            createdOn: createdOn || undefined,
+            assignedTo: assignedFilter === 'ME' ? 'me' : assignedFilter === 'UNASSIGNED' ? 'unassigned' : undefined,
+            assignedToId: assignedFilter !== 'ALL' && assignedFilter !== 'ME' && assignedFilter !== 'UNASSIGNED' ? assignedFilter : undefined,
+            createdBy: createdByFilter === 'ME' ? 'me' : undefined,
+            createdById: createdByFilter !== 'ALL' && createdByFilter !== 'ME' ? createdByFilter : undefined,
+            tag: tagFilter || undefined,
+            hasTags: showTaggedOnly ? 'true' : undefined,
+            savedFilter: savedFilter || undefined,
           },
         });
         const paged = readPagination(res.data);
@@ -79,7 +124,19 @@ export default function SalesInvoicesPage() {
     }, 250);
 
     return () => window.clearTimeout(timeout);
-  }, [page, search, status]);
+  }, [page, search, status, assignedFilter, createdByFilter, createdOn, tagFilter, showTaggedOnly, savedFilter]);
+
+  function resetFilters() {
+    setSearch('');
+    setStatus('');
+    setAssignedFilter('ALL');
+    setCreatedByFilter('ALL');
+    setCreatedOn('');
+    setTagFilter('');
+    setShowTaggedOnly(false);
+    setSavedFilter('');
+    setPage(1);
+  }
 
   return (
     <div className="min-h-[calc(100vh-92px)]">
@@ -129,16 +186,57 @@ export default function SalesInvoicesPage() {
                 Filter By
               </p>
               <div className="space-y-2">
-                <FilterBox label="Assigned To" value="Me" />
-                <FilterBox label="Created By" value="All Users" />
-                <FilterBox label="Tags" value="Show Tags" />
+                <FilterSelect label="Assigned To" value={assignedFilter} onChange={(value) => { setAssignedFilter(value); setPage(1); }}>
+                  <SelectItem value="ALL">All users</SelectItem>
+                  <SelectItem value="ME">Me</SelectItem>
+                  <SelectItem value="UNASSIGNED">Unassigned</SelectItem>
+                  {users.map(user => <SelectItem key={user.id} value={user.id}>{userLabel(user)}</SelectItem>)}
+                </FilterSelect>
+                <FilterSelect label="Created By" value={createdByFilter} onChange={(value) => { setCreatedByFilter(value); setPage(1); }}>
+                  <SelectItem value="ALL">All users</SelectItem>
+                  <SelectItem value="ME">Me</SelectItem>
+                  {users.map(user => <SelectItem key={user.id} value={user.id}>{userLabel(user)}</SelectItem>)}
+                </FilterSelect>
+                <div className="space-y-1">
+                  <label className="text-xs font-medium text-[#6b7280]">Tags</label>
+                  <Input
+                    list="invoice-tags"
+                    value={tagFilter}
+                    onChange={event => {
+                      setTagFilter(event.target.value.trim());
+                      setPage(1);
+                    }}
+                    placeholder="Filter by tag"
+                    className="h-8 text-xs"
+                  />
+                  <datalist id="invoice-tags">{knownTags.map(tag => <option key={tag} value={tag} />)}</datalist>
+                  <button
+                    className={showTaggedOnly ? 'rounded-md bg-[#eef6fd] px-2 py-1 text-xs font-medium text-[#1674c4]' : 'rounded-md bg-[#f4f5f6] px-2 py-1 text-xs font-medium text-[#4b5563]'}
+                    onClick={() => {
+                      setShowTaggedOnly(prev => !prev);
+                      setPage(1);
+                    }}
+                  >
+                    Show tagged only
+                  </button>
+                </div>
               </div>
             </div>
             <div>
               <p className="mb-2 text-xs font-semibold uppercase text-[#7c8591]">Saved Filters</p>
               <div className="space-y-1.5">
-                <button className="rounded-md bg-[#f4f5f6] px-2 py-1 text-xs font-medium text-[#4b5563]">Status is Not Cancelled</button>
-                <button className="rounded-md bg-[#f4f5f6] px-2 py-1 text-xs font-medium text-[#4b5563]">Outstanding &gt; 0</button>
+                {savedFilters.map(item => (
+                  <button
+                    key={item.value}
+                    className={savedFilter === item.value ? 'rounded-md bg-[#eef6fd] px-2 py-1 text-xs font-medium text-[#1674c4]' : 'rounded-md bg-[#f4f5f6] px-2 py-1 text-xs font-medium text-[#4b5563]'}
+                    onClick={() => {
+                      setSavedFilter(prev => prev === item.value ? '' : item.value);
+                      setPage(1);
+                    }}
+                  >
+                    {item.label}
+                  </button>
+                ))}
               </div>
             </div>
           </div>
@@ -160,9 +258,25 @@ export default function SalesInvoicesPage() {
                     }}
                   />
                 </div>
-                <div className="flex items-center gap-2 text-xs text-[#6b7280]">
-                  <Button variant="outline" size="sm"><SlidersHorizontal className="mr-2 h-3.5 w-3.5" />Filter</Button>
-                  <Button variant="outline" size="sm"><CalendarDays className="mr-2 h-3.5 w-3.5" />Created On</Button>
+                <div className="flex min-w-0 flex-wrap items-center gap-2 text-xs text-[#6b7280]">
+                  <div className="flex h-9 w-full min-w-0 max-w-[160px] items-center gap-1.5 rounded-md border border-[#e5e2dc] bg-white px-2 sm:w-[150px]">
+                    <CalendarDays className="h-3.5 w-3.5 shrink-0 text-[#6b7280]" />
+                    <Input
+                      type="date"
+                      value={createdOn}
+                      onChange={event => {
+                        setCreatedOn(event.target.value);
+                        setPage(1);
+                      }}
+                      className="min-w-0 flex-1 border-0 bg-transparent p-0 text-xs shadow-none focus-visible:ring-0 [&::-webkit-calendar-picker-indicator]:ml-0 [&::-webkit-calendar-picker-indicator]:h-3.5 [&::-webkit-calendar-picker-indicator]:w-3.5"
+                    />
+                  </div>
+                  {hasActiveFilters && (
+                    <Button variant="outline" size="sm" onClick={resetFilters}>
+                      <X className="mr-2 h-3.5 w-3.5" />
+                      Clear
+                    </Button>
+                  )}
                 </div>
               </div>
               <div className="mt-3 flex flex-wrap gap-1">
@@ -201,12 +315,17 @@ export default function SalesInvoicesPage() {
   );
 }
 
-function FilterBox({ label, value }: { label: string; value: string }) {
+function FilterSelect({ label, value, onChange, children }: { label: string; value: string; onChange: (value: string) => void; children: React.ReactNode }) {
   return (
-    <button className="flex h-8 w-full items-center justify-between rounded-md border border-[#e5e2dc] bg-white px-2.5 text-left text-xs text-[#4b5563] shadow-sm">
-      <span>{label}</span>
-      <span className="text-[#9aa3af]">{value}</span>
-    </button>
+    <div className="space-y-1">
+      <label className="text-xs font-medium text-[#6b7280]">{label}</label>
+      <Select value={value} onValueChange={onChange}>
+        <SelectTrigger className="h-8 text-xs">
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent>{children}</SelectContent>
+      </Select>
+    </div>
   );
 }
 
@@ -244,6 +363,11 @@ function InvoiceDeskTable({ invoices, isLoading }: { invoices: SalesInvoice[]; i
                   {invoice.customer?.name || invoice.invoiceNo}
                 </Link>
                 <div className="text-xs text-[#8a929d]">{formatDate(invoice.date)}</div>
+                {!!invoice.tags?.length && (
+                  <div className="mt-1 flex flex-wrap gap-1">
+                    {invoice.tags.slice(0, 3).map(tag => <span key={tag} className="rounded bg-[#f4f5f6] px-1.5 py-0.5 text-[10px] text-[#6b7280]">{tag}</span>)}
+                  </div>
+                )}
               </td>
               <td className="px-3 py-2 text-[#374151]">{invoice.customer?.name || '-'}</td>
               <td className="px-3 py-2"><StatusBadge status={invoice.status} /></td>

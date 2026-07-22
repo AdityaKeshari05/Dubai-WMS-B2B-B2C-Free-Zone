@@ -664,6 +664,11 @@ export interface SalesInvoice {
   invoiceNo: string;
   customerId: string;
   customer?: { name: string; email?: string };
+  createdBy?: { id: string; firstName: string; lastName: string; email: string };
+  assignedTo?: { id: string; firstName: string; lastName: string; email: string };
+  createdById?: string;
+  assignedToId?: string;
+  tags?: string[];
   salesOrderId?: string;
   date: string;
   dueDate?: string;

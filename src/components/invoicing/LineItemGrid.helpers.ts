@@ -6,6 +6,8 @@ export interface LineItemRow {
   quantity: number;
   unitPrice: number;
   discount: number;
+  taxTemplateId?: string;
+  taxTemplateName?: string;
   taxRate: number;
   total: number;
 }
@@ -16,6 +18,8 @@ export interface ProductOption {
   name: string;
   salePrice: number;
   taxRate: number;
+  defaultTaxTemplateId?: string | null;
+  defaultTaxTemplate?: { id: string; name: string; code: string; lines?: { rate: number }[] } | null;
   unitId?: string | null;
 }
 

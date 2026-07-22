@@ -66,6 +66,7 @@ export default function QuotationsPage() {
       description: row.description,
       quantity: row.quantity,
       unitPrice: row.unitPrice,
+      taxTemplateId: row.taxTemplateId,
       taxRate: row.taxRate,
       discount: row.discount,
     }));

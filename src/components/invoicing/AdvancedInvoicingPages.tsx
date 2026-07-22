@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import { ClipboardList, FileClock, PackageCheck, Play, Plus } from 'lucide-react';
+import { ClipboardList, FileClock, PackageCheck, Play, Plus, Trash2, Truck } from 'lucide-react';
 import toast from 'react-hot-toast';
 import api from '@/lib/api';
 import { Button } from '@/components/ui/button';
@@ -147,13 +147,30 @@ export function PaymentEntriesPage() {
 
 export function DeliveryNotesPage() {
   const [notes, setNotes] = useState<any[]>([]);
+  const [customers, setCustomers] = useState<any[]>([]);
+  const [orders, setOrders] = useState<any[]>([]);
+  const [warehouses, setWarehouses] = useState<any[]>([]);
+  const [products, setProducts] = useState<any[]>([]);
+  const [open, setOpen] = useState(false);
+  const [form, setForm] = useState({ customerId: '', salesOrderId: '', warehouseId: '', date: new Date().toISOString().slice(0, 10), postingDate: '', notes: '' });
+  const [deliveryRows, setDeliveryRows] = useState<any[]>([{ productId: '', description: '', quantity: 1 }]);
   const [totalRows, setTotalRows] = useState(0);
 
   const load = async () => {
     try {
-      const res = await api.get('/delivery-notes');
-      setNotes(items(res.data));
-      setTotalRows(total(res.data));
+      const [noteRes, customerRes, orderRes, warehouseRes, productRes] = await Promise.all([
+        api.get('/delivery-notes'),
+        api.get('/customers', { params: { limit: 200, isActive: true } }),
+        api.get('/sales/orders', { params: { limit: 200 } }),
+        api.get('/inventory/warehouses'),
+        api.get('/inventory/products', { params: { limit: 200, isActive: true } }),
+      ]);
+      setNotes(items(noteRes.data));
+      setTotalRows(total(noteRes.data));
+      setCustomers(items(customerRes.data));
+      setOrders(items(orderRes.data).filter((order: any) => !['DRAFT', 'CANCELLED', 'CLOSED'].includes(order.status)));
+      setWarehouses(items(warehouseRes.data));
+      setProducts(items(productRes.data).filter((product: any) => product.type !== 'SERVICE'));
     } catch {
       toast.error('Failed to load delivery notes');
     }
@@ -182,8 +199,54 @@ export function DeliveryNotesPage() {
     }
   };
 
+  const selectedOrder = useMemo(() => orders.find(order => order.id === form.salesOrderId), [orders, form.salesOrderId]);
+
+  const createFromOrder = async () => {
+    if (!form.salesOrderId) return toast.error('Select a sales order');
+    try {
+      await api.post(`/delivery-notes/from-sales-order/${form.salesOrderId}`);
+      toast.success('Draft delivery note created from sales order');
+      setOpen(false);
+      resetDeliveryForm();
+      load();
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || 'Failed to create delivery note');
+    }
+  };
+
+  const createManual = async () => {
+    if (!form.customerId) return toast.error('Select a customer');
+    const rows = deliveryRows.filter(row => row.productId && Number(row.quantity) > 0);
+    if (!rows.length) return toast.error('Add at least one product to deliver');
+    try {
+      await api.post('/delivery-notes', {
+        ...form,
+        salesOrderId: form.salesOrderId || undefined,
+        warehouseId: form.warehouseId || undefined,
+        postingDate: form.postingDate || undefined,
+        items: rows,
+      });
+      toast.success('Draft delivery note created');
+      setOpen(false);
+      resetDeliveryForm();
+      load();
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || 'Failed to create delivery note');
+    }
+  };
+
+  const resetDeliveryForm = () => {
+    setForm({ customerId: '', salesOrderId: '', warehouseId: '', date: new Date().toISOString().slice(0, 10), postingDate: '', notes: '' });
+    setDeliveryRows([{ productId: '', description: '', quantity: 1 }]);
+  };
+
   return (
-    <DeskPage title="Delivery Notes" description="Submitted delivery notes issue stock and connect sales orders to invoices." meta={`${totalRows} records`}>
+    <DeskPage
+      title="Delivery Notes"
+      description="Draft the shipment, submit when goods leave stock, then invoice from the delivered document."
+      meta={`${totalRows} records`}
+      action={<Button onClick={() => setOpen(true)}><Plus className="mr-2 h-4 w-4" />New Delivery Note</Button>}
+    >
       {notes.length ? <DataTable data={notes} columns={[
         { key: 'deliveryNo', header: 'Delivery #' },
         { key: 'customer', header: 'Customer', render: (n: any) => n.customer?.name || '-' },
@@ -199,21 +262,143 @@ export function DeliveryNotesPage() {
             {n.status === 'SUBMITTED' && <Button size="sm" variant="outline" onClick={() => setStatus(n.id, 'CANCELLED')}>Cancel</Button>}
           </div>
         ) },
-      ]} /> : <EmptyState icon={PackageCheck} title="No delivery notes" description="Create delivery notes from confirmed sales orders to issue stock." />}
+      ]} /> : <EmptyState icon={PackageCheck} title="No delivery notes" description="Create delivery notes from confirmed sales orders or enter a manual shipment." action={{ label: 'New Delivery Note', onClick: () => setOpen(true) }} />}
+
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogContent className="max-w-5xl">
+          <DialogHeader><DialogTitle>New Delivery Note</DialogTitle></DialogHeader>
+          <div className="grid gap-4">
+            <div className="rounded-md border border-[#e5e2dc] bg-[#f8faf9] p-3 text-sm text-[#4b5563]">
+              Delivery Notes are stock documents. Create from a Sales Order when possible; use manual rows for direct shipment adjustments.
+            </div>
+            <div className="grid gap-3 md:grid-cols-3">
+              <Field label="Get from Sales Order">
+                <Select value={form.salesOrderId} onValueChange={value => {
+                  const order = orders.find(o => o.id === value);
+                  setForm(prev => ({ ...prev, salesOrderId: value, customerId: order?.customerId || prev.customerId }));
+                  if (order?.items?.length) {
+                    setDeliveryRows(order.items.map((item: any) => ({
+                      productId: item.productId,
+                      description: item.description || item.product?.name || '',
+                      quantity: Number(item.quantity || 1),
+                    })));
+                  }
+                }}>
+                  <SelectTrigger><SelectValue placeholder="Optional source order" /></SelectTrigger>
+                  <SelectContent>{orders.map(order => <SelectItem key={order.id} value={order.id}>{order.orderNo} · {order.customer?.name || 'Customer'} · {order.status}</SelectItem>)}</SelectContent>
+                </Select>
+              </Field>
+              <Field label="Customer">
+                <Select value={form.customerId} onValueChange={value => setForm(prev => ({ ...prev, customerId: value }))}>
+                  <SelectTrigger><SelectValue placeholder="Select customer" /></SelectTrigger>
+                  <SelectContent>{customers.map(customer => <SelectItem key={customer.id} value={customer.id}>{customer.name}</SelectItem>)}</SelectContent>
+                </Select>
+              </Field>
+              <Field label="Warehouse">
+                <Select value={form.warehouseId} onValueChange={value => setForm(prev => ({ ...prev, warehouseId: value }))}>
+                  <SelectTrigger><SelectValue placeholder="Default active warehouse" /></SelectTrigger>
+                  <SelectContent>{warehouses.map(warehouse => <SelectItem key={warehouse.id} value={warehouse.id}>{warehouse.code ? `${warehouse.code} - ` : ''}{warehouse.name}</SelectItem>)}</SelectContent>
+                </Select>
+              </Field>
+              <Field label="Date"><Input type="date" value={form.date} onChange={event => setForm(prev => ({ ...prev, date: event.target.value }))} /></Field>
+              <Field label="Posting Date"><Input type="date" value={form.postingDate} onChange={event => setForm(prev => ({ ...prev, postingDate: event.target.value }))} /></Field>
+              <Field label="Notes"><Input value={form.notes} onChange={event => setForm(prev => ({ ...prev, notes: event.target.value }))} placeholder="Transporter, LR number, delivery remarks" /></Field>
+            </div>
+
+            {selectedOrder && (
+              <div className="rounded-md border border-blue-100 bg-blue-50 px-3 py-2 text-sm text-blue-800">
+                Source {selectedOrder.orderNo}: {selectedOrder.items?.length || 0} item(s) will be copied into the draft delivery note.
+              </div>
+            )}
+
+            <DeliveryRows rows={deliveryRows} products={products} onChange={setDeliveryRows} />
+
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" onClick={() => setOpen(false)}>Cancel</Button>
+              {form.salesOrderId && <Button variant="outline" onClick={createFromOrder}><Truck className="mr-2 h-4 w-4" />Create from Sales Order</Button>}
+              <Button onClick={createManual}>Create Manual Draft</Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </DeskPage>
+  );
+}
+
+function DeliveryRows({ rows, products, onChange }: { rows: any[]; products: any[]; onChange: (rows: any[]) => void }) {
+  const update = (index: number, patch: any) => onChange(rows.map((row, i) => i === index ? { ...row, ...patch } : row));
+  const add = () => onChange([...rows, { productId: '', description: '', quantity: 1 }]);
+  const remove = (index: number) => onChange(rows.length === 1 ? rows : rows.filter((_, i) => i !== index));
+
+  return (
+    <div className="rounded-md border border-[#e5e2dc] bg-white">
+      <div className="grid grid-cols-[2fr_2fr_120px_48px] border-b border-[#e5e2dc] bg-[#f8faf9] px-3 py-2 text-xs font-semibold uppercase text-[#6b7280]">
+        <span>Product</span><span>Description</span><span>Qty</span><span />
+      </div>
+      <div className="divide-y divide-[#f0ede8]">
+        {rows.map((row, index) => (
+          <div key={index} className="grid grid-cols-[2fr_2fr_120px_48px] gap-2 px-3 py-2">
+            <Select value={row.productId} onValueChange={value => {
+              const product = products.find(p => p.id === value);
+              update(index, { productId: value, description: row.description || product?.name || '', itemCode: product?.sku || '' });
+            }}>
+              <SelectTrigger><SelectValue placeholder="Select product" /></SelectTrigger>
+              <SelectContent>{products.map(product => <SelectItem key={product.id} value={product.id}>{product.sku} · {product.name}</SelectItem>)}</SelectContent>
+            </Select>
+            <Input value={row.description || ''} onChange={event => update(index, { description: event.target.value })} />
+            <Input type="number" min="0.000001" step="0.000001" value={row.quantity} onChange={event => update(index, { quantity: Number(event.target.value) })} />
+            <Button variant="ghost" size="icon" onClick={() => remove(index)}><Trash2 className="h-4 w-4" /></Button>
+          </div>
+        ))}
+      </div>
+      <div className="border-t border-[#e5e2dc] p-2"><Button size="sm" variant="outline" onClick={add}><Plus className="mr-2 h-4 w-4" />Add Row</Button></div>
+    </div>
   );
 }
 
 export function AuditLogPage() {
   const [logs, setLogs] = useState<any[]>([]);
+  const [totalRows, setTotalRows] = useState(0);
+  const [filters, setFilters] = useState({ entityType: 'ALL', action: 'ALL', search: '', fromDate: '', toDate: '' });
+  const load = () => {
+    api.get('/invoicing/audit-logs', {
+      params: {
+        limit: 100,
+        entityType: filters.entityType === 'ALL' ? undefined : filters.entityType,
+        action: filters.action === 'ALL' ? undefined : filters.action,
+        search: filters.search || undefined,
+        fromDate: filters.fromDate || undefined,
+        toDate: filters.toDate || undefined,
+      },
+    }).then(res => {
+      setLogs(items(res.data));
+      setTotalRows(total(res.data));
+    }).catch(() => toast.error('Failed to load audit log'));
+  };
+
   useEffect(() => {
-    api.get('/invoicing/audit-logs').then(res => setLogs(items(res.data))).catch(() => toast.error('Failed to load audit log'));
-  }, []);
+    load();
+  }, [filters.entityType, filters.action]);
+
   return (
-    <DeskPage title="Audit Log" description="Immutable document history for invoices, delivery notes, payments, and credit notes.">
+    <DeskPage title="Audit Log" description="Immutable document timeline for invoice lifecycle, delivery, credit note, and payment actions." meta={`${totalRows} events`} action={<Button variant="outline" onClick={load}>Refresh</Button>}>
+      <div className="grid gap-3 border-b border-[#edf0f2] bg-[#f8faf9] p-3 md:grid-cols-5">
+        <Input value={filters.search} onChange={event => setFilters(prev => ({ ...prev, search: event.target.value }))} onKeyDown={event => { if (event.key === 'Enter') load(); }} placeholder="Search message or actor" />
+        <Select value={filters.entityType} onValueChange={entityType => setFilters(prev => ({ ...prev, entityType }))}>
+          <SelectTrigger><SelectValue /></SelectTrigger>
+          <SelectContent>{['ALL', 'SALES_INVOICE', 'DELIVERY_NOTE', 'CREDIT_NOTE', 'PAYMENT_ENTRY'].map(type => <SelectItem key={type} value={type}>{type.replaceAll('_', ' ')}</SelectItem>)}</SelectContent>
+        </Select>
+        <Select value={filters.action} onValueChange={action => setFilters(prev => ({ ...prev, action }))}>
+          <SelectTrigger><SelectValue /></SelectTrigger>
+          <SelectContent>{['ALL', 'CREATE', 'UPDATE', 'SUBMIT', 'CANCEL', 'AMEND', 'DELETE', 'CREATE_FROM_SALES_ORDER', 'CREATE_FROM_DELIVERY_NOTE'].map(action => <SelectItem key={action} value={action}>{action.replaceAll('_', ' ')}</SelectItem>)}</SelectContent>
+        </Select>
+        <Input type="date" value={filters.fromDate} onChange={event => setFilters(prev => ({ ...prev, fromDate: event.target.value }))} />
+        <Input type="date" value={filters.toDate} onChange={event => setFilters(prev => ({ ...prev, toDate: event.target.value }))} />
+      </div>
       {logs.length ? <DataTable data={logs} columns={[
         { key: 'createdAt', header: 'Time', render: (l: any) => formatDate(l.createdAt) },
         { key: 'entityType', header: 'Document' },
+        { key: 'voucher', header: 'Voucher', render: (l: any) => l.invoice?.invoiceNo || l.deliveryNote?.deliveryNo || l.creditNote?.creditNoteNo || l.entityId },
         { key: 'action', header: 'Action', render: (l: any) => <StatusBadge status={l.action} /> },
         { key: 'statusBefore', header: 'Before', render: (l: any) => l.statusBefore || '-' },
         { key: 'statusAfter', header: 'After', render: (l: any) => l.statusAfter || '-' },

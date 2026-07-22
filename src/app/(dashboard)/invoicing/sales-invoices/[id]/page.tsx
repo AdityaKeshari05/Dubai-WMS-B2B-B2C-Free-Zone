@@ -35,6 +35,8 @@ function toRows(invoice?: SalesInvoice): LineItemRow[] {
     quantity: Number(item.quantity || 0),
     unitPrice: Number(item.unitPrice ?? item.rate ?? 0),
     discount: Number(item.discount || 0),
+    taxTemplateId: (item as any).taxTemplateId || '',
+    taxTemplateName: (item as any).taxTemplate?.name || '',
     taxRate: Number(item.taxRate || 0),
     total: Number(item.total || 0),
   }));
@@ -68,6 +70,8 @@ export default function SalesInvoiceDetailPage() {
   const [isSaving, setIsSaving] = useState(false);
   const [paymentOpen, setPaymentOpen] = useState(false);
   const [cancelOpen, setCancelOpen] = useState(false);
+  const [printFormats, setPrintFormats] = useState<any[]>([]);
+  const [printFormatId, setPrintFormatId] = useState('');
   const [form, setForm] = useState({ customerId: '', date: '', dueDate: '', notes: '', terms: '', currency: 'USD' });
   const [rows, setRows] = useState<LineItemRow[]>([]);
   const [payment, setPayment] = useState({ amount: '', date: new Date().toISOString().slice(0, 10), method: 'BANK_TRANSFER' as PaymentMethod, reference: '', notes: '' });
@@ -101,6 +105,13 @@ export default function SalesInvoiceDetailPage() {
 
   useEffect(() => {
     fetchInvoice();
+    api.get('/invoicing/print-formats', { params: { docType: 'SALES_INVOICE', isActive: true } })
+      .then(res => {
+        const formats = Array.isArray(res.data?.data) ? res.data.data : [];
+        setPrintFormats(formats);
+        setPrintFormatId(formats.find((format: any) => format.isDefault)?.id || formats[0]?.id || '');
+      })
+      .catch(() => setPrintFormats([]));
   }, [params.id]);
 
   const saveDraft = async () => {
@@ -115,6 +126,7 @@ export default function SalesInvoiceDetailPage() {
           description: row.description,
           quantity: row.quantity,
           unitPrice: row.unitPrice,
+          taxTemplateId: row.taxTemplateId,
           taxRate: row.taxRate,
           discount: row.discount,
         })),
@@ -193,7 +205,7 @@ export default function SalesInvoiceDetailPage() {
   const downloadPdf = async () => {
     if (!invoice) return;
     try {
-      const res = await api.get(`/invoices/${invoice.id}/pdf`, { responseType: 'blob' });
+      const res = await api.get(`/invoices/${invoice.id}/pdf`, { params: { printFormatId: printFormatId || undefined }, responseType: 'blob' });
       const url = window.URL.createObjectURL(res.data);
       window.open(url, '_blank');
     } catch {
@@ -331,6 +343,24 @@ export default function SalesInvoiceDetailPage() {
         </div>
 
         <aside className="space-y-4">
+        <Card>
+          <CardHeader><CardTitle>Print Format</CardTitle></CardHeader>
+          <CardContent className="space-y-3">
+            <Select value={printFormatId || 'DEFAULT'} onValueChange={value => setPrintFormatId(value === 'DEFAULT' ? '' : value)}>
+              <SelectTrigger><SelectValue placeholder="System default" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="DEFAULT">System default format</SelectItem>
+                {printFormats.map(format => <SelectItem key={format.id} value={format.id}>{format.name}{format.isDefault ? ' · Default' : ''}</SelectItem>)}
+              </SelectContent>
+            </Select>
+            <p className="text-xs text-[#6b7280]">
+              The selected active Sales Invoice print format controls the PDF title, footer, and layout options.
+            </p>
+            <Button variant="outline" className="w-full" asChild>
+              <Link href="/invoicing/print-formats">Manage Print Formats</Link>
+            </Button>
+          </CardContent>
+        </Card>
         <Card className="sticky top-[122px]">
           <CardHeader><CardTitle>Accounting Summary</CardTitle></CardHeader>
           <CardContent className="space-y-3">

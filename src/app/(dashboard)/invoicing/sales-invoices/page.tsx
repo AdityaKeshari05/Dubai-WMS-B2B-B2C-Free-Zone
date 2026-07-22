@@ -237,8 +237,8 @@ function InvoiceDeskTable({ invoices, isLoading }: { invoices: SalesInvoice[]; i
         </thead>
         <tbody className="divide-y divide-[#f0ede8] bg-white">
           {invoices.map(invoice => (
-            <tr key={invoice.id} className="hover:bg-[#f8faf9]">
-              <td className="px-3 py-2"><input type="checkbox" className="h-3.5 w-3.5 rounded border-[#d9d4cc]" /></td>
+            <tr key={invoice.id} className="cursor-pointer hover:bg-[#f8faf9]" onClick={() => { window.location.href = `/invoicing/sales-invoices/${invoice.id}`; }}>
+              <td className="px-3 py-2"><input type="checkbox" className="h-3.5 w-3.5 rounded border-[#d9d4cc]" onClick={event => event.stopPropagation()} /></td>
               <td className="px-3 py-2">
                 <Link href={`/invoicing/sales-invoices/${invoice.id}`} className="font-medium text-[#1f2937] hover:text-[#1674c4]">
                   {invoice.customer?.name || invoice.invoiceNo}

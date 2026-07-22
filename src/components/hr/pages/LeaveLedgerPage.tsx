@@ -97,18 +97,18 @@ export function LeaveLedgerPage() {
 
   return (
     <div>
-      <PageHeader title="Leave Ledger" description="Frappe-style leave balances with allocation and consumption history">
+      <PageHeader title="Leave Ledger" description="Leave balances generated from allocations and approved leave requests">
         <Button onClick={allocate}><Plus className="mr-2 h-4 w-4" />Allocate Leave</Button>
       </PageHeader>
       <Card className="mb-4">
-        <CardHeader><CardTitle>New Allocation</CardTitle></CardHeader>
+        <CardHeader><CardTitle>New Leave Allocation</CardTitle></CardHeader>
         <CardContent className="grid gap-3 md:grid-cols-5">
           <Select value={form.employeeId} onValueChange={(v) => setForm((f: any) => ({ ...f, employeeId: v }))}>
             <SelectTrigger><SelectValue placeholder="Employee" /></SelectTrigger>
             <SelectContent>{employees.map((e) => <SelectItem key={e.id} value={e.id}>{fullName(e)}</SelectItem>)}</SelectContent>
           </Select>
           <Select value={form.leaveTypeId} onValueChange={(v) => setForm((f: any) => ({ ...f, leaveTypeId: v }))}>
-            <SelectTrigger><SelectValue placeholder="Leave type" /></SelectTrigger>
+            <SelectTrigger><SelectValue placeholder="Leave type master" /></SelectTrigger>
             <SelectContent>{leaveTypes.map((t) => <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>)}</SelectContent>
           </Select>
           <Input type="number" value={form.allocated} onChange={(e) => setForm((f: any) => ({ ...f, allocated: e.target.value }))} />

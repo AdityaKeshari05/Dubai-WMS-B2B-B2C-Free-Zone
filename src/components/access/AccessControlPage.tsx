@@ -187,6 +187,7 @@ export function AccessControlPage() {
             userDenied={userDenied}
             setUserAllowed={setUserAllowed}
             setUserDenied={setUserDenied}
+            onPasswordIssued={fetchAll}
           />
         </TabsContent>
         <TabsContent value="roles" className="space-y-4">

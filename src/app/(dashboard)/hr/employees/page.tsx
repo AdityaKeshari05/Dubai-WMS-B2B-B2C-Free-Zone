@@ -30,7 +30,7 @@ export default function EmployeesPage() {
   const [showDepartmentForm, setShowDepartmentForm] = useState(false);
   const [showPositionForm, setShowPositionForm] = useState(false);
   const [form, setForm] = useState({
-    firstName: '', lastName: '', email: '', password: 'Employee@123', phone: '',
+    firstName: '', lastName: '', email: '', phone: '',
     departmentId: '', positionId: '', hireDate: new Date().toISOString().split('T')[0],
     salary: '', salaryType: 'MONTHLY', address: '', city: '', country: '',
     emergencyName: '', emergencyPhone: '', roleIds: [] as string[],
@@ -69,10 +69,10 @@ export default function EmployeesPage() {
         departmentId: form.departmentId || undefined,
         positionId: form.positionId || undefined,
       });
-      toast.success('Employee created');
+      toast.success('Employee created. Issue login password from Access Control.');
       setShowModal(false);
       setForm({
-        firstName: '', lastName: '', email: '', password: 'Employee@123', phone: '',
+        firstName: '', lastName: '', email: '', phone: '',
         departmentId: '', positionId: '', hireDate: new Date().toISOString().split('T')[0],
         salary: '', salaryType: 'MONTHLY', address: '', city: '', country: '',
         emergencyName: '', emergencyPhone: '', roleIds: [],

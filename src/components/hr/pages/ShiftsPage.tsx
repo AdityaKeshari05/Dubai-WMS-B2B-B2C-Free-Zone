@@ -2,102 +2,234 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import toast from 'react-hot-toast';
-import {
-  BadgeCheck, BriefcaseBusiness, CalendarClock, ClipboardList, Clock,
-  FileText, Landmark, Plus, RefreshCcw, UserRoundCheck,
-} from 'lucide-react';
+import { CalendarClock, Clock, Moon, PlayCircle, Plus, UserRoundCheck, Users } from 'lucide-react';
 import api from '@/lib/api';
-import { formatCurrency, formatDate, formatDateTime } from '@/lib/utils';
+import { formatDate, formatDateTime } from '@/lib/utils';
 import { PageHeader } from '@/components/shared/PageHeader';
 import { DataTable } from '@/components/shared/DataTable';
 import { StatusBadge } from '@/components/shared/StatusBadge';
-import { EmptyState } from '@/components/shared/EmptyState';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Textarea } from '@/components/ui/textarea';
 
 type EmployeeOption = {
   id: string;
   employeeId: string;
-  salary?: number;
   user?: { firstName: string; lastName: string; email?: string };
   department?: { name: string };
   position?: { title: string };
-  status?: string;
 };
-
-type Option = { id: string; name?: string; title?: string; code?: string };
 
 function fullName(employee?: EmployeeOption) {
   return `${employee?.user?.firstName || ''} ${employee?.user?.lastName || ''}`.trim() || 'Employee';
 }
 
-function num(value: any) {
-  return Number(value || 0);
+function today() {
+  return new Date().toISOString().slice(0, 10);
 }
 
-function useEmployees() {
+export function ShiftsPage() {
   const [employees, setEmployees] = useState<EmployeeOption[]>([]);
-  useEffect(() => {
-    api.get('/hr/employees', { params: { limit: 300 } })
-      .then((res) => setEmployees(res.data.data.items || []))
-      .catch(() => setEmployees([]));
-  }, []);
-  return employees;
+  const [shifts, setShifts] = useState<any[]>([]);
+  const [assignments, setAssignments] = useState<any[]>([]);
+  const [roster, setRoster] = useState<any[]>([]);
+  const [rosterDate, setRosterDate] = useState(today());
+  const [shiftForm, setShiftForm] = useState<any>({ name: '', startTime: '09:00', endTime: '18:00', graceMinutes: 10, isNightShift: false });
+  const [assignForm, setAssignForm] = useState<any>({ employeeId: '', shiftTypeId: '', startDate: today(), endDate: '' });
+
+  const activeAssignments = assignments.filter((item) => item.status === 'ACTIVE');
+  const stats = useMemo(() => ({
+    shiftTypes: shifts.length,
+    activeAssignments: activeAssignments.length,
+    rostered: roster.length,
+    nightShifts: shifts.filter((item) => item.isNightShift).length,
+  }), [shifts, activeAssignments.length, roster]);
+
+  const load = async () => {
+    const [employeeRes, shiftRes, assignmentRes, rosterRes] = await Promise.all([
+      api.get('/hr/employees', { params: { limit: 500 } }),
+      api.get('/hr/shift-types'),
+      api.get('/hr/shift-assignments'),
+      api.get('/hr/shift-roster', { params: { date: rosterDate } }),
+    ]);
+    setEmployees(employeeRes.data.data.items || []);
+    setShifts(shiftRes.data.data || []);
+    setAssignments(assignmentRes.data.data || []);
+    setRoster(rosterRes.data.data || []);
+  };
+
+  useEffect(() => { load().catch(() => toast.error('Failed to load shift management')); }, [rosterDate]);
+
+  const createShift = async () => {
+    if (!shiftForm.name.trim()) return toast.error('Shift name is required');
+    try {
+      await api.post('/hr/shift-types', shiftForm);
+      toast.success('Shift type created');
+      setShiftForm({ name: '', startTime: '09:00', endTime: '18:00', graceMinutes: 10, isNightShift: false });
+      load();
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || 'Could not create shift');
+    }
+  };
+
+  const assignShift = async () => {
+    if (!assignForm.employeeId || !assignForm.shiftTypeId || !assignForm.startDate) return toast.error('Employee, shift and start date are required');
+    try {
+      await api.post('/hr/shift-assignments', { ...assignForm, endDate: assignForm.endDate || undefined });
+      toast.success('Shift assigned');
+      setAssignForm({ employeeId: '', shiftTypeId: '', startDate: today(), endDate: '' });
+      load();
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || 'Could not assign shift');
+    }
+  };
+
+  const closeAssignment = async (assignment: any) => {
+    try {
+      await api.put(`/hr/shift-assignments/${assignment.id}`, { status: 'INACTIVE', endDate: today() });
+      toast.success('Assignment closed');
+      load();
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || 'Could not close assignment');
+    }
+  };
+
+  const markAutoAttendance = async () => {
+    try {
+      const res = await api.post('/hr/shift-auto-attendance', { date: rosterDate });
+      const data = res.data.data;
+      toast.success(`Processed ${data.processed} employees`);
+      load();
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || 'Could not process attendance');
+    }
+  };
+
+  return (
+    <div className="space-y-4">
+      <PageHeader title="Shift Management" description="Define shifts, assign employees, view daily roster, and mark attendance from checkins">
+        <Button onClick={markAutoAttendance}><PlayCircle className="mr-2 h-4 w-4" />Mark Auto Attendance</Button>
+      </PageHeader>
+
+      <div className="grid gap-3 md:grid-cols-4">
+        <DeskStat label="Shift Types" value={stats.shiftTypes} icon={Clock} />
+        <DeskStat label="Active Assignments" value={stats.activeAssignments} icon={UserRoundCheck} />
+        <DeskStat label="Rostered Today" value={stats.rostered} icon={Users} />
+        <DeskStat label="Night Shifts" value={stats.nightShifts} icon={Moon} />
+      </div>
+
+      <div className="grid gap-4 xl:grid-cols-[420px_1fr]">
+        <div className="space-y-4">
+          <Card>
+            <CardHeader><CardTitle>Create Shift Type</CardTitle></CardHeader>
+            <CardContent className="grid gap-3">
+              <Field label="Shift Name"><Input value={shiftForm.name} onChange={(event) => setShiftForm((f: any) => ({ ...f, name: event.target.value }))} placeholder="Morning, Evening, Night Support..." /></Field>
+              <div className="grid grid-cols-3 gap-3">
+                <Field label="Start"><Input type="time" value={shiftForm.startTime} onChange={(event) => setShiftForm((f: any) => ({ ...f, startTime: event.target.value }))} /></Field>
+                <Field label="End"><Input type="time" value={shiftForm.endTime} onChange={(event) => setShiftForm((f: any) => ({ ...f, endTime: event.target.value }))} /></Field>
+                <Field label="Grace"><Input type="number" min={0} value={shiftForm.graceMinutes} onChange={(event) => setShiftForm((f: any) => ({ ...f, graceMinutes: Number(event.target.value) }))} /></Field>
+              </div>
+              <label className="flex items-center gap-2 text-sm text-[#374151]">
+                <input type="checkbox" checked={shiftForm.isNightShift} onChange={(event) => setShiftForm((f: any) => ({ ...f, isNightShift: event.target.checked }))} />
+                Night shift crosses midnight
+              </label>
+              <Button onClick={createShift}><Plus className="mr-2 h-4 w-4" />Create Shift</Button>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader><CardTitle>Assign Shift</CardTitle></CardHeader>
+            <CardContent className="grid gap-3">
+              <Field label="Employee">
+                <Select value={assignForm.employeeId} onValueChange={(employeeId) => setAssignForm((f: any) => ({ ...f, employeeId }))}>
+                  <SelectTrigger><SelectValue placeholder="Select employee" /></SelectTrigger>
+                  <SelectContent>{employees.map((employee) => <SelectItem key={employee.id} value={employee.id}>{fullName(employee)} - {employee.employeeId}</SelectItem>)}</SelectContent>
+                </Select>
+              </Field>
+              <Field label="Shift Type">
+                <Select value={assignForm.shiftTypeId} onValueChange={(shiftTypeId) => setAssignForm((f: any) => ({ ...f, shiftTypeId }))}>
+                  <SelectTrigger><SelectValue placeholder="Select shift" /></SelectTrigger>
+                  <SelectContent>{shifts.filter((shift) => shift.isActive).map((shift) => <SelectItem key={shift.id} value={shift.id}>{shift.name} ({shift.startTime}-{shift.endTime})</SelectItem>)}</SelectContent>
+                </Select>
+              </Field>
+              <div className="grid grid-cols-2 gap-3">
+                <Field label="Start Date"><Input type="date" value={assignForm.startDate} onChange={(event) => setAssignForm((f: any) => ({ ...f, startDate: event.target.value }))} /></Field>
+                <Field label="End Date"><Input type="date" value={assignForm.endDate} onChange={(event) => setAssignForm((f: any) => ({ ...f, endDate: event.target.value }))} /></Field>
+              </div>
+              <Button onClick={assignShift}>Assign Shift</Button>
+            </CardContent>
+          </Card>
+        </div>
+
+        <div className="space-y-4">
+          <Card>
+            <CardHeader><CardTitle>Shift Types</CardTitle></CardHeader>
+            <CardContent>
+              <DataTable data={shifts} columns={[
+                { key: 'name', header: 'Shift' },
+                { key: 'time', header: 'Time', render: (row: any) => `${row.startTime} - ${row.endTime}` },
+                { key: 'graceMinutes', header: 'Grace', render: (row: any) => `${row.graceMinutes || 0} min` },
+                { key: 'isNightShift', header: 'Night', render: (row: any) => row.isNightShift ? 'Yes' : 'No' },
+                { key: 'assignments', header: 'Assignments', render: (row: any) => row._count?.assignments || 0 },
+                { key: 'isActive', header: 'Status', render: (row: any) => <StatusBadge status={row.isActive ? 'ACTIVE' : 'INACTIVE'} /> },
+              ]} />
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader><CardTitle>Shift Assignments</CardTitle></CardHeader>
+            <CardContent>
+              <DataTable data={assignments} columns={[
+                { key: 'employee', header: 'Employee', render: (row: any) => `${fullName(row.employee)} (${row.employee?.employeeId})` },
+                { key: 'shift', header: 'Shift', render: (row: any) => row.shiftType?.name || '-' },
+                { key: 'range', header: 'Range', render: (row: any) => `${formatDate(row.startDate)} - ${row.endDate ? formatDate(row.endDate) : 'Ongoing'}` },
+                { key: 'status', header: 'Status', render: (row: any) => <StatusBadge status={row.status} /> },
+                { key: 'actions', header: '', render: (row: any) => row.status === 'ACTIVE' ? <Button size="sm" variant="outline" onClick={() => closeAssignment(row)}>Close</Button> : null },
+              ]} />
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+
+      <Card>
+        <CardHeader>
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <CardTitle>Daily Shift Roster</CardTitle>
+            <div className="flex items-center gap-2">
+              <CalendarClock className="h-4 w-4 text-[#6b7280]" />
+              <Input type="date" value={rosterDate} onChange={(event) => setRosterDate(event.target.value)} />
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent>
+          <DataTable data={roster} columns={[
+            { key: 'employee', header: 'Employee', render: (row: any) => `${fullName(row.employee)} (${row.employee?.employeeId})` },
+            { key: 'department', header: 'Department', render: (row: any) => row.employee?.department?.name || '-' },
+            { key: 'shift', header: 'Shift', render: (row: any) => row.shiftType?.name || '-' },
+            { key: 'scheduled', header: 'Scheduled', render: (row: any) => `${formatDateTime(row.scheduledStart)} - ${formatDateTime(row.scheduledEnd)}` },
+            { key: 'checkIn', header: 'Check In', render: (row: any) => row.attendance?.checkIn ? formatDateTime(row.attendance.checkIn) : '-' },
+            { key: 'checkOut', header: 'Check Out', render: (row: any) => row.attendance?.checkOut ? formatDateTime(row.attendance.checkOut) : '-' },
+            { key: 'status', header: 'Attendance', render: (row: any) => <StatusBadge status={row.status} /> },
+          ]} />
+        </CardContent>
+      </Card>
+    </div>
+  );
 }
 
 function DeskStat({ label, value, icon: Icon }: { label: string; value: string | number; icon: any }) {
   return (
     <Card>
       <CardContent className="flex items-center gap-3 p-4">
-        <div className="flex h-9 w-9 items-center justify-center rounded-md bg-[#eef6ff] text-[#1674c4]">
-          <Icon className="h-4 w-4" />
-        </div>
-        <div>
-          <p className="text-xs text-[#6b7280]">{label}</p>
-          <p className="text-xl font-semibold text-[#1f2937]">{value}</p>
-        </div>
+        <div className="flex h-9 w-9 items-center justify-center rounded-md bg-[#eef6ff] text-[#1674c4]"><Icon className="h-4 w-4" /></div>
+        <div><p className="text-xs text-[#6b7280]">{label}</p><p className="text-xl font-semibold text-[#1f2937]">{value}</p></div>
       </CardContent>
     </Card>
   );
 }
 
-export function ShiftsPage() {
-  const employees = useEmployees();
-  const [shifts, setShifts] = useState<any[]>([]);
-  const [shiftForm, setShiftForm] = useState<any>({ name: '', startTime: '09:00', endTime: '18:00', graceMinutes: 10 });
-  const [assignForm, setAssignForm] = useState<any>({ employeeId: '', shiftTypeId: '', startDate: new Date().toISOString().slice(0, 10) });
-  useEffect(() => { api.get('/hr/shift-types').then((res) => setShifts(res.data.data || [])).catch(() => toast.error('Failed to load shifts')); }, []);
-  const refresh = () => api.get('/hr/shift-types').then((res) => setShifts(res.data.data || []));
-  const createShift = async () => { await api.post('/hr/shift-types', shiftForm); toast.success('Shift type created'); refresh(); };
-  const assign = async () => { await api.post('/hr/shift-assignments', assignForm); toast.success('Shift assigned'); };
-  return (
-    <div>
-      <PageHeader title="Shift Management" description="Shift types and employee shift assignments" />
-      <div className="grid gap-4 lg:grid-cols-2">
-        <Card><CardHeader><CardTitle>Create Shift</CardTitle></CardHeader><CardContent className="grid gap-3">
-          <Input placeholder="Shift name" value={shiftForm.name} onChange={(e) => setShiftForm((f: any) => ({ ...f, name: e.target.value }))} />
-          <div className="grid grid-cols-3 gap-3"><Input type="time" value={shiftForm.startTime} onChange={(e) => setShiftForm((f: any) => ({ ...f, startTime: e.target.value }))} /><Input type="time" value={shiftForm.endTime} onChange={(e) => setShiftForm((f: any) => ({ ...f, endTime: e.target.value }))} /><Input type="number" value={shiftForm.graceMinutes} onChange={(e) => setShiftForm((f: any) => ({ ...f, graceMinutes: e.target.value }))} /></div>
-          <Button onClick={createShift}>Create Shift</Button>
-        </CardContent></Card>
-        <Card><CardHeader><CardTitle>Assign Shift</CardTitle></CardHeader><CardContent className="grid gap-3">
-          <Select value={assignForm.employeeId} onValueChange={(v) => setAssignForm((f: any) => ({ ...f, employeeId: v }))}><SelectTrigger><SelectValue placeholder="Employee" /></SelectTrigger><SelectContent>{employees.map((e) => <SelectItem key={e.id} value={e.id}>{fullName(e)}</SelectItem>)}</SelectContent></Select>
-          <Select value={assignForm.shiftTypeId} onValueChange={(v) => setAssignForm((f: any) => ({ ...f, shiftTypeId: v }))}><SelectTrigger><SelectValue placeholder="Shift" /></SelectTrigger><SelectContent>{shifts.map((s) => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}</SelectContent></Select>
-          <Input type="date" value={assignForm.startDate} onChange={(e) => setAssignForm((f: any) => ({ ...f, startDate: e.target.value }))} />
-          <Button onClick={assign}>Assign Shift</Button>
-        </CardContent></Card>
-      </div>
-      <div className="mt-4">
-        <DataTable data={shifts} columns={[
-          { key: 'name', header: 'Shift' },
-          { key: 'time', header: 'Time', render: (r: any) => `${r.startTime} - ${r.endTime}` },
-          { key: 'graceMinutes', header: 'Grace' },
-          { key: 'isActive', header: 'Status', render: (r: any) => <StatusBadge status={r.isActive ? 'ACTIVE' : 'INACTIVE'} /> },
-        ]} />
-      </div>
-    </div>
-  );
+function Field({ label, children }: { label: string; children: React.ReactNode }) {
+  return <div className="space-y-1.5"><Label>{label}</Label>{children}</div>;
 }

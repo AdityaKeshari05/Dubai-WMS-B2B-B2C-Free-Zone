@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Plus, Calendar } from 'lucide-react';
+import { Plus, Calendar, Check, XCircle } from 'lucide-react';
 import { PageHeader } from '@/components/shared/PageHeader';
 import { DataTable } from '@/components/shared/DataTable';
 import { Pagination } from '@/components/shared/Pagination';
@@ -15,8 +15,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { EmptyState } from '@/components/shared/EmptyState';
 import { Textarea } from '@/components/ui/textarea';
 import api from '@/lib/api';
-import { Activity } from '@/types';
-import { formatDate } from '@/lib/utils';
+import { Activity, Lead } from '@/types';
+import { formatDate, formatDateTime } from '@/lib/utils';
 import toast from 'react-hot-toast';
 
 const types = ['CALL','EMAIL','MEETING','TASK','NOTE','FOLLOW_UP'];
@@ -29,7 +29,8 @@ export default function ActivitiesPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [typeFilter, setTypeFilter] = useState('');
   const [showModal, setShowModal] = useState(false);
-  const [form, setForm] = useState({ type: 'CALL', subject: '', description: '', dueDate: '', status: 'PLANNED' });
+  const [leads, setLeads] = useState<Lead[]>([]);
+  const [form, setForm] = useState({ leadId: '', type: 'CALL', subject: '', description: '', dueDate: '', status: 'PLANNED' });
   const router = useRouter();
   const limit = 20;
 
@@ -44,13 +45,20 @@ export default function ActivitiesPage() {
   };
 
   useEffect(() => { fetchActivities(); }, [page, typeFilter]);
+  useEffect(() => {
+    api.get('/crm/leads', { params: { limit: 100 } })
+      .then((res) => setLeads(res.data.data.items))
+      .catch(() => undefined);
+  }, []);
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      await api.post('/crm/activities', form);
+      if (!form.leadId) return toast.error('Select a lead first');
+      await api.post('/crm/activities', { ...form, dueDate: form.dueDate || undefined });
       toast.success('Activity created');
       setShowModal(false);
+      setForm({ leadId: '', type: 'CALL', subject: '', description: '', dueDate: '', status: 'PLANNED' });
       fetchActivities();
     } catch (err: any) { toast.error(err.response?.data?.message || 'Failed'); }
   };
@@ -58,10 +66,41 @@ export default function ActivitiesPage() {
   const columns = [
     { key: 'type', header: 'Type', render: (a: Activity) => <StatusBadge status={a.type} /> },
     { key: 'subject', header: 'Subject', render: (a: Activity) => <span className="font-medium">{a.subject}</span> },
+    { key: 'linked', header: 'Linked To', render: (a: Activity) => linkedLabel(a) },
     { key: 'status', header: 'Status', render: (a: Activity) => <StatusBadge status={a.status} /> },
-    { key: 'dueDate', header: 'Due Date', render: (a: Activity) => a.dueDate ? formatDate(a.dueDate) : '—' },
+    { key: 'dueDate', header: 'Due Date', render: (a: Activity) => a.dueDate ? formatDateTime(a.dueDate) : '—' },
     { key: 'description', header: 'Notes', render: (a: Activity) => a.description ? a.description.slice(0, 60) + (a.description.length > 60 ? '…' : '') : '—' },
+    {
+      key: 'actions',
+      header: '',
+      render: (a: Activity) => !['COMPLETED', 'CANCELLED'].includes(a.status) ? (
+        <div className="flex justify-end gap-1" onClick={(event) => event.stopPropagation()}>
+          <Button size="sm" variant="outline" onClick={() => completeActivity(a)}><Check className="h-3.5 w-3.5" /></Button>
+          <Button size="sm" variant="ghost" onClick={() => cancelActivity(a)}><XCircle className="h-3.5 w-3.5" /></Button>
+        </div>
+      ) : null,
+    },
   ];
+
+  const completeActivity = async (activity: Activity) => {
+    try {
+      await api.put(`/crm/activities/${activity.id}/complete`, {});
+      toast.success('Activity completed');
+      fetchActivities();
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || 'Could not complete activity');
+    }
+  };
+
+  const cancelActivity = async (activity: Activity) => {
+    try {
+      await api.put(`/crm/activities/${activity.id}/cancel`, { reason: 'Cancelled from activity list' });
+      toast.success('Activity cancelled');
+      fetchActivities();
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || 'Could not cancel activity');
+    }
+  };
 
   const openLinkedRecord = (activity: Activity) => {
     if (activity.leadId) router.push(`/crm/leads/${activity.leadId}`);
@@ -105,6 +144,15 @@ export default function ActivitiesPage() {
                 </Select>
               </div>
             </div>
+            <div className="space-y-1.5">
+              <Label>Lead *</Label>
+              <Select value={form.leadId} onValueChange={v => setForm(f => ({ ...f, leadId: v }))}>
+                <SelectTrigger><SelectValue placeholder="Select lead" /></SelectTrigger>
+                <SelectContent>
+                  {leads.map((lead) => <SelectItem key={lead.id} value={lead.id}>{lead.title}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
             <div className="space-y-1.5"><Label>Subject *</Label><Input value={form.subject} onChange={e => setForm(f => ({ ...f, subject: e.target.value }))} required /></div>
             <div className="space-y-1.5"><Label>Due Date</Label><Input type="datetime-local" value={form.dueDate} onChange={e => setForm(f => ({ ...f, dueDate: e.target.value }))} /></div>
             <div className="space-y-1.5"><Label>Description</Label><Textarea value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} rows={3} /></div>
@@ -117,4 +165,12 @@ export default function ActivitiesPage() {
       </Dialog>
     </div>
   );
+}
+
+function linkedLabel(activity: Activity) {
+  if (activity.lead) return <span>{activity.lead.title}</span>;
+  if (activity.opportunity) return <span>{activity.opportunity.title}</span>;
+  if (activity.contact) return <span>{activity.contact.firstName} {activity.contact.lastName}</span>;
+  if (activity.organization) return <span>{activity.organization.name}</span>;
+  return '—';
 }

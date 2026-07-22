@@ -19,6 +19,10 @@ export const navItems: NavItem[] = [
     children: [
 	      { label: 'Chart of Accounts', href: '/accounting/accounts', icon: BookOpen, permission: 'accounting:accounts:read' },
 	      { label: 'Journal Entries', href: '/accounting/journal-entries', icon: FileText, permission: 'accounting:journal-entries:read' },
+	      { label: 'Fiscal Years', href: '/accounting/fiscal-years', icon: Clock, permission: 'accounting:fiscal-years:read' },
+	      { label: 'Cost Centers', href: '/accounting/cost-centers', icon: Building2, permission: 'accounting:cost-centers:read' },
+	      { label: 'Budgets', href: '/accounting/budgets', icon: TrendingUp, permission: 'accounting:budgets:read' },
+	      { label: 'Bank Reconciliation', href: '/accounting/bank-reconciliation', icon: ShieldCheck, permission: 'accounting:reconciliation:read' },
 	      { label: 'Financial Reports', href: '/accounting/reports', icon: TrendingUp, permission: 'accounting:reports:read' },
     ],
   },

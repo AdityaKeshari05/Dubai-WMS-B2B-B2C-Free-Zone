@@ -69,6 +69,7 @@ export interface Account {
   parent?: { name: string; code: string };
   children?: Account[];
   description?: string;
+  isGroup?: boolean;
   isActive: boolean;
   balance: number;
   currency: string;

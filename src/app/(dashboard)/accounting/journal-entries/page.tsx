@@ -29,6 +29,9 @@ export default function JournalEntriesPage() {
   const [form, setForm] = useState({ date: new Date().toISOString().split('T')[0], description: '', reference: '' });
   const [lines, setLines] = useState<JournalLineForm[]>([{ debitAccountId: '', creditAccountId: '', debit: 0, credit: 0, description: '' }]);
   const limit = 20;
+  const postingAccounts = accounts.filter((account) => account.isActive && !account.isGroup);
+  const totalDebit = lines.reduce((s, l) => s + Number(l.debit || 0), 0);
+  const totalCredit = lines.reduce((s, l) => s + Number(l.credit || 0), 0);
 
   const fetchAll = async () => {
     setIsLoading(true);
@@ -49,7 +52,19 @@ export default function JournalEntriesPage() {
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      await api.post('/accounting/journal-entries', { ...form, lines });
+      if (!lines.length) return toast.error('Add at least one journal line');
+      if (Math.abs(totalDebit - totalCredit) > 0.000001) return toast.error('Total debit must equal total credit');
+      if (totalDebit <= 0) return toast.error('Journal amount must be greater than zero');
+      const cleanLines = lines
+        .filter((line) => Number(line.debit || 0) > 0 || Number(line.credit || 0) > 0)
+        .map((line) => ({
+          debitAccountId: line.debitAccountId || undefined,
+          creditAccountId: line.creditAccountId || undefined,
+          debit: Number(line.debit || 0),
+          credit: Number(line.credit || 0),
+          description: line.description || undefined,
+        }));
+      await api.post('/accounting/journal-entries', { ...form, lines: cleanLines });
       toast.success('Journal entry created');
       setShowModal(false);
       fetchAll();
@@ -61,7 +76,9 @@ export default function JournalEntriesPage() {
       await api.put(`/accounting/journal-entries/${id}/post`);
       toast.success('Entry posted');
       fetchAll();
-    } catch { toast.error('Failed'); }
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || 'Posting failed');
+    }
   };
 
   const columns = [
@@ -107,13 +124,13 @@ export default function JournalEntriesPage() {
                   <div className="col-span-3">
                     <Select value={line.debitAccountId} onValueChange={v => { const l = [...lines]; l[idx].debitAccountId = v; setLines(l); }}>
                       <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Debit Acct" /></SelectTrigger>
-                      <SelectContent>{accounts.map(a => <SelectItem key={a.id} value={a.id}>{a.code} - {a.name}</SelectItem>)}</SelectContent>
+                      <SelectContent>{postingAccounts.map(a => <SelectItem key={a.id} value={a.id}>{a.code} - {a.name}</SelectItem>)}</SelectContent>
                     </Select>
                   </div>
                   <div className="col-span-3">
                     <Select value={line.creditAccountId} onValueChange={v => { const l = [...lines]; l[idx].creditAccountId = v; setLines(l); }}>
                       <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Credit Acct" /></SelectTrigger>
-                      <SelectContent>{accounts.map(a => <SelectItem key={a.id} value={a.id}>{a.code} - {a.name}</SelectItem>)}</SelectContent>
+                      <SelectContent>{postingAccounts.map(a => <SelectItem key={a.id} value={a.id}>{a.code} - {a.name}</SelectItem>)}</SelectContent>
                     </Select>
                   </div>
                   <div className="col-span-2"><Input className="h-8 text-xs" type="number" placeholder="Debit" value={line.debit} onChange={e => { const l = [...lines]; l[idx].debit = Number(e.target.value); setLines(l); }} /></div>
@@ -123,9 +140,11 @@ export default function JournalEntriesPage() {
                 </div>
               ))}
               <div className="flex justify-between text-sm mt-2">
-                <span className="text-gray-500">Total Debit: <strong>{formatCurrency(lines.reduce((s, l) => s + l.debit, 0))}</strong></span>
-                <span className="text-gray-500">Total Credit: <strong>{formatCurrency(lines.reduce((s, l) => s + l.credit, 0))}</strong></span>
+                <span className="text-gray-500">Total Debit: <strong>{formatCurrency(totalDebit)}</strong></span>
+                <span className="text-gray-500">Total Credit: <strong>{formatCurrency(totalCredit)}</strong></span>
               </div>
+              {postingAccounts.length === 0 && <p className="mt-2 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-700">Create at least two non-group accounts before creating a journal entry.</p>}
+              {Math.abs(totalDebit - totalCredit) > 0.000001 && <p className="mt-2 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">Debit and credit totals must match before this entry can be created or posted.</p>}
             </div>
             <div className="flex justify-end gap-2">
               <Button type="button" variant="outline" onClick={() => setShowModal(false)}>Cancel</Button>

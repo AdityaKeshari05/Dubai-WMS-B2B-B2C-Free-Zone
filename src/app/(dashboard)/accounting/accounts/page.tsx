@@ -30,7 +30,7 @@ export default function AccountsPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [typeFilter, setTypeFilter] = useState('');
   const [showModal, setShowModal] = useState(false);
-  const [form, setForm] = useState({ code: '', name: '', type: 'ASSET', subType: '', parentId: '', description: '', currency: 'USD' });
+  const [form, setForm] = useState({ code: '', name: '', type: 'ASSET', subType: '', parentId: '', description: '', currency: 'USD', isGroup: false, freezeAccount: false, frozenTillDate: '', isDefaultCash: false, isDefaultBank: false, isDefaultReceivable: false, isDefaultPayable: false, isDefaultTax: false, isDefaultRetainedEarnings: false });
 
   const fetchAccounts = async () => {
     setIsLoading(true);
@@ -46,7 +46,7 @@ export default function AccountsPage() {
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      await api.post('/accounting/accounts', { ...form, parentId: form.parentId || undefined });
+      await api.post('/accounting/accounts', { ...form, parentId: form.parentId || undefined, frozenTillDate: form.frozenTillDate || undefined });
       toast.success('Account created');
       setShowModal(false);
       fetchAccounts();
@@ -65,6 +65,7 @@ export default function AccountsPage() {
       <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${typeColors[a.type as AccountType]}`}>{a.type}</span>
     )},
     { key: 'subType', header: 'Sub Type', render: (a: Account) => a.subType || '—' },
+    { key: 'ledgerType', header: 'Ledger Type', render: (a: any) => a.isGroup ? 'Group' : 'Ledger' },
     { key: 'balance', header: 'Balance', render: (a: Account) => formatCurrency(a.balance, a.currency) },
     { key: 'isActive', header: 'Status', render: (a: Account) => (
       <span className={`text-xs px-2 py-0.5 rounded-full ${a.isActive ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
@@ -115,6 +116,19 @@ export default function AccountsPage() {
               </Select>
             </div>
             <div className="space-y-1.5"><Label>Currency</Label><Input value={form.currency} onChange={e => setForm(f => ({ ...f, currency: e.target.value }))} /></div>
+            <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={form.isGroup} onChange={e => setForm(f => ({ ...f, isGroup: e.target.checked }))} /> Group Account</label>
+            <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={form.freezeAccount} onChange={e => setForm(f => ({ ...f, freezeAccount: e.target.checked }))} /> Freeze Account</label>
+            <div className="space-y-1.5"><Label>Frozen Till</Label><Input type="date" value={form.frozenTillDate} onChange={e => setForm(f => ({ ...f, frozenTillDate: e.target.value }))} /></div>
+            <div className="col-span-2 grid grid-cols-2 gap-2 rounded-md border border-[#e5e2dc] p-3 text-sm">
+              {[
+                ['isDefaultCash','Default Cash'],
+                ['isDefaultBank','Default Bank'],
+                ['isDefaultReceivable','Default Receivable'],
+                ['isDefaultPayable','Default Payable'],
+                ['isDefaultTax','Default Tax'],
+                ['isDefaultRetainedEarnings','Default Retained Earnings'],
+              ].map(([key, label]) => <label key={key} className="flex items-center gap-2"><input type="checkbox" checked={(form as any)[key]} onChange={e => setForm(f => ({ ...f, [key]: e.target.checked }))} /> {label}</label>)}
+            </div>
             <div className="col-span-2 space-y-1.5"><Label>Description</Label><Textarea value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} rows={2} /></div>
             <div className="col-span-2 flex justify-end gap-2">
               <Button type="button" variant="outline" onClick={() => setShowModal(false)}>Cancel</Button>

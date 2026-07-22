@@ -4,16 +4,14 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import toast from 'react-hot-toast';
-import { ArrowLeft, CheckCircle2, PhoneCall, Repeat2, XCircle } from 'lucide-react';
+import { ArrowLeft, CheckCircle2, Repeat2, XCircle } from 'lucide-react';
 import api from '@/lib/api';
 import { Lead } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { StatusBadge } from '@/components/shared/StatusBadge';
 import { formatCurrency, formatDateTime } from '@/lib/utils';
+import { LeadActivityTimeline } from '@/components/crm/LeadActivityTimeline';
 
 const statuses = ['NEW', 'CONTACTED', 'QUALIFIED', 'UNQUALIFIED', 'CONVERTED'];
 
@@ -21,7 +19,6 @@ export default function LeadDetailPage() {
   const params = useParams();
   const router = useRouter();
   const [lead, setLead] = useState<Lead | null>(null);
-  const [activity, setActivity] = useState({ type: 'NOTE', subject: '', description: '' });
 
   const load = async () => {
     const res = await api.get(`/crm/leads/${params.id}`);
@@ -37,18 +34,6 @@ export default function LeadDetailPage() {
       load();
     } catch (err: any) {
       toast.error(err.response?.data?.message || 'Status update failed');
-    }
-  };
-
-  const addActivity = async () => {
-    if (!activity.subject.trim()) return toast.error('Subject is required');
-    try {
-      await api.post('/crm/activities', { ...activity, leadId: params.id, status: 'COMPLETED' });
-      setActivity({ type: 'NOTE', subject: '', description: '' });
-      toast.success('Activity logged');
-      load();
-    } catch (err: any) {
-      toast.error(err.response?.data?.message || 'Could not log activity');
     }
   };
 
@@ -127,20 +112,7 @@ export default function LeadDetailPage() {
             </CardContent>
           </Card>
 
-          <Card>
-            <CardHeader><CardTitle>Timeline</CardTitle></CardHeader>
-            <CardContent className="space-y-3">
-              {lead.activities?.length ? lead.activities.map((item: any) => (
-                <div key={item.id} className="rounded-md border border-[#e5e2dc] p-3">
-                  <div className="flex items-center justify-between gap-3">
-                    <div className="flex items-center gap-2"><StatusBadge status={item.type} /><span className="font-medium">{item.subject}</span></div>
-                    <span className="text-xs text-[#8a929d]">{formatDateTime(item.createdAt)}</span>
-                  </div>
-                  {item.description && <p className="mt-2 text-sm text-[#4b5563]">{item.description}</p>}
-                </div>
-              )) : <p className="text-sm text-[#6b7280]">No activity yet.</p>}
-            </CardContent>
-          </Card>
+          <LeadActivityTimeline leadId={String(params.id)} onChanged={load} />
 
           <Card>
             <CardHeader><CardTitle>Contacts from this Lead</CardTitle></CardHeader>
@@ -167,18 +139,6 @@ export default function LeadDetailPage() {
             </CardContent>
           </Card>
 
-          <Card>
-            <CardHeader><CardTitle>Log Activity</CardTitle></CardHeader>
-            <CardContent className="space-y-3">
-              <Select value={activity.type} onValueChange={(type) => setActivity((prev) => ({ ...prev, type }))}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>{['NOTE','CALL','EMAIL','MEETING','FOLLOW_UP','TASK'].map((type) => <SelectItem key={type} value={type}>{type}</SelectItem>)}</SelectContent>
-              </Select>
-              <Input placeholder="Subject" value={activity.subject} onChange={(event) => setActivity((prev) => ({ ...prev, subject: event.target.value }))} />
-              <Textarea placeholder="Details" value={activity.description} onChange={(event) => setActivity((prev) => ({ ...prev, description: event.target.value }))} rows={4} />
-              <Button className="w-full" onClick={addActivity}><PhoneCall className="mr-2 h-4 w-4" />Log Activity</Button>
-            </CardContent>
-          </Card>
         </div>
       </div>
     </div>

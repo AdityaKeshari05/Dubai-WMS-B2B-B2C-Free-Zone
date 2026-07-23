@@ -3,7 +3,6 @@ import { Inter } from 'next/font/google';
 import './globals.css';
 import { AuthProvider } from '@/contexts/AuthContext';
 import { Toaster } from 'react-hot-toast';
-import { ClickConcurrencyGuard } from '@/components/shared/ClickConcurrencyGuard';
 
 const inter = Inter({ subsets: ['latin'] });
 
@@ -17,7 +16,6 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="en" className="h-full">
       <body className={`${inter.className} h-full bg-gray-50`}>
         <AuthProvider>
-          <ClickConcurrencyGuard />
           {children}
           <Toaster position="top-right" toastOptions={{ duration: 4000 }} />
         </AuthProvider>

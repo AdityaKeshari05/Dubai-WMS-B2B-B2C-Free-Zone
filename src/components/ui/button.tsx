@@ -30,54 +30,11 @@ const buttonVariants = cva(
 
 export interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement>, VariantProps<typeof buttonVariants> {
   asChild?: boolean;
-  allowConcurrentClicks?: boolean;
-  clickLockMs?: number;
 }
 
-const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(({
-  className,
-  variant,
-  size,
-  asChild = false,
-  allowConcurrentClicks = false,
-  clickLockMs = 900,
-  disabled,
-  onClick,
-  ...props
-}, ref) => {
-  const [isClickLocked, setIsClickLocked] = React.useState(false);
+const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(({ className, variant, size, asChild = false, ...props }, ref) => {
   const Comp = asChild ? Slot : 'button';
-  const locked = !allowConcurrentClicks && isClickLocked;
-
-  const handleClick = (event: React.MouseEvent<HTMLButtonElement>) => {
-    if (!allowConcurrentClicks && isClickLocked) {
-      event.preventDefault();
-      event.stopPropagation();
-      return;
-    }
-
-    const result = onClick?.(event);
-    if (allowConcurrentClicks || event.defaultPrevented) return;
-
-    setIsClickLocked(true);
-    if (result && typeof (result as Promise<unknown>).finally === 'function') {
-      (result as Promise<unknown>).finally(() => setIsClickLocked(false));
-      return;
-    }
-    window.setTimeout(() => setIsClickLocked(false), clickLockMs);
-  };
-
-  return (
-    <Comp
-      className={cn(buttonVariants({ variant, size, className }), locked && 'pointer-events-none')}
-      ref={ref}
-      aria-busy={locked || undefined}
-      aria-disabled={asChild && (disabled || locked) ? true : undefined}
-      disabled={!asChild && (disabled || locked) ? true : undefined}
-      onClick={handleClick}
-      {...props}
-    />
-  );
+  return <Comp className={cn(buttonVariants({ variant, size, className }))} ref={ref} {...props} />;
 });
 Button.displayName = 'Button';
 

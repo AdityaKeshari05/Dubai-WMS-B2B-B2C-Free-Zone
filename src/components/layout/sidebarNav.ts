@@ -8,7 +8,7 @@ import {
   ChartColumnIncreasing, ArchiveX, UserRound, Building, Contact, Target, Activity,
   Route, Upload, FileCheck2, ClipboardSignature, CalendarCheck, CalendarCog, CalendarX,
   ListChecks, HandCoins, BadgeDollarSign, Wallet, UserCog, SlidersHorizontal, KeyRound,
-  Handshake
+  Handshake, Scale, PackageCheck
 } from 'lucide-react';
 
 export interface NavItem {
@@ -114,8 +114,22 @@ export const navItems: NavItem[] = [
   {
     label: 'Procurement', icon: ShoppingBag,
     children: [
+      { label: 'Procurement Dashboard', href: '/procurement/dashboard', icon: LayoutDashboard, permission: 'procurement:dashboard:read' },
+      { label: 'Material Requests', href: '/procurement/material-requests', icon: ClipboardList, permission: 'procurement:material-requests:read' },
+      { label: 'Request for Quotations', href: '/procurement/rfqs', icon: FileText, permission: 'procurement:rfqs:read' },
+      { label: 'Supplier Quotations', href: '/procurement/supplier-quotations', icon: Scale, permission: 'procurement:supplier-quotations:read' },
+      { label: 'Blanket Purchase Orders', href: '/procurement/blanket-purchase-orders', icon: Landmark, permission: 'procurement:blanket-purchase-orders:read' },
       { label: 'Purchase Orders', href: '/procurement/purchase-orders', icon: ClipboardSignature, permission: 'procurement:purchase-orders:read' },
-      { label: 'Purchase Invoices', href: '/procurement/purchase-invoices', icon: Receipt },
+      { label: 'Purchase Receipts', href: '/procurement/purchase-receipts', icon: PackageCheck, permission: 'procurement:purchase-receipts:read' },
+      { label: 'Quality Inspections', href: '/procurement/quality-inspections', icon: FileCheck2, permission: 'procurement:quality-inspections:read' },
+      { label: 'Landed Cost Vouchers', href: '/procurement/landed-cost-vouchers', icon: Truck, permission: 'procurement:landed-cost-vouchers:read' },
+      { label: 'Purchase Invoices', href: '/procurement/purchase-invoices', icon: Receipt, permission: 'procurement:purchase-invoices:read' },
+      { label: 'Supplier Payments', href: '/procurement/supplier-payments', icon: HandCoins, permission: 'procurement:supplier-payments:read' },
+      { label: 'Payment Terms', href: '/procurement/payment-terms', icon: Landmark, permission: 'procurement:payment-terms:read' },
+      { label: 'Supplier Item Codes', href: '/procurement/supplier-items', icon: Tags, permission: 'procurement:supplier-items:read' },
+      { label: 'Communications', href: '/procurement/communications', icon: Activity, permission: 'procurement:communications:read' },
+      { label: 'Procurement Tracker', href: '/procurement/tracker', icon: BarChart3, permission: 'procurement:tracker:read' },
+      { label: 'Buying Settings', href: '/procurement/settings', icon: Settings, permission: 'procurement:settings:read' },
     ],
   },
   { label: 'Projects', href: '/projects', icon: FolderOpen, permission: 'projects:projects:read' },

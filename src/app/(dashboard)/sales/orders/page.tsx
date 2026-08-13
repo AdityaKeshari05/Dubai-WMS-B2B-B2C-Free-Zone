@@ -113,8 +113,6 @@ export default function SalesOrdersPage() {
         {o.status === 'DRAFT' && <Button size="sm" variant="outline" onClick={(e) => { e.stopPropagation(); handleStatusUpdate(o.id, 'CONFIRMED'); }}>Confirm</Button>}
         {['CONFIRMED','PROCESSING','SHIPPED'].includes(o.status) && <Button size="sm" variant="outline" onClick={(e) => { e.stopPropagation(); createDeliveryFromOrder(o); }}>Create Delivery</Button>}
         {['CONFIRMED','PROCESSING','SHIPPED','DELIVERED'].includes(o.status) && <Button size="sm" variant="outline" onClick={(e) => { e.stopPropagation(); setSourceOrder(o); }}>Create Invoice</Button>}
-        {o.status === 'CONFIRMED' && <Button size="sm" onClick={(e) => { e.stopPropagation(); handleStatusUpdate(o.id, 'SHIPPED'); }}>Ship</Button>}
-        {o.status === 'SHIPPED' && <Button size="sm" variant="success" onClick={(e) => { e.stopPropagation(); handleStatusUpdate(o.id, 'DELIVERED'); }}>Deliver</Button>}
       </div>
     )},
   ];

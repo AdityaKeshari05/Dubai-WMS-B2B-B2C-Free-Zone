@@ -30,31 +30,31 @@ const slides = [
   {
     eyebrow: 'Document lifecycle',
     title: 'Quotation to invoice without losing the audit trail',
-    desc: 'Create sales documents from one another, submit them, lock them, amend them, and keep every financial movement traceable.',
+    desc: 'Create sales documents from one another, submit them, lock them, amend them, and keep every financial movement in Vitthal traceable.',
     accent: '#2490ef',
     metrics: ['Draft', 'Submitted', 'Paid'],
   },
   {
     eyebrow: 'Company access control',
     title: 'Give exact module permissions, then deny what must stay closed',
-    desc: 'Super Admin can create employees, assign roles, and control read, create, write, submit, cancel, report, print, and manage access.',
+    desc: 'Super Admin can create Vitthal employees, assign roles, and control read, create, write, submit, cancel, report, print, and manage access.',
     accent: '#0f9d58',
     metrics: ['Allow', 'Deny', 'Audit'],
   },
   {
     eyebrow: 'Operations desk',
-    title: 'Run HR, inventory, sales, accounting, and projects from one shell',
-    desc: 'A Frappe-style desk built for daily work: compact tables, status badges, module navigation, and records linked across teams.',
+    title: 'Run HR, inventory, sales, accounting, and projects from one desk',
+    desc: 'An enterprise desk custom-tuned for Vitthal operations: compact tables, status badges, module navigation, and linked records.',
     accent: '#d98324',
     metrics: ['HR', 'Stock', 'Ledger'],
   },
 ];
 
 const modules = [
-  { icon: BarChart3, title: 'Dashboard', desc: 'Live desk metrics for revenue, invoices, stock, payments, and work queues.' },
+  { icon: BarChart3, title: 'Dashboard', desc: 'Live Vitthal operational desk metrics for revenue, invoices, stock, payments, and work queues.' },
   { icon: Landmark, title: 'Accounting', desc: 'Chart of accounts, journal entries, fiscal years, trial balance, and ledger records.' },
   { icon: Package, title: 'Inventory', desc: 'Products, categories, warehouses, stock movement, units, and reorder visibility.' },
-  { icon: Users, title: 'HRMS', desc: 'Employees, departments, positions, shifts, attendance, leave ledger, payroll, and salary slips.' },
+  { icon: Users, title: 'HRMS & Payroll', desc: 'Vitthal employees, departments, positions, shifts, attendance, leave ledger, payroll, and salary slips.' },
   { icon: ReceiptText, title: 'Invoicing', desc: 'Sales invoices, delivery notes, payments, credit notes, aging, recurring invoices, and PDF print.' },
   { icon: ClipboardList, title: 'Sales', desc: 'Quotations, sales orders, document conversion, customer links, and order status.' },
   { icon: ShoppingBag, title: 'Procurement', desc: 'Purchase orders, supplier invoices, suppliers, and buying workflows.' },
@@ -72,12 +72,12 @@ const lifecycle = [
 ];
 
 const permissions = [
-  'Company creator becomes Super Admin',
-  'Employees are created with login access',
-  'Roles can be assigned per user',
-  'Every module has allow and deny rules',
+  'Super Admin manages company boundary',
+  'Vitthal employees created with login access',
+  'Roles assigned per team member',
+  'Every module has granular allow/deny rules',
   'Denied permission wins over allowed permission',
-  'Access changes are logged for audit',
+  'Access changes are logged for complete compliance',
 ];
 
 export default function LandingPage() {
@@ -95,23 +95,23 @@ export default function LandingPage() {
       <nav className="fixed left-0 right-0 top-0 z-40 border-b border-white/55 bg-[#fbfaf8]/88 backdrop-blur-md">
         <div className="mx-auto flex max-w-7xl items-center justify-between px-5 py-3">
           <Link href="/" className="flex items-center gap-2.5">
-            <div className="flex h-8 w-8 items-center justify-center rounded-md bg-[#2490ef] font-bold text-white shadow-sm shadow-[#2490ef]/25">O</div>
+            <div className="flex h-8 w-8 items-center justify-center rounded-md bg-[#2490ef] font-bold text-white shadow-sm shadow-[#2490ef]/25">V</div>
             <div>
-              <span className="block text-base font-semibold leading-4">Orus ERP</span>
-              <span className="text-xs text-[#6b7280]">Production business desk</span>
+              <span className="block text-base font-semibold leading-4">Vitthal ERP</span>
+              <span className="text-xs text-[#6b7280]">Internal Business Desk</span>
             </div>
           </Link>
           <div className="hidden items-center gap-5 text-sm text-[#4b5563] md:flex">
             <a href="#modules" className="hover:text-[#1674c4]">Modules</a>
-            <a href="#security" className="hover:text-[#1674c4]">Access</a>
+            <a href="#security" className="hover:text-[#1674c4]">Access Control</a>
             <a href="#workflow" className="hover:text-[#1674c4]">Workflow</a>
           </div>
           <div className="flex items-center gap-2">
             <Link href="/login" className="rounded-md px-3 py-2 text-sm font-medium text-[#4b5563] hover:bg-[#eef3f5]">
-              Sign in
+              Sign in to Desk
             </Link>
             <Link href="/register" className="rounded-md bg-[#2490ef] px-3 py-2 text-sm font-medium text-white shadow-sm shadow-[#2490ef]/20 hover:bg-[#1674c4]">
-              Create company
+              Register Account
             </Link>
           </div>
         </div>
@@ -145,26 +145,26 @@ export default function LandingPage() {
             <div className="max-w-3xl">
               <div className="mb-4 inline-flex items-center gap-2 rounded-md border border-[#cde6fb] bg-white/82 px-3 py-1 text-xs font-semibold text-[#1674c4] shadow-sm">
                 <Sparkles className="h-3.5 w-3.5" />
-                ERP Desk for finance, operations, HR, and access control
+                Vitthal Company Operations & Enterprise Portal
               </div>
               <h1 className="max-w-4xl text-4xl font-semibold leading-tight text-[#172033] sm:text-5xl lg:text-6xl">
-                Orus ERP
+                Vitthal ERP
               </h1>
               <p className="mt-5 max-w-2xl text-lg leading-8 text-[#4b5563]">
-                A complete business workspace for companies that need document lifecycles, permissions, invoicing, HRMS, inventory, accounting, and operational reporting in one connected desk.
+                Dedicated Enterprise Resource Planning platform for Vitthal Company. Designed for internal financial lifecycles, HRMS & payroll, inventory management, procurement, sales, and role-based operational controls.
               </p>
               <div className="mt-7 flex flex-wrap gap-3">
-                <Link href="/register" className="inline-flex items-center rounded-md bg-[#2490ef] px-4 py-2.5 text-sm font-medium text-white shadow-sm shadow-[#2490ef]/20 hover:bg-[#1674c4]">
-                  Create your company <ArrowRight className="ml-2 h-4 w-4" />
+                <Link href="/login" className="inline-flex items-center rounded-md bg-[#2490ef] px-4 py-2.5 text-sm font-medium text-white shadow-sm shadow-[#2490ef]/20 hover:bg-[#1674c4]">
+                  Sign in to Vitthal Desk <ArrowRight className="ml-2 h-4 w-4" />
                 </Link>
-                <Link href="/login" className="rounded-md border border-[#d9d4cc] bg-white px-4 py-2.5 text-sm font-medium text-[#383838] shadow-sm hover:bg-[#f8faf9]">
-                  Sign in to desk
+                <Link href="/register" className="rounded-md border border-[#d9d4cc] bg-white px-4 py-2.5 text-sm font-medium text-[#383838] shadow-sm hover:bg-[#f8faf9]">
+                  Register Account
                 </Link>
               </div>
             </div>
 
             <div className="mt-14 grid max-w-4xl gap-3 sm:grid-cols-3">
-              {['Document workflow', 'Role-based access', 'Linked operations'].map((item, index) => (
+              {['Vitthal Operations Desk', 'Role-Based Control', 'Audited Financials'].map((item, index) => (
                 <div key={item} className="landing-stat" style={{ animationDelay: `${index * 120}ms` }}>
                   <CheckCircle2 className="h-4 w-4 text-[#0f9d58]" />
                   <span>{item}</span>
@@ -177,10 +177,10 @@ export default function LandingPage() {
         <section className="mx-auto max-w-7xl px-5 py-12">
           <div className="grid gap-6 lg:grid-cols-[0.78fr_1.22fr] lg:items-stretch">
             <div>
-              <p className="text-xs font-semibold uppercase text-[#1674c4]">Product Slides</p>
-              <h2 className="mt-2 text-2xl font-semibold text-[#1f2937]">Three core systems working together</h2>
+              <p className="text-xs font-semibold uppercase text-[#1674c4]">Vitthal Enterprise Core</p>
+              <h2 className="mt-2 text-2xl font-semibold text-[#1f2937]">Three integrated systems working as one</h2>
               <p className="mt-3 max-w-xl leading-7 text-[#6b7280]">
-                Orus is structured like a real ERP desk: documents are linked, roles decide what users can do, and every operational module feeds the same business context.
+                Vitthal ERP connects every department in Vitthal Company: documents are linked, role-based controls protect operations, and every module feeds the central business ledger.
               </p>
               <div className="mt-5 flex gap-2">
                 {slides.map((item, index) => (
@@ -220,11 +220,11 @@ export default function LandingPage() {
           <div className="mx-auto max-w-7xl">
             <div className="mb-7 flex flex-col justify-between gap-4 md:flex-row md:items-end">
               <div>
-                <p className="text-xs font-semibold uppercase text-[#1674c4]">ERP Modules</p>
-                <h2 className="mt-2 text-2xl font-semibold">A complete operating system for the company</h2>
+                <p className="text-xs font-semibold uppercase text-[#1674c4]">Vitthal Enterprise Modules</p>
+                <h2 className="mt-2 text-2xl font-semibold">Operational Desk for Vitthal Departments</h2>
               </div>
               <p className="max-w-xl leading-7 text-[#6b7280]">
-                Each module is built for repeated daily use: compact lists, connected records, statuses, reports, and permission-aware actions.
+                Every module is built for team productivity: compact record views, linked transactions, live status tracking, and strict role permissions.
               </p>
             </div>
             <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
@@ -241,15 +241,15 @@ export default function LandingPage() {
 
         <section id="workflow" className="mx-auto grid max-w-7xl gap-8 px-5 py-14 lg:grid-cols-[0.9fr_1.1fr]">
           <div>
-            <p className="text-xs font-semibold uppercase text-[#1674c4]">Workflow</p>
-            <h2 className="mt-2 text-2xl font-semibold">Documents move forward, not sideways</h2>
+            <p className="text-xs font-semibold uppercase text-[#1674c4]">Vitthal Workflows</p>
+            <h2 className="mt-2 text-2xl font-semibold">Strict transaction progression and governance</h2>
             <p className="mt-3 leading-7 text-[#6b7280]">
-              Sales and invoicing records follow an ERP-style chain. Submitted records are locked, payments update outstanding balances, and ledger/audit records preserve what happened.
+              Sales, procurement, and invoicing records follow an audited chain. Submitted records are locked, payments update outstanding balances, and general ledger records preserve exact history.
             </p>
             <div className="mt-5 flex flex-wrap gap-2">
               <span className="landing-pill"><GitBranch className="h-3.5 w-3.5" />Linked documents</span>
               <span className="landing-pill"><FileText className="h-3.5 w-3.5" />PDF-ready invoices</span>
-              <span className="landing-pill"><BookOpen className="h-3.5 w-3.5" />Ledger trail</span>
+              <span className="landing-pill"><BookOpen className="h-3.5 w-3.5" />Ledger audit trail</span>
             </div>
           </div>
           <div className="landing-timeline">
@@ -265,10 +265,10 @@ export default function LandingPage() {
         <section id="security" className="border-y border-[#e5e2dc] bg-[#f2f6f7] px-5 py-14">
           <div className="mx-auto grid max-w-7xl gap-8 lg:grid-cols-[1fr_1fr]">
             <div>
-              <p className="text-xs font-semibold uppercase text-[#1674c4]">Access Control</p>
-              <h2 className="mt-2 text-2xl font-semibold">Super Admin owns the company boundary</h2>
+              <p className="text-xs font-semibold uppercase text-[#1674c4]">Vitthal Security</p>
+              <h2 className="mt-2 text-2xl font-semibold">Super Admin controls enterprise access</h2>
               <p className="mt-3 leading-7 text-[#5d6673]">
-                The access model is built around company ownership. A Super Admin can create users, assign roles, and control every module using allow/deny permissions.
+                The access control model is configured specifically for Vitthal Company hierarchy. Super Admin manages employee access, department boundaries, and module-level permissions.
               </p>
               <div className="mt-6 grid gap-2">
                 {permissions.map((item) => (
@@ -282,8 +282,8 @@ export default function LandingPage() {
             <div className="landing-access-console">
               <div className="flex items-center justify-between border-b border-[#f0ede8] px-4 py-3">
                 <div>
-                  <p className="text-sm font-semibold">Access Matrix</p>
-                  <p className="text-xs text-[#6b7280]">Example role configuration</p>
+                  <p className="text-sm font-semibold">Vitthal Access Matrix</p>
+                  <p className="text-xs text-[#6b7280]">Role & module permission matrix</p>
                 </div>
                 <LockKeyhole className="h-5 w-5 text-[#1674c4]" />
               </div>
@@ -303,18 +303,18 @@ export default function LandingPage() {
         <section className="mx-auto max-w-7xl px-5 py-14">
           <div className="landing-final">
             <div>
-              <p className="text-xs font-semibold uppercase text-[#cde6fb]">Start clean</p>
-              <h2 className="mt-2 text-3xl font-semibold text-white">Create the company, then build the desk around real roles.</h2>
+              <p className="text-xs font-semibold uppercase text-[#cde6fb]">Vitthal Enterprise</p>
+              <h2 className="mt-2 text-3xl font-semibold text-white">Centralized business management desk for Vitthal Company.</h2>
               <p className="mt-3 max-w-2xl leading-7 text-[#d9e8f5]">
-                Set up departments, positions, employees, role access, inventory, customers, invoices, payments, and reports from a single connected ERP shell.
+                Access HRMS, accounting, inventory management, purchase orders, sales invoices, payroll, and role permissions from a single unified desk.
               </p>
             </div>
             <div className="flex flex-wrap gap-3">
-              <Link href="/register" className="rounded-md bg-white px-4 py-2.5 text-sm font-medium text-[#1674c4] shadow-sm hover:bg-[#eef6fd]">
-                Create company
+              <Link href="/login" className="rounded-md bg-white px-4 py-2.5 text-sm font-medium text-[#1674c4] shadow-sm hover:bg-[#eef6fd]">
+                Sign in to Desk
               </Link>
-              <Link href="/login" className="rounded-md border border-white/25 px-4 py-2.5 text-sm font-medium text-white hover:bg-white/10">
-                Sign in
+              <Link href="/register" className="rounded-md border border-white/25 px-4 py-2.5 text-sm font-medium text-white hover:bg-white/10">
+                Register Account
               </Link>
             </div>
           </div>
@@ -323,7 +323,7 @@ export default function LandingPage() {
 
       <footer className="border-t border-[#e5e2dc] px-5 py-6">
         <div className="mx-auto flex max-w-7xl flex-col justify-between gap-3 text-sm text-[#6b7280] md:flex-row">
-          <span>Orus ERP</span>
+          <span>Vitthal ERP — Vitthal Company Business Desk</span>
           <span>Accounting • HRMS • Inventory • Invoicing • Access Control</span>
         </div>
       </footer>

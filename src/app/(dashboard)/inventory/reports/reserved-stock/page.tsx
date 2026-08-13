@@ -47,6 +47,19 @@ export default function ReservedStockPage() {
 
   useEffect(() => { load().catch(() => toast.error('Failed to load reserved stock')); }, []);
 
+  const selectOrder = async (salesOrderId: string) => {
+    setForm((prev) => ({ ...prev, salesOrderId, salesOrderItemId: '', productId: '' }));
+    const current = orders.find((order) => order.id === salesOrderId);
+    if (current?.items?.length) return;
+    try {
+      const response = await api.get(`/sales/orders/${salesOrderId}`);
+      const detailed = response.data.data as SalesOrder;
+      setOrders((items) => items.map((order) => order.id === detailed.id ? detailed : order));
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || 'Could not load sales order items');
+    }
+  };
+
   const createManualReservation = async () => {
     if (!form.salesOrderId || !form.salesOrderItemId || !form.productId || !form.warehouseId) return toast.error('Select sales order, item, product and warehouse');
     try {
@@ -90,17 +103,17 @@ export default function ReservedStockPage() {
               This creates a real stock reservation. It must be tied to a sales order item, product, and warehouse, so available stock calculations stay connected.
             </div>
             <Field label="Sales Order">
-              <Select value={form.salesOrderId} onValueChange={(salesOrderId) => setForm((prev) => ({ ...prev, salesOrderId, salesOrderItemId: '', productId: '' }))}>
+              <Select value={form.salesOrderId} onValueChange={selectOrder}>
                 <SelectTrigger><SelectValue placeholder="Select sales order" /></SelectTrigger>
                 <SelectContent>{orders.map((order) => <SelectItem key={order.id} value={order.id}>{order.orderNo} - {order.customer?.name || 'Customer'} - {order.status}</SelectItem>)}</SelectContent>
               </Select>
             </Field>
             <Field label="Sales Order Item">
-              <Select value={form.salesOrderItemId} onValueChange={(salesOrderItemId) => {
+              <Select disabled={!form.salesOrderId || orderItems.length === 0} value={form.salesOrderItemId} onValueChange={(salesOrderItemId) => {
                 const item = orderItems.find((row) => row.id === salesOrderItemId);
                 setForm((prev) => ({ ...prev, salesOrderItemId, productId: item?.productId || '' }));
               }}>
-                <SelectTrigger><SelectValue placeholder="Select order item" /></SelectTrigger>
+                <SelectTrigger><SelectValue placeholder={!form.salesOrderId ? 'Select a sales order first' : orderItems.length ? 'Select order item' : 'No reservable items'} /></SelectTrigger>
                 <SelectContent>{orderItems.map((item) => <SelectItem key={item.id} value={item.id || ''}>{item.product?.sku || item.productId} - {item.product?.name || item.description} - Qty {item.quantity}</SelectItem>)}</SelectContent>
               </Select>
             </Field>

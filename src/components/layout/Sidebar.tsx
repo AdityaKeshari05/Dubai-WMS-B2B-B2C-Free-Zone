@@ -97,7 +97,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
               <span className="text-sm font-bold text-white">V</span>
             </div>
             <div>
-              <span className="text-base font-semibold text-[#1f2937]">Vitthal</span>
+              <span className="text-base font-semibold text-[#1f2937]">Orus</span>
               <span className="block -mt-1 text-xs text-[#7c8591]">ERP Desk</span>
             </div>
           </div>
@@ -115,7 +115,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
         </nav>
 
         <div className="border-t border-[#e5e2dc] px-4 py-3">
-          <p className="text-center text-xs text-[#8a929d]">Vitthal ERP v1.0</p>
+          <p className="text-center text-xs text-[#8a929d]">Orus ERP v1.0</p>
         </div>
       </aside>
     </>

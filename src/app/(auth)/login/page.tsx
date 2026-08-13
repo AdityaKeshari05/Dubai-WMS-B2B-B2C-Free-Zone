@@ -36,14 +36,14 @@ export default function LoginPage() {
           <div className="mb-3 inline-flex h-12 w-12 items-center justify-center rounded-md bg-[#2490ef] shadow-sm shadow-[#2490ef]/25">
             <span className="text-xl font-bold text-white">V</span>
           </div>
-          <h1 className="text-xl font-semibold text-[#1f2937]">Vitthal ERP</h1>
+          <h1 className="text-xl font-semibold text-[#1f2937]">Orus ERP</h1>
           <p className="mt-1 text-sm text-[#6b7280]">Sign in to your business desk</p>
         </div>
 
         <Card className="shadow-[0_18px_50px_rgba(16,24,40,0.08)]">
           <CardHeader>
             <CardTitle>Welcome back</CardTitle>
-            <CardDescription>Use your Vitthal ERP account to continue.</CardDescription>
+            <CardDescription>Use your Orus ERP account to continue.</CardDescription>
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-4">

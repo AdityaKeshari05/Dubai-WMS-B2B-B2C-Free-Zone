@@ -29,6 +29,7 @@ export default function StockMovementsPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [typeFilter, setTypeFilter] = useState('');
   const [showModal, setShowModal] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [form, setForm] = useState({ productId: '', warehouseId: '', type: 'IN', quantity: '', notes: '', reference: '' });
   const limit = 20;
 
@@ -52,12 +53,16 @@ export default function StockMovementsPage() {
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isSubmitting) return;
+    setIsSubmitting(true);
     try {
       await api.post('/inventory/stock-movements', { ...form, quantity: Number(form.quantity) });
       toast.success('Stock movement recorded');
       setShowModal(false);
+      setForm({ productId: '', warehouseId: '', type: 'IN', quantity: '', notes: '', reference: '' });
       fetchAll();
     } catch (err: any) { toast.error(err.response?.data?.message || 'Failed'); }
+    finally { setIsSubmitting(false); }
   };
 
   const columns = [
@@ -120,7 +125,7 @@ export default function StockMovementsPage() {
             <div className="space-y-1.5"><Label>Notes</Label><Textarea value={form.notes} onChange={e => setForm(f => ({ ...f, notes: e.target.value }))} rows={2} /></div>
             <div className="flex justify-end gap-2">
               <Button type="button" variant="outline" onClick={() => setShowModal(false)}>Cancel</Button>
-              <Button type="submit">Record Movement</Button>
+              <Button type="submit" disabled={isSubmitting}>{isSubmitting ? 'Recording...' : 'Record Movement'}</Button>
             </div>
           </form>
         </DialogContent>

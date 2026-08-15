@@ -107,10 +107,10 @@ export default function AccountsPage() {
             <div className="space-y-1.5"><Label>Sub Type</Label><Input value={form.subType} onChange={e => setForm(f => ({ ...f, subType: e.target.value }))} placeholder="e.g. Cash and Cash Equivalents" /></div>
             <div className="space-y-1.5">
               <Label>Parent Account</Label>
-              <Select value={form.parentId} onValueChange={v => setForm(f => ({ ...f, parentId: v }))}>
+              <Select value={form.parentId || '__none__'} onValueChange={v => setForm(f => ({ ...f, parentId: v === '__none__' ? '' : v }))}>
                 <SelectTrigger><SelectValue placeholder="None (top-level)" /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">None</SelectItem>
+                  <SelectItem value="__none__">None</SelectItem>
                   {accounts.map(a => <SelectItem key={a.id} value={a.id}>{a.code} - {a.name}</SelectItem>)}
                 </SelectContent>
               </Select>

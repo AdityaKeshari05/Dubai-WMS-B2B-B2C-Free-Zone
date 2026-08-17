@@ -128,12 +128,12 @@ export default function AccountsPage() {
             <div className="space-y-1.5"><Label>Frozen Till</Label><Input type="date" value={form.frozenTillDate} onChange={e => setForm(f => ({ ...f, frozenTillDate: e.target.value }))} /></div>
             <div className="col-span-2 grid grid-cols-2 gap-2 rounded-md border border-[#e5e2dc] p-3 text-sm">
               {[
-                ['isDefaultCash','Default Cash'],
-                ['isDefaultBank','Default Bank'],
-                ['isDefaultReceivable','Default Receivable'],
-                ['isDefaultPayable','Default Payable'],
-                ['isDefaultTax','Default Tax'],
-                ['isDefaultRetainedEarnings','Default Retained Earnings'],
+                ['isDefaultCash','Cash'],
+                ['isDefaultBank','Bank'],
+                ['isDefaultReceivable','Receivable'],
+                ['isDefaultPayable','Payable'],
+                ['isDefaultTax','Tax'],
+                ['isDefaultRetainedEarnings','Retained Earnings'],
               ].map(([key, label]) => <label key={key} className="flex items-center gap-2"><input type="checkbox" checked={(form as any)[key]} onChange={e => setForm(f => ({ ...f, [key]: e.target.checked }))} /> {label}</label>)}
             </div>
             <div className="col-span-2 space-y-1.5"><Label>Description</Label><Textarea value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} rows={2} /></div>

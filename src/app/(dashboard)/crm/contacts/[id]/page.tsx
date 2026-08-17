@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import toast from 'react-hot-toast';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, Mail, Phone } from 'lucide-react';
 import api from '@/lib/api';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -24,16 +24,22 @@ export default function ContactDetailPage() {
 
   return (
     <div className="space-y-4">
-      <Button variant="ghost" size="sm" onClick={() => router.push('/crm/contacts')}><ArrowLeft className="mr-2 h-4 w-4" />Back to contacts</Button>
-      <div><h1 className="text-xl font-semibold text-[#1f2937]">{contact.firstName} {contact.lastName}</h1><p className="text-sm text-[#6b7280]">{contact.position || contact.company || 'CRM Contact'}</p></div>
+      <Button variant="ghost" size="sm" onClick={() => router.push(contact.lead ? `/crm/leads/${contact.lead.id}` : '/crm/leads')}><ArrowLeft className="mr-2 h-4 w-4" />Back to lead</Button>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div><h1 className="text-xl font-semibold text-[#1f2937]">{contact.firstName} {contact.lastName}</h1><p className="text-sm text-[#6b7280]">{contact.position || contact.company || 'CRM Contact'}</p></div>
+        <div className="flex gap-2">
+          {contact.email && <Button asChild variant="outline"><a href={`mailto:${contact.email}`}><Mail className="mr-2 h-4 w-4" />Email</a></Button>}
+          {(contact.phone || contact.mobile) && <Button asChild><a href={`tel:${contact.phone || contact.mobile}`}><Phone className="mr-2 h-4 w-4" />Call</a></Button>}
+        </div>
+      </div>
 
       <div className="grid gap-4 xl:grid-cols-[1fr_380px]">
         <div className="space-y-4">
           <Card>
             <CardHeader><CardTitle>Contact Profile</CardTitle></CardHeader>
             <CardContent className="grid gap-4 md:grid-cols-3">
-              <Info label="Email">{contact.email || '-'}</Info>
-              <Info label="Phone">{contact.phone || contact.mobile || '-'}</Info>
+              <Info label="Email">{contact.email ? <a className="text-[#1674c4]" href={`mailto:${contact.email}`}>{contact.email}</a> : '-'}</Info>
+              <Info label="Phone">{contact.phone || contact.mobile ? <a className="text-[#1674c4]" href={`tel:${contact.phone || contact.mobile}`}>{contact.phone || contact.mobile}</a> : '-'}</Info>
               <Info label="Position">{contact.position || '-'}</Info>
               <Info label="Source Lead">{contact.lead ? <Link className="text-[#1674c4]" href={`/crm/leads/${contact.lead.id}`}>{contact.lead.title}</Link> : '-'}</Info>
               <Info label="Organization">{contact.organization ? <Link className="text-[#1674c4]" href={`/crm/organizations/${contact.organization.id}`}>{contact.organization.name}</Link> : contact.company || '-'}</Info>

@@ -5,7 +5,7 @@ import {
   Receipt, CreditCard, Landmark, FileMinus, Percent, Printer, Repeat, ClipboardCheck,
   Hourglass, CircleDollarSign, CalendarDays, ScrollText, CalendarRange, Network, WalletCards,
   BarChart3, Warehouse, Boxes, ArrowLeftRight, Layers, Archive, LockKeyhole, Calculator,
-  ChartColumnIncreasing, ArchiveX, UserRound, Building, Contact, Target, Activity,
+  ChartColumnIncreasing, ArchiveX, UserRound, Building, Target, Activity,
   Route, Upload, FileCheck2, ClipboardSignature, CalendarCheck, CalendarCog, CalendarX,
   ListChecks, HandCoins, BadgeDollarSign, Wallet, UserCog, SlidersHorizontal, KeyRound,
   Handshake, Scale, PackageCheck
@@ -76,9 +76,9 @@ export const navItems: NavItem[] = [
     children: [
       { label: 'CRM Dashboard', href: '/crm/dashboard', icon: LayoutDashboard, permission: 'crm:dashboard:read' },
       { label: 'Leads', href: '/crm/leads', icon: Target, permission: 'crm:leads:read' },
+      { label: 'Customers', href: '/customers', icon: Users, permission: 'customers:customers:read' },
       { label: 'Lead Imports', href: '/crm/imports', icon: Upload, permission: 'crm:imports:read' },
       { label: 'Organizations', href: '/crm/organizations', icon: Building2, permission: 'crm:organizations:read' },
-      { label: 'Contacts', href: '/crm/contacts', icon: Contact },
       { label: 'Opportunities', href: '/crm/opportunities', icon: TrendingUp },
       { label: 'Activities', href: '/crm/activities', icon: Activity },
       { label: 'Assignment Rules', href: '/crm/assignment-rules', icon: Route, permission: 'crm:assignment-rules:read' },
@@ -133,7 +133,6 @@ export const navItems: NavItem[] = [
     ],
   },
   { label: 'Projects', href: '/projects', icon: FolderOpen, permission: 'projects:projects:read' },
-  { label: 'Customers', href: '/customers', icon: Users, permission: 'customers:customers:read' },
   { label: 'Suppliers', href: '/suppliers', icon: Truck, permission: 'suppliers:suppliers:read' },
   {
     label: 'Settings', icon: Settings,

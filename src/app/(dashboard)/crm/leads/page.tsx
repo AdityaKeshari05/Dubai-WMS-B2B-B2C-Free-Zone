@@ -29,6 +29,7 @@ export default function LeadsPage() {
   const [statusFilter, setStatusFilter] = useState('');
   const [showModal, setShowModal] = useState(false);
   const [showImport, setShowImport] = useState(false);
+  const [openingContactId, setOpeningContactId] = useState<string | null>(null);
   const [form, setForm] = useState({ title: '', firstName: '', lastName: '', email: '', phone: '', company: '', city: '', country: '', source: 'WEBSITE', status: 'NEW', priority: 'MEDIUM', value: '', notes: '' });
   const router = useRouter();
   const limit = 20;
@@ -58,9 +59,21 @@ export default function LeadsPage() {
   const handleConvert = async (id: string) => {
     try {
       await api.post(`/crm/leads/${id}/convert`);
-      toast.success('Lead converted to opportunity');
+      toast.success('Lead converted to customer and opportunity');
       fetchLeads();
     } catch (err: any) { toast.error(err.response?.data?.message || 'Failed to convert'); }
+  };
+
+  const handleContact = async (id: string) => {
+    if (openingContactId) return;
+    setOpeningContactId(id);
+    try {
+      const res = await api.post(`/crm/leads/${id}/contact`);
+      router.push(`/crm/contacts/${res.data.data.id}`);
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || 'Could not open lead contact');
+      setOpeningContactId(null);
+    }
   };
 
   const columns = [
@@ -78,9 +91,10 @@ export default function LeadsPage() {
     { key: 'owner', header: 'Owner', render: (l: Lead) => l.assignedTo ? `${l.assignedTo.firstName} ${l.assignedTo.lastName}` : '—' },
     { key: 'createdAt', header: 'Created', render: (l: Lead) => formatDate(l.createdAt) },
     { key: 'actions', header: '', render: (l: Lead) => (
-      l.status !== 'CONVERTED' ? (
-        <Button size="sm" variant="outline" onClick={(e) => { e.stopPropagation(); handleConvert(l.id); }}>Convert</Button>
-      ) : null
+      <div className="flex gap-2">
+        <Button size="sm" variant="outline" disabled={openingContactId === l.id} onClick={(e) => { e.stopPropagation(); handleContact(l.id); }}>{openingContactId === l.id ? 'Opening...' : 'Contact'}</Button>
+        {l.status !== 'CONVERTED' && <Button size="sm" variant="outline" onClick={(e) => { e.stopPropagation(); handleConvert(l.id); }}>Convert</Button>}
+      </div>
     )},
   ];
 

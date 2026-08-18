@@ -5,25 +5,48 @@ import { useRouter } from 'next/navigation';
 import { Sidebar } from '@/components/layout/Sidebar';
 import { Header } from '@/components/layout/Header';
 import { useAuth } from '@/contexts/AuthContext';
+import { useWorkspace } from '@/contexts/WorkspaceContext';
+import { WorkspaceNotFound } from '@/components/workspace/WorkspaceNotFound';
+import { WorkspaceMismatch } from '@/components/workspace/WorkspaceMismatch';
 import { LoadingSpinner } from '@/components/shared/LoadingSpinner';
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const { user, isLoading } = useAuth();
+  const { slug, company, isValid, isLoading: isWorkspaceLoading, isMismatch } = useWorkspace();
   const router = useRouter();
 
   useEffect(() => {
-    if (!isLoading && !user) {
-      router.push('/login');
+    if (!isLoading && !isWorkspaceLoading) {
+      if (!slug) {
+        router.replace('/login');
+      } else if (!user) {
+        router.push('/login');
+      }
     }
-  }, [user, isLoading, router]);
+  }, [user, isLoading, isWorkspaceLoading, slug, router]);
 
-  if (isLoading) {
+  if (isLoading || isWorkspaceLoading) {
     return (
       <div className="h-screen flex items-center justify-center desk-surface">
         <LoadingSpinner size="lg" />
       </div>
     );
+  }
+
+  // Guard against bare root domain (e.g. localhost:3000/dashboard without subdomain)
+  if (!slug) {
+    return null;
+  }
+
+  // Guard against non-existent workspace (404)
+  if (slug && isValid === false) {
+    return <WorkspaceNotFound slug={slug} />;
+  }
+
+  // Guard against tenant session mismatch
+  if (slug && isMismatch) {
+    return <WorkspaceMismatch currentWorkspace={company} activeSlug={slug} />;
   }
 
   if (!user) return null;

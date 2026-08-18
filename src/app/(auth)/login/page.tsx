@@ -1,64 +1,207 @@
 'use client';
 
 import { useState } from 'react';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
+import { useWorkspace } from '@/contexts/WorkspaceContext';
+import { WorkspaceNotFound } from '@/components/workspace/WorkspaceNotFound';
+import { WorkspaceMismatch } from '@/components/workspace/WorkspaceMismatch';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Building2, ShieldCheck, Loader2, ArrowRight, Globe, Search } from 'lucide-react';
 import toast from 'react-hot-toast';
+
+function slugify(text: string): string {
+  return String(text || '')
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9\s-]/g, '')
+    .replace(/[\s_]+/g, '-')
+    .replace(/-+/g, '-')
+    .replace(/^-+|-+$/g, '');
+}
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoggingIn, setIsLoggingIn] = useState(false);
+  const [targetSlug, setTargetSlug] = useState('');
+
   const { login } = useAuth();
+  const { slug, company, isValid, isLoading, isMismatch, refetchWorkspace } = useWorkspace();
   const router = useRouter();
 
+  const marketingUrl = process.env.NEXT_PUBLIC_MARKETING_URL || 'http://localhost:3001';
+  const rootDomain = process.env.NEXT_PUBLIC_ROOT_DOMAIN || 'localhost:3000';
+
+  // 1. Loading state while verifying workspace
+  if (isLoading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-[#f8faf9] p-4">
+        <div className="flex flex-col items-center gap-3 text-center">
+          <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-[#eef6fd] text-[#2490ef]">
+            <Loader2 className="h-6 w-6 animate-spin" />
+          </div>
+          <p className="text-sm font-medium text-[#6b7280]">Verifying company workspace...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // 2. Workspace Not Found (404)
+  if (slug && isValid === false) {
+    return <WorkspaceNotFound slug={slug} onRetry={refetchWorkspace} />;
+  }
+
+  // 3. User session belongs to another company
+  if (slug && isMismatch) {
+    return <WorkspaceMismatch currentWorkspace={company} activeSlug={slug} />;
+  }
+
+  // 4. Root Domain Visitor (No Subdomain provided, e.g. http://localhost:3000)
+  if (!slug) {
+    const handleGoToWorkspace = (e: React.FormEvent) => {
+      e.preventDefault();
+      const cleanSlug = slugify(targetSlug);
+      if (!cleanSlug) {
+        toast.error('Please enter a workspace URL');
+        return;
+      }
+      const isLocal = window.location.hostname.includes('localhost') || window.location.hostname.includes('127.0.0.1');
+      const protocol = window.location.protocol;
+      const destination = isLocal
+        ? `${protocol}//${cleanSlug}.${rootDomain}/login`
+        : `https://${cleanSlug}.${rootDomain}/login`;
+
+      window.location.href = destination;
+    };
+
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-[#f8faf9] p-4">
+        <div className="w-full max-w-md">
+          <div className="mb-6 text-center">
+            <div className="mb-3 inline-flex h-12 w-12 items-center justify-center rounded-xl bg-[#2490ef] shadow-sm shadow-[#2490ef]/25">
+              <Building2 className="h-6 w-6 text-white" />
+            </div>
+            <h1 className="text-xl font-bold text-[#1f2937]">Orus ERP Workspace</h1>
+            <p className="mt-1 text-sm text-[#6b7280]">Enter your company workspace URL to sign in</p>
+          </div>
+
+          <Card className="border border-[#e5e2dc] bg-white shadow-[0_18px_50px_rgba(16,24,40,0.08)]">
+            <CardHeader>
+              <CardTitle>Find your workspace</CardTitle>
+              <CardDescription>Enter the subdomain provided when your company signed up.</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <form onSubmit={handleGoToWorkspace} className="space-y-4">
+                <div className="space-y-1.5">
+                  <Label>Workspace Subdomain</Label>
+                  <div className="flex items-center rounded-md border border-[#d9d4cc] bg-white focus-within:border-[#2490ef] focus-within:ring-2 focus-within:ring-[#2490ef]/20 transition-all">
+                    <span className="pl-3 text-xs text-[#9ca3af] font-medium">https://</span>
+                    <input
+                      type="text"
+                      placeholder="e.g. gurudas or mrftyre"
+                      value={targetSlug}
+                      onChange={(e) => setTargetSlug(e.target.value)}
+                      className="flex-1 border-0 bg-transparent px-1 py-2 text-sm text-[#1f2937] font-semibold placeholder:text-[#9ca3af] focus:outline-none"
+                      required
+                    />
+                    <span className="pr-3 text-xs font-semibold text-[#6b7280]">.{rootDomain}</span>
+                  </div>
+                </div>
+
+                <Button type="submit" className="w-full font-semibold h-10 bg-[#2490ef] hover:bg-[#1674c4]">
+                  Continue to Workspace <ArrowRight className="ml-2 h-4 w-4" />
+                </Button>
+              </form>
+
+              <div className="mt-6 border-t border-[#f0ede8] pt-4 text-center">
+                <p className="text-xs text-[#6b7280]">
+                  Don&apos;t have a workspace yet?{' '}
+                  <a href={`${marketingUrl}/register`} className="font-medium text-[#1674c4] hover:underline">
+                    Create New Workspace
+                  </a>
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    );
+  }
+
+  // 5. Active Subdomain Login (e.g. http://gurudas.localhost:3000/login)
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setIsLoading(true);
+    setIsLoggingIn(true);
     try {
-      await login(email, password);
+      const normalizedEmail = email.trim().toLowerCase();
+      await login(normalizedEmail, password);
+      toast.success('Signed in successfully!');
       router.push('/dashboard');
     } catch (err: any) {
-      toast.error(err.response?.data?.message || 'Invalid credentials');
+      toast.error(err.response?.data?.message || 'Invalid email or password');
     } finally {
-      setIsLoading(false);
+      setIsLoggingIn(false);
     }
   };
+
+  const displayName = company?.name || 'Orus ERP';
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-[#f8faf9] p-4">
       <div className="w-full max-w-md">
+        {/* Workspace Brand Header */}
         <div className="mb-6 text-center">
-          <div className="mb-3 inline-flex h-12 w-12 items-center justify-center rounded-md bg-[#2490ef] shadow-sm shadow-[#2490ef]/25">
-            <span className="text-xl font-bold text-white">V</span>
+          <div className="mb-3 inline-flex h-12 w-12 items-center justify-center rounded-xl bg-[#2490ef] shadow-sm shadow-[#2490ef]/25">
+            {company?.logo ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={company.logo} alt={displayName} className="h-7 w-7 object-contain rounded" />
+            ) : (
+              <Building2 className="h-6 w-6 text-white" />
+            )}
           </div>
-          <h1 className="text-xl font-semibold text-[#1f2937]">Orus ERP</h1>
-          <p className="mt-1 text-sm text-[#6b7280]">Sign in to your business desk</p>
+          <h1 className="text-xl font-bold text-[#1f2937]">{displayName}</h1>
+          <p className="mt-1 text-xs text-[#6b7280]">
+            {company
+              ? `Enterprise Operations Desk (${company.currency})`
+              : 'Sign in to your business desk'}
+          </p>
+
+          {slug && (
+            <div className="mt-2 inline-flex items-center gap-1 rounded-full border border-[#d9e4e8] bg-white px-2.5 py-0.5 text-[11px] font-medium text-[#1674c4]">
+              <ShieldCheck className="h-3 w-3 text-[#0f9d58]" /> Verified Organization
+            </div>
+          )}
         </div>
 
-        <Card className="shadow-[0_18px_50px_rgba(16,24,40,0.08)]">
+        <Card className="border border-[#e5e2dc] bg-white shadow-[0_18px_50px_rgba(16,24,40,0.08)]">
           <CardHeader>
             <CardTitle>Welcome back</CardTitle>
-            <CardDescription>Use your Orus ERP account to continue.</CardDescription>
+            <CardDescription>
+              {company
+                ? `Enter your ${company.name} credentials to continue.`
+                : 'Enter your credentials to access your ERP desk.'}
+            </CardDescription>
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="space-y-1.5">
-                <Label htmlFor="email">Email address</Label>
+                <Label htmlFor="email">Work Email</Label>
                 <Input
                   id="email"
                   type="email"
-                  placeholder="admin@company.com"
+                  placeholder="name@company.com"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   required
                   autoComplete="email"
                 />
               </div>
+
               <div className="space-y-1.5">
                 <Label htmlFor="password">Password</Label>
                 <Input
@@ -71,19 +214,35 @@ export default function LoginPage() {
                   autoComplete="current-password"
                 />
               </div>
-              <Button type="submit" className="w-full" disabled={isLoading}>
-                {isLoading ? 'Signing in...' : 'Sign in'}
+
+              <Button
+                type="submit"
+                className="w-full font-semibold h-9 bg-[#2490ef] hover:bg-[#1674c4]"
+                disabled={isLoggingIn}
+              >
+                {isLoggingIn ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Signing in...
+                  </>
+                ) : (
+                  <>
+                    Sign In to Desk <ArrowRight className="ml-2 h-4 w-4" />
+                  </>
+                )}
               </Button>
             </form>
-            <div className="mt-4 rounded-md border border-[#cde6fb] bg-[#eef6fd] p-3">
-              <p className="text-xs font-medium text-[#1674c4]">Demo credentials</p>
-              <p className="mt-1 text-xs text-[#256f9f]">Email: admin@oruserp.com</p>
-              <p className="text-xs text-[#256f9f]">Password: Admin@123</p>
+
+            <div className="mt-6 border-t border-[#f0ede8] pt-4 text-center">
+              <p className="text-xs text-[#6b7280]">
+                Need to create a new company workspace?{' '}
+                <a
+                  href={`${marketingUrl}/register`}
+                  className="font-medium text-[#1674c4] hover:underline"
+                >
+                  Register Organization
+                </a>
+              </p>
             </div>
-            <p className="mt-4 text-center text-sm text-[#6b7280]">
-              Don&apos;t have an account?{' '}
-              <a href="/register" className="font-medium text-[#1674c4] hover:underline">Register</a>
-            </p>
           </CardContent>
         </Card>
       </div>

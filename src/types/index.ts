@@ -7,6 +7,7 @@ export interface User {
   avatar?: string;
   role: UserRole;
   companyId?: string;
+  companySlug?: string;
   company?: Company;
   access?: {
     isSuperAdmin: boolean;
@@ -46,6 +47,7 @@ export interface PaginatedResponse<T> {
 export interface Company {
   id: string;
   name: string;
+  slug?: string;
   email?: string;
   phone?: string;
   address?: string;

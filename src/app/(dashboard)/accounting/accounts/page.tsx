@@ -25,12 +25,15 @@ const typeColors: Record<AccountType, string> = {
   EXPENSE: 'text-orange-600 bg-orange-50',
 };
 
+const initialAccountForm = { code: '', name: '', type: 'ASSET', subType: '', parentId: '', description: '', currency: 'USD', isGroup: false, freezeAccount: false, frozenTillDate: '', isDefaultCash: false, isDefaultBank: false, isDefaultReceivable: false, isDefaultPayable: false, isDefaultTax: false, isDefaultRetainedEarnings: false };
+
 export default function AccountsPage() {
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [typeFilter, setTypeFilter] = useState('');
   const [showModal, setShowModal] = useState(false);
-  const [form, setForm] = useState({ code: '', name: '', type: 'ASSET', subType: '', parentId: '', description: '', currency: 'USD', isGroup: false, freezeAccount: false, frozenTillDate: '', isDefaultCash: false, isDefaultBank: false, isDefaultReceivable: false, isDefaultPayable: false, isDefaultTax: false, isDefaultRetainedEarnings: false });
+  const [form, setForm] = useState(initialAccountForm);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const fetchAccounts = async () => {
     setIsLoading(true);
@@ -45,12 +48,16 @@ export default function AccountsPage() {
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isSubmitting) return;
+    setIsSubmitting(true);
     try {
-      await api.post('/accounting/accounts', { ...form, parentId: form.parentId || undefined, frozenTillDate: form.frozenTillDate || undefined });
+      await api.post('/accounting/accounts', { ...form, code: form.code.trim(), name: form.name.trim(), parentId: form.parentId || null, frozenTillDate: form.freezeAccount && form.frozenTillDate ? form.frozenTillDate : null });
       toast.success('Account created');
       setShowModal(false);
+      setForm(initialAccountForm);
       fetchAccounts();
     } catch (err: any) { toast.error(err.response?.data?.message || 'Failed'); }
+    finally { setIsSubmitting(false); }
   };
 
   const columns = [
@@ -107,11 +114,11 @@ export default function AccountsPage() {
             <div className="space-y-1.5"><Label>Sub Type</Label><Input value={form.subType} onChange={e => setForm(f => ({ ...f, subType: e.target.value }))} placeholder="e.g. Cash and Cash Equivalents" /></div>
             <div className="space-y-1.5">
               <Label>Parent Account</Label>
-              <Select value={form.parentId} onValueChange={v => setForm(f => ({ ...f, parentId: v }))}>
+              <Select value={form.parentId || '__none__'} onValueChange={v => setForm(f => ({ ...f, parentId: v === '__none__' ? '' : v }))}>
                 <SelectTrigger><SelectValue placeholder="None (top-level)" /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">None</SelectItem>
-                  {accounts.map(a => <SelectItem key={a.id} value={a.id}>{a.code} - {a.name}</SelectItem>)}
+                  <SelectItem value="__none__">None</SelectItem>
+                  {accounts.filter(a => a.isGroup).map(a => <SelectItem key={a.id} value={a.id}>{a.code} - {a.name}</SelectItem>)}
                 </SelectContent>
               </Select>
             </div>
@@ -121,18 +128,18 @@ export default function AccountsPage() {
             <div className="space-y-1.5"><Label>Frozen Till</Label><Input type="date" value={form.frozenTillDate} onChange={e => setForm(f => ({ ...f, frozenTillDate: e.target.value }))} /></div>
             <div className="col-span-2 grid grid-cols-2 gap-2 rounded-md border border-[#e5e2dc] p-3 text-sm">
               {[
-                ['isDefaultCash','Default Cash'],
-                ['isDefaultBank','Default Bank'],
-                ['isDefaultReceivable','Default Receivable'],
-                ['isDefaultPayable','Default Payable'],
-                ['isDefaultTax','Default Tax'],
-                ['isDefaultRetainedEarnings','Default Retained Earnings'],
+                ['isDefaultCash','Cash'],
+                ['isDefaultBank','Bank'],
+                ['isDefaultReceivable','Receivable'],
+                ['isDefaultPayable','Payable'],
+                ['isDefaultTax','Tax'],
+                ['isDefaultRetainedEarnings','Retained Earnings'],
               ].map(([key, label]) => <label key={key} className="flex items-center gap-2"><input type="checkbox" checked={(form as any)[key]} onChange={e => setForm(f => ({ ...f, [key]: e.target.checked }))} /> {label}</label>)}
             </div>
             <div className="col-span-2 space-y-1.5"><Label>Description</Label><Textarea value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} rows={2} /></div>
             <div className="col-span-2 flex justify-end gap-2">
               <Button type="button" variant="outline" onClick={() => setShowModal(false)}>Cancel</Button>
-              <Button type="submit">Create Account</Button>
+              <Button type="submit" disabled={isSubmitting}>{isSubmitting ? 'Creating...' : 'Create Account'}</Button>
             </div>
           </form>
         </DialogContent>

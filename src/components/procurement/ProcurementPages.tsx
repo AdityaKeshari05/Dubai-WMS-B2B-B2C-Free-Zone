@@ -49,24 +49,25 @@ export function ProcurementPage({ kind }: { kind: ProcurementKind }) {
   const [invoices, setInvoices] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [open, setOpen] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
   const [form, setForm] = useState<any>(defaultForm(kind));
   const [lines, setLines] = useState<any[]>([blankLine]);
 
   async function load() {
     setLoading(true);
     try {
-      const common = await Promise.all([
+      const common = await Promise.allSettled([
         api.get('/suppliers', { params: { limit: 200 } }),
         api.get('/inventory/products', { params: { limit: 200 } }),
         api.get('/procurement/purchase-orders', { params: { limit: 200 } }),
         api.get('/procurement/purchase-receipts', { params: { limit: 200 } }),
         api.get('/procurement/purchase-invoices', { params: { limit: 200 } }),
       ]);
-      setSuppliers(common[0].data.data.items || []);
-      setProducts(common[1].data.data.items || []);
-      setOrders(common[2].data.data.items || []);
-      setReceipts(common[3].data.data.items || []);
-      setInvoices(common[4].data.data.items || []);
+      if (common[0].status === 'fulfilled') setSuppliers(common[0].value.data.data?.items || []);
+      if (common[1].status === 'fulfilled') setProducts(common[1].value.data.data?.items || []);
+      if (common[2].status === 'fulfilled') setOrders(common[2].value.data.data?.items || []);
+      if (common[3].status === 'fulfilled') setReceipts(common[3].value.data.data?.items || []);
+      if (common[4].status === 'fulfilled') setInvoices(common[4].value.data.data?.items || []);
       const res = await api.get(meta.endpoint, { params: kind === 'settings' || kind === 'dashboard' || kind === 'tracker' ? undefined : { limit: 100 } });
       if (kind === 'dashboard') setDashboard(res.data.data);
       else if (kind === 'settings') setSettings(res.data.data);
@@ -84,6 +85,8 @@ export function ProcurementPage({ kind }: { kind: ProcurementKind }) {
 
   async function create(e: FormEvent) {
     e.preventDefault();
+    if (submitting) return;
+    setSubmitting(true);
     try {
       await api.post(meta.endpoint, payloadFor(kind, form, lines));
       toast.success(`${meta.title.replace(/s$/, '')} created`);
@@ -93,7 +96,7 @@ export function ProcurementPage({ kind }: { kind: ProcurementKind }) {
       load();
     } catch (err: any) {
       toast.error(err.response?.data?.message || 'Create failed');
-    }
+    } finally { setSubmitting(false); }
   }
 
   async function status(id: string, value: string) {
@@ -126,7 +129,7 @@ export function ProcurementPage({ kind }: { kind: ProcurementKind }) {
             {kind === 'landed-cost-vouchers' && <ChargeEditor lines={lines} setLines={setLines} />}
             <div className="flex justify-end gap-2 border-t border-[#e5e2dc] pt-3">
               <Button type="button" variant="outline" onClick={() => setOpen(false)}>Cancel</Button>
-              <Button type="submit">Create</Button>
+              <Button type="submit" disabled={submitting}>{submitting ? 'Creating...' : 'Create'}</Button>
             </div>
           </form>
         </DialogContent>
@@ -216,7 +219,7 @@ function DocumentFields({ kind, form, setForm, suppliers, products, orders, rece
       {kind === 'communications' && <><Field label="Supplier"><select className="h-8 rounded-md border border-[#d9d4cc] bg-white px-2 text-sm" value={form.supplierId || ''} onChange={(e) => setForm({ ...form, supplierId: e.target.value })}><option value="">Select supplier</option>{suppliers.map((s: any) => <option key={s.id} value={s.id}>{s.name}</option>)}</select></Field><Field label="Channel"><select className="h-8 rounded-md border border-[#d9d4cc] bg-white px-2 text-sm" value={form.channel || 'EMAIL'} onChange={(e) => setForm({ ...form, channel: e.target.value })}><option>EMAIL</option><option>PHONE</option><option>PORTAL</option><option>NOTE</option></select></Field><Field label="Subject"><Input value={form.subject || ''} onChange={(e) => setForm({ ...form, subject: e.target.value })} /></Field><Field label="Message"><Input required value={form.message || ''} onChange={(e) => setForm({ ...form, message: e.target.value })} /></Field></>}
       {kind === 'purchase-receipts' && <Field label="From PO"><select className="h-8 rounded-md border border-[#d9d4cc] bg-white px-2 text-sm" value={form.purchaseOrderId || ''} onChange={(e) => setForm({ ...form, purchaseOrderId: e.target.value })}><option value="">Manual receipt</option>{orders.map((o: any) => <option key={o.id} value={o.id}>{o.orderNo} - {o.supplier?.name}</option>)}</select></Field>}
       {kind === 'purchase-invoices' && <><Field label="PO"><select className="h-8 rounded-md border border-[#d9d4cc] bg-white px-2 text-sm" value={form.purchaseOrderId || ''} onChange={(e) => setForm({ ...form, purchaseOrderId: e.target.value })}><option value="">No PO</option>{orders.map((o: any) => <option key={o.id} value={o.id}>{o.orderNo}</option>)}</select></Field><Field label="Receipt"><select className="h-8 rounded-md border border-[#d9d4cc] bg-white px-2 text-sm" value={form.purchaseReceiptId || ''} onChange={(e) => setForm({ ...form, purchaseReceiptId: e.target.value })}><option value="">No receipt</option>{receipts.map((r: any) => <option key={r.id} value={r.id}>{r.receiptNo}</option>)}</select></Field></>}
-      {kind === 'supplier-payments' && <><Field label="Invoice"><select className="h-8 rounded-md border border-[#d9d4cc] bg-white px-2 text-sm" value={form.purchaseInvoiceId || ''} onChange={(e) => setForm({ ...form, purchaseInvoiceId: e.target.value })}><option value="">Advance / unallocated</option>{invoices.map((i: any) => <option key={i.id} value={i.id}>{i.invoiceNo}</option>)}</select></Field><Field label="Type"><select className="h-8 rounded-md border border-[#d9d4cc] bg-white px-2 text-sm" value={form.type || 'INVOICE_PAYMENT'} onChange={(e) => setForm({ ...form, type: e.target.value })}><option>INVOICE_PAYMENT</option><option>ADVANCE</option></select></Field></>}
+      {kind === 'supplier-payments' && <><Field label="Invoice"><select required={form.type === 'INVOICE_PAYMENT'} className="h-8 rounded-md border border-[#d9d4cc] bg-white px-2 text-sm" value={form.purchaseInvoiceId || ''} onChange={(e) => { const invoice = invoices.find((item: any) => item.id === e.target.value); setForm({ ...form, purchaseInvoiceId: e.target.value, supplierId: invoice?.supplierId || form.supplierId, amount: invoice ? Number(invoice.outstandingAmount || 0) : form.amount }); }}><option value="">{form.type === 'ADVANCE' ? 'Advance / unallocated' : 'Select invoice'}</option>{invoices.filter((i: any) => !['PAID', 'CANCELLED'].includes(i.status) && (!form.supplierId || i.supplierId === form.supplierId)).map((i: any) => <option key={i.id} value={i.id}>{i.invoiceNo} — {i.supplier?.name || 'Supplier'} — {formatCurrency(Number(i.outstandingAmount || 0), i.currency)}</option>)}</select></Field><Field label="Type"><select className="h-8 rounded-md border border-[#d9d4cc] bg-white px-2 text-sm" value={form.type || 'INVOICE_PAYMENT'} onChange={(e) => setForm({ ...form, type: e.target.value, purchaseInvoiceId: e.target.value === 'ADVANCE' ? '' : form.purchaseInvoiceId })}><option>INVOICE_PAYMENT</option><option>ADVANCE</option></select></Field></>}
       {kind === 'landed-cost-vouchers' && <><Field label="Purchase Receipt"><select required className="h-8 rounded-md border border-[#d9d4cc] bg-white px-2 text-sm" value={form.purchaseReceiptId || ''} onChange={(e) => setForm({ ...form, purchaseReceiptId: e.target.value })}><option value="">Select receipt</option>{receipts.map((r: any) => <option key={r.id} value={r.id}>{r.receiptNo}</option>)}</select></Field><Field label="Allocation Basis"><select className="h-8 rounded-md border border-[#d9d4cc] bg-white px-2 text-sm" value={form.allocationBasis || 'VALUE'} onChange={(e) => setForm({ ...form, allocationBasis: e.target.value })}><option>VALUE</option><option>QUANTITY</option><option>WEIGHT</option></select></Field></>}
       {kind === 'quality-inspections' && <Field label="Purchase Receipt"><select className="h-8 rounded-md border border-[#d9d4cc] bg-white px-2 text-sm" value={form.purchaseReceiptId || ''} onChange={(e) => setForm({ ...form, purchaseReceiptId: e.target.value })}><option value="">Select receipt</option>{receipts.map((r: any) => <option key={r.id} value={r.id}>{r.receiptNo}</option>)}</select></Field>}
       {kind === 'quality-inspections' && <><Field label="Inspected Qty"><Input type="number" value={form.inspectedQty || 0} onChange={(e) => setForm({ ...form, inspectedQty: Number(e.target.value) })} /></Field><Field label="Accepted Qty"><Input type="number" value={form.acceptedQty || 0} onChange={(e) => setForm({ ...form, acceptedQty: Number(e.target.value) })} /></Field><Field label="Rejected Qty"><Input type="number" value={form.rejectedQty || 0} onChange={(e) => setForm({ ...form, rejectedQty: Number(e.target.value) })} /></Field></>}

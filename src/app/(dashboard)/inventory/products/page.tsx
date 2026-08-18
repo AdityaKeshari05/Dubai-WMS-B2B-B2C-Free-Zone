@@ -26,22 +26,27 @@ export default function ProductsPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [showModal, setShowModal] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [form, setForm] = useState({ sku: '', name: '', description: '', categoryId: '', unitId: '', type: 'PRODUCT', costPrice: 0, salePrice: 0, taxRate: 0, minStockLevel: 0, valuationMethod: 'MOVING_AVERAGE', maintainStock: true, allowNegativeStock: false, hasBatchNo: false, hasSerialNo: false, reorderLevel: 0, reorderQty: 0, brand: '', manufacturer: '' });
   const limit = 20;
 
   const fetchAll = async () => {
     setIsLoading(true);
     try {
-      const [prodRes, catRes, unitRes] = await Promise.all([
+      const [prodRes, catRes, unitRes] = await Promise.allSettled([
         api.get('/inventory/products', { params: { page, limit, search: search || undefined } }),
         api.get('/inventory/categories'),
         api.get('/inventory/units'),
       ]);
-      setProducts(prodRes.data.data.items);
-      setTotal(prodRes.data.data.total);
-      setCategories(catRes.data.data);
-      setUnits(unitRes.data.data);
-    } catch { toast.error('Failed to load products'); }
+      if (prodRes.status === 'fulfilled') {
+        setProducts(prodRes.value.data.data?.items || []);
+        setTotal(prodRes.value.data.data?.total || 0);
+      } else toast.error('Failed to load products');
+      if (catRes.status === 'fulfilled') setCategories(catRes.value.data.data || []);
+      else toast.error('Failed to load categories');
+      if (unitRes.status === 'fulfilled') setUnits(unitRes.value.data.data || []);
+      else toast.error('Failed to load units');
+    } catch { toast.error('Failed to load inventory data'); }
     finally { setIsLoading(false); }
   };
 
@@ -49,6 +54,8 @@ export default function ProductsPage() {
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isSubmitting) return;
+    setIsSubmitting(true);
     try {
       await api.post('/inventory/products', {
         ...form,
@@ -57,8 +64,10 @@ export default function ProductsPage() {
       });
       toast.success('Product created');
       setShowModal(false);
+      setForm({ sku: '', name: '', description: '', categoryId: '', unitId: '', type: 'PRODUCT', costPrice: 0, salePrice: 0, taxRate: 0, minStockLevel: 0, valuationMethod: 'MOVING_AVERAGE', maintainStock: true, allowNegativeStock: false, hasBatchNo: false, hasSerialNo: false, reorderLevel: 0, reorderQty: 0, brand: '', manufacturer: '' });
       fetchAll();
     } catch (err: any) { toast.error(err.response?.data?.message || 'Failed to create product'); }
+    finally { setIsSubmitting(false); }
   };
 
   const getTotalStock = (product: Product) =>
@@ -160,7 +169,7 @@ export default function ProductsPage() {
             <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={form.hasSerialNo} onChange={e => setForm(f => ({ ...f, hasSerialNo: e.target.checked }))} /> Track Serial Nos</label>
             <div className="col-span-2 flex justify-end gap-2 pt-2">
               <Button type="button" variant="outline" onClick={() => setShowModal(false)}>Cancel</Button>
-              <Button type="submit">Create Product</Button>
+              <Button type="submit" disabled={isSubmitting}>{isSubmitting ? 'Creating...' : 'Create Product'}</Button>
             </div>
           </form>
         </DialogContent>

@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { ClipboardList, Plus } from 'lucide-react';
+import { Plus } from 'lucide-react';
 import toast from 'react-hot-toast';
 import api from '@/lib/api';
 import { Product, StockEntry, Warehouse } from '@/types';
@@ -23,6 +23,7 @@ export default function StockEntriesPage() {
   const [products, setProducts] = useState<Product[]>([]);
   const [warehouses, setWarehouses] = useState<Warehouse[]>([]);
   const [open, setOpen] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [form, setForm] = useState({ purpose: 'MATERIAL_RECEIPT', postingDate: new Date().toISOString().slice(0, 10), fromWarehouseId: '', toWarehouseId: '', remarks: '' });
   const [rows, setRows] = useState([{ productId: '', warehouseId: '', quantity: 1, valuationRate: 0 }]);
 
@@ -40,8 +41,10 @@ export default function StockEntriesPage() {
   useEffect(() => { load().catch(() => toast.error('Failed to load stock entries')); }, []);
 
   const create = async () => {
+    if (isSubmitting) return;
     const items = rows.filter((row) => row.productId && Number(row.quantity) > 0);
     if (!items.length) return toast.error('Add at least one item');
+    setIsSubmitting(true);
     try {
       await api.post('/inventory/stock-entries', { ...form, items });
       toast.success('Stock entry created');
@@ -51,6 +54,7 @@ export default function StockEntriesPage() {
     } catch (err: any) {
       toast.error(err.response?.data?.message || 'Could not create stock entry');
     }
+    finally { setIsSubmitting(false); }
   };
 
   const transition = async (entry: StockEntry, status: string) => {
@@ -116,7 +120,7 @@ export default function StockEntriesPage() {
                 </tbody>
               </table>
             </div>
-            <div className="flex justify-between gap-2"><Button variant="outline" onClick={() => setRows((prev) => [...prev, { productId: '', warehouseId: '', quantity: 1, valuationRate: 0 }])}>Add Row</Button><div className="flex gap-2"><Button variant="outline" onClick={() => setOpen(false)}>Cancel</Button><Button onClick={create}>Create Draft</Button></div></div>
+            <div className="flex justify-between gap-2"><Button variant="outline" onClick={() => setRows((prev) => [...prev, { productId: '', warehouseId: '', quantity: 1, valuationRate: 0 }])}>Add Row</Button><div className="flex gap-2"><Button variant="outline" onClick={() => setOpen(false)}>Cancel</Button><Button onClick={create} disabled={isSubmitting}>{isSubmitting ? 'Creating...' : 'Create Draft'}</Button></div></div>
             <Textarea placeholder="Remarks" value={form.remarks} onChange={(e) => setForm((prev) => ({ ...prev, remarks: e.target.value }))} />
           </div>
         </DialogContent>

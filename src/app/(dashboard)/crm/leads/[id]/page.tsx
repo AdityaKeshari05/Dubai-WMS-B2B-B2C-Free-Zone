@@ -28,6 +28,10 @@ export default function LeadDetailPage() {
   useEffect(() => { load().catch(() => toast.error('Failed to load lead')); }, [params.id]);
 
   const updateStatus = async (status: string) => {
+    if (status === 'CONVERTED') {
+      await convert();
+      return;
+    }
     try {
       await api.put(`/crm/leads/${params.id}`, { status });
       toast.success('Lead status updated');
@@ -40,7 +44,7 @@ export default function LeadDetailPage() {
   const convert = async () => {
     try {
       const res = await api.post(`/crm/leads/${params.id}/convert`);
-      toast.success('Converted to opportunity');
+      toast.success('Converted to customer and opportunity');
       router.push(`/crm/opportunities?highlight=${res.data.data?.id || ''}`);
     } catch (err: any) {
       toast.error(err.response?.data?.message || 'Conversion failed');
@@ -50,7 +54,7 @@ export default function LeadDetailPage() {
   const qualify = async () => {
     try {
       const res = await api.post(`/crm/leads/${params.id}/qualify`);
-      toast.success('Lead qualified into opportunity');
+      toast.success('Lead qualified into customer and opportunity');
       router.push(`/crm/opportunities?highlight=${res.data.data?.id || ''}`);
     } catch (err: any) {
       toast.error(err.response?.data?.message || 'Qualification failed');

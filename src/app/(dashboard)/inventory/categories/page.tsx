@@ -19,6 +19,7 @@ export default function CategoriesPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [form, setForm] = useState({ name: '', code: '', parentId: '' });
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const fetchCategories = async () => {
     setIsLoading(true);
@@ -33,12 +34,16 @@ export default function CategoriesPage() {
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isSubmitting) return;
+    setIsSubmitting(true);
     try {
-      await api.post('/inventory/categories', { name: form.name, code: form.code, parentId: form.parentId || undefined });
+      await api.post('/inventory/categories', { name: form.name.trim(), code: form.code.trim(), parentId: form.parentId || undefined });
       toast.success('Category created');
       setShowModal(false);
+      setForm({ name: '', code: '', parentId: '' });
       fetchCategories();
     } catch (err: any) { toast.error(err.response?.data?.message || 'Failed'); }
+    finally { setIsSubmitting(false); }
   };
 
   const rootCategories = categories.filter(c => !c.parentId);
@@ -73,17 +78,17 @@ export default function CategoriesPage() {
             <div className="space-y-1.5"><Label>Code *</Label><Input value={form.code} onChange={e => setForm(f => ({ ...f, code: e.target.value }))} required placeholder="e.g. ELEC, FURN" /></div>
             <div className="space-y-1.5">
               <Label>Parent Category</Label>
-              <Select value={form.parentId} onValueChange={v => setForm(f => ({ ...f, parentId: v }))}>
+              <Select value={form.parentId || '__none__'} onValueChange={v => setForm(f => ({ ...f, parentId: v === '__none__' ? '' : v }))}>
                 <SelectTrigger><SelectValue placeholder="None (top-level)" /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">None (top-level)</SelectItem>
+                  <SelectItem value="__none__">None (top-level)</SelectItem>
                   {rootCategories.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
                 </SelectContent>
               </Select>
             </div>
             <div className="flex justify-end gap-2">
               <Button type="button" variant="outline" onClick={() => setShowModal(false)}>Cancel</Button>
-              <Button type="submit">Create Category</Button>
+              <Button type="submit" disabled={isSubmitting}>{isSubmitting ? 'Creating...' : 'Create Category'}</Button>
             </div>
           </form>
         </DialogContent>

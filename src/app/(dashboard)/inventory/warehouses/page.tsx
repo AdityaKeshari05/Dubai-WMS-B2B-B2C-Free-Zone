@@ -18,6 +18,7 @@ export default function WarehousesPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [form, setForm] = useState({ name: '', code: '', address: '', city: '', country: '' });
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const fetchWarehouses = async () => {
     setIsLoading(true);
@@ -32,12 +33,16 @@ export default function WarehousesPage() {
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isSubmitting) return;
+    setIsSubmitting(true);
     try {
-      await api.post('/inventory/warehouses', form);
+      await api.post('/inventory/warehouses', { ...form, name: form.name.trim(), code: form.code.trim() });
       toast.success('Warehouse created');
       setShowModal(false);
+      setForm({ name: '', code: '', address: '', city: '', country: '' });
       fetchWarehouses();
     } catch (err: any) { toast.error(err.response?.data?.message || 'Failed'); }
+    finally { setIsSubmitting(false); }
   };
 
   const columns = [
@@ -73,7 +78,7 @@ export default function WarehousesPage() {
             </div>
             <div className="flex justify-end gap-2">
               <Button type="button" variant="outline" onClick={() => setShowModal(false)}>Cancel</Button>
-              <Button type="submit">Create Warehouse</Button>
+              <Button type="submit" disabled={isSubmitting}>{isSubmitting ? 'Creating...' : 'Create Warehouse'}</Button>
             </div>
           </form>
         </DialogContent>

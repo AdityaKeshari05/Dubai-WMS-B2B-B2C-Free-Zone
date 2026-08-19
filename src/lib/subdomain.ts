@@ -1,12 +1,5 @@
 /**
  * Extracts the workspace subdomain slug from a hostname.
- * Examples:
- * - "mrftyre.erp.com" -> "mrftyre"
- * - "mrftyre.localhost:3000" -> "mrftyre"
- * - "mrftyre.localhost" -> "mrftyre"
- * - "localhost:3000" -> null
- * - "erp.com" -> null
- * - "www.erp.com" -> null
  */
 export function extractSubdomain(hostname?: string): string | null {
   const host = (

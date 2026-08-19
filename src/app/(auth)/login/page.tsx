@@ -103,7 +103,7 @@ export default function LoginPage() {
                     <span className="pl-3 text-xs text-[#9ca3af] font-medium">https://</span>
                     <input
                       type="text"
-                      placeholder="e.g. gurudas or mrftyre"
+                      placeholder="e.g. Orus-ERP"
                       value={targetSlug}
                       onChange={(e) => setTargetSlug(e.target.value)}
                       className="flex-1 border-0 bg-transparent px-1 py-2 text-sm text-[#1f2937] font-semibold placeholder:text-[#9ca3af] focus:outline-none"

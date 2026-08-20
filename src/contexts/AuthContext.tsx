@@ -1,14 +1,14 @@
 'use client';
 
 import React, { createContext, useContext, useEffect, useState } from 'react';
-import api from '@/lib/api';
+import api, { setAccessToken } from '@/lib/api';
 import { User, AuthResponse } from '@/types';
 
 interface AuthContextType {
   user: User | null;
   token: string | null;
   isLoading: boolean;
-  login: (email: string, password: string) => Promise<void>;
+  login: (email: string, password: string, code?: string, challenge?: string) => Promise<{ requiresTwoFactor?: boolean; challenge?: string }>;
   register: (data: RegisterData) => Promise<void>;
   logout: () => void;
 }
@@ -33,41 +33,37 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    const savedToken = localStorage.getItem('token');
-    const savedUser = localStorage.getItem('user');
-    if (savedToken && savedUser) {
-      try {
-        setToken(savedToken);
-        setUser(JSON.parse(savedUser));
-      } catch {
-        localStorage.removeItem('token');
-        localStorage.removeItem('user');
-      }
-    }
-    setIsLoading(false);
+    api.post('/auth/refresh').then((res) => {
+      const payload = res.data.data;
+      setAccessToken(payload.accessToken);
+      setToken(payload.accessToken);
+      setUser(payload.user);
+    }).catch(() => setAccessToken(null)).finally(() => setIsLoading(false));
   }, []);
 
-  const login = async (email: string, password: string) => {
-    const res = await api.post<{ success: boolean; data: AuthResponse }>('/auth/login', { email, password });
-    const { user, token } = res.data.data;
-    localStorage.setItem('token', token);
-    localStorage.setItem('user', JSON.stringify(user));
+  const login = async (email: string, password: string, code?: string, challenge?: string) => {
+    const res = code && challenge
+      ? await api.post('/auth/login/2fa', { code, challenge })
+      : await api.post<{ success: boolean; data: AuthResponse & { requiresTwoFactor?: boolean; challenge?: string } }>('/auth/login', { email, password });
+    if (res.data.data.requiresTwoFactor) return res.data.data;
+    const { user, accessToken } = res.data.data;
+    setAccessToken(accessToken);
     setUser(user);
-    setToken(token);
+    setToken(accessToken);
+    return {};
   };
 
   const register = async (data: RegisterData) => {
     const res = await api.post<{ success: boolean; data: AuthResponse }>('/auth/register', data);
-    const { user, token } = res.data.data;
-    localStorage.setItem('token', token);
-    localStorage.setItem('user', JSON.stringify(user));
+    const { user, accessToken } = res.data.data;
+    setAccessToken(accessToken);
     setUser(user);
-    setToken(token);
+    setToken(accessToken);
   };
 
   const logout = () => {
-    localStorage.removeItem('token');
-    localStorage.removeItem('user');
+    api.post('/auth/logout').catch(() => null);
+    setAccessToken(null);
     setUser(null);
     setToken(null);
     window.location.href = '/login';

@@ -23,7 +23,9 @@ export type UserRole = 'SUPER_ADMIN' | 'ADMIN' | 'MANAGER' | 'EMPLOYEE' | 'ACCOU
 
 export interface AuthResponse {
   user: User;
-  token: string;
+  accessToken: string;
+  token?: string;
+  expiresIn: number;
 }
 
 export interface ApiResponse<T> {

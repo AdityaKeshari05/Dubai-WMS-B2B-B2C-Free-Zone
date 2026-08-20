@@ -29,7 +29,8 @@ export default function LoginPage() {
   const [password, setPassword] = useState('');
   const [isLoggingIn, setIsLoggingIn] = useState(false);
   const [targetSlug, setTargetSlug] = useState('');
-
+  const [challenge, setChallenge] = useState('');
+  const [code, setCode] = useState('');
   const { login } = useAuth();
   const { slug, company, isValid, isLoading, isMismatch, refetchWorkspace } = useWorkspace();
   const router = useRouter();
@@ -139,7 +140,12 @@ export default function LoginPage() {
     setIsLoggingIn(true);
     try {
       const normalizedEmail = email.trim().toLowerCase();
-      await login(normalizedEmail, password);
+      const result = await login(normalizedEmail, password, challenge ? code : undefined, challenge || undefined);
+      if (result.requiresTwoFactor && result.challenge) {
+        setChallenge(result.challenge);
+        toast.success('Enter the code from your authenticator app');
+        return;
+      }
       toast.success('Signed in successfully!');
       router.push('/dashboard');
     } catch (err: any) {
@@ -189,7 +195,7 @@ export default function LoginPage() {
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-4">
-              <div className="space-y-1.5">
+              {!challenge && <div className="space-y-1.5">
                 <Label htmlFor="email">Work Email</Label>
                 <Input
                   id="email"
@@ -200,9 +206,9 @@ export default function LoginPage() {
                   required
                   autoComplete="email"
                 />
-              </div>
-
-              <div className="space-y-1.5">
+              </div>}
+              {challenge && <div className="space-y-1.5"><Label htmlFor="code">Authenticator code</Label><Input id="code" inputMode="numeric" autoComplete="one-time-code" value={code} onChange={(e) => setCode(e.target.value.replace(/\D/g, '').slice(0, 6))} required /></div>}
+              {!challenge && <div className="space-y-1.5">
                 <Label htmlFor="password">Password</Label>
                 <Input
                   id="password"
@@ -213,7 +219,7 @@ export default function LoginPage() {
                   required
                   autoComplete="current-password"
                 />
-              </div>
+              </div>}
 
               <Button
                 type="submit"
@@ -226,7 +232,7 @@ export default function LoginPage() {
                   </>
                 ) : (
                   <>
-                    Sign In to Desk <ArrowRight className="ml-2 h-4 w-4" />
+                    {challenge ? 'Verify Code' : 'Sign In to Desk'} <ArrowRight className="ml-2 h-4 w-4" />
                   </>
                 )}
               </Button>

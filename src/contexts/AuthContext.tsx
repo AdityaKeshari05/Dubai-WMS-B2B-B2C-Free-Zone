@@ -9,7 +9,7 @@ interface AuthContextType {
   token: string | null;
   isLoading: boolean;
   login: (email: string, password: string, code?: string, challenge?: string) => Promise<{ requiresTwoFactor?: boolean; challenge?: string }>;
-  register: (data: RegisterData) => Promise<void>;
+  register: (data: RegisterData) => Promise<AuthResponse>;
   logout: () => void;
 }
 
@@ -23,6 +23,7 @@ interface RegisterData {
   companyPhone?: string;
   country?: string;
   currency?: string;
+  slug: string;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -59,6 +60,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setAccessToken(accessToken);
     setUser(user);
     setToken(accessToken);
+    return res.data.data;
   };
 
   const logout = () => {

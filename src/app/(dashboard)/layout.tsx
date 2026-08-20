@@ -12,7 +12,7 @@ import { LoadingSpinner } from '@/components/shared/LoadingSpinner';
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const { user, isLoading } = useAuth();
+  const { user, token, isLoading } = useAuth();
   const { slug, company, isValid, isLoading: isWorkspaceLoading, isMismatch } = useWorkspace();
   const router = useRouter();
 
@@ -20,11 +20,11 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     if (!isLoading && !isWorkspaceLoading) {
       if (!slug) {
         router.replace('/login');
-      } else if (!user) {
-        router.push('/login');
+      } else if (!user || !token) {
+        router.replace('/login');
       }
     }
-  }, [user, isLoading, isWorkspaceLoading, slug, router]);
+  }, [user, token, isLoading, isWorkspaceLoading, slug, router]);
 
   if (isLoading || isWorkspaceLoading) {
     return (
@@ -49,7 +49,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     return <WorkspaceMismatch currentWorkspace={company} activeSlug={slug} />;
   }
 
-  if (!user) return null;
+  if (!user || !token) return null;
 
   return (
     <div className="flex h-screen overflow-hidden desk-surface">

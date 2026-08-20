@@ -100,9 +100,14 @@ export function getApiErrorMessage(err: any, fallback = 'An unexpected error occ
 
 /**
  * Triggers a standardized toast error notification with the parsed error message.
+ * Suppresses 401 unauthenticated toasts so the user experiences a clean redirect.
  * Returns the resolved message string.
  */
 export function showApiError(err: any, fallback = 'Operation failed'): string {
+  // If unauthorized (401), the interceptor/auth guard redirects to /login - suppress noisy toast
+  if (err?.response?.status === 401) {
+    return '';
+  }
   const message = getApiErrorMessage(err, fallback);
   toast.error(message);
   return message;

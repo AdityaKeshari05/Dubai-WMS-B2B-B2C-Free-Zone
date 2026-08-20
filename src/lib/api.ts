@@ -8,7 +8,28 @@ const api = axios.create({
 });
 
 let accessToken: string | null = null;
-export const setAccessToken = (token: string | null) => { accessToken = token; };
+if (typeof window !== 'undefined') {
+  try {
+    accessToken = localStorage.getItem('token');
+  } catch {
+    accessToken = null;
+  }
+}
+
+export const setAccessToken = (token: string | null) => {
+  accessToken = token;
+  if (typeof window !== 'undefined') {
+    try {
+      if (token) {
+        localStorage.setItem('token', token);
+      } else {
+        localStorage.removeItem('token');
+      }
+    } catch {
+      // Ignore storage errors in private/incognito mode
+    }
+  }
+};
 
 api.interceptors.request.use((config) => {
   if (typeof window !== 'undefined') {
@@ -17,7 +38,10 @@ api.interceptors.request.use((config) => {
       config.headers['x-tenant-slug'] = subdomain;
     }
   }
-  if (accessToken) config.headers.Authorization = `Bearer ${accessToken}`;
+  const token = accessToken || (typeof window !== 'undefined' ? localStorage.getItem('token') : null);
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
+  }
   return config;
 });
 
@@ -27,17 +51,34 @@ api.interceptors.response.use(
     const requestUrl = String(err.config?.url || '');
     const isAuthRequest = ['/auth/login', '/auth/register', '/auth/refresh', '/auth/check-slug', '/auth/workspace']
       .some((path) => requestUrl.includes(path));
-    const sentToken = Boolean(err.config?.headers?.Authorization);
-    if (err.response?.status === 401 && sentToken && !isAuthRequest && !err.config?._retried) {
-      err.config._retried = true;
-      try {
-        const refreshed = await api.post('/auth/refresh');
-        setAccessToken(refreshed.data.data.accessToken);
-        err.config.headers.Authorization = `Bearer ${refreshed.data.data.accessToken}`;
-        return api.request(err.config);
-      } catch {
-        setAccessToken(null);
-        if (typeof window !== 'undefined' && window.location.pathname !== '/login') window.location.assign('/login');
+
+    if (err.response?.status === 401 && !isAuthRequest) {
+      const sentToken = Boolean(err.config?.headers?.Authorization);
+      if (sentToken && !err.config?._retried) {
+        err.config._retried = true;
+        try {
+          const refreshed = await api.post('/auth/refresh');
+          const newToken = refreshed.data?.data?.accessToken || refreshed.data?.data?.token;
+          if (newToken) {
+            setAccessToken(newToken);
+            err.config.headers.Authorization = `Bearer ${newToken}`;
+            return api.request(err.config);
+          }
+        } catch {
+          // Token refresh failed
+        }
+      }
+
+      // If token wasn't provided or refresh failed: wipe storage and immediately navigate to /login
+      setAccessToken(null);
+      if (typeof window !== 'undefined') {
+        try {
+          localStorage.removeItem('token');
+          localStorage.removeItem('user');
+        } catch {}
+        if (!window.location.pathname.startsWith('/login')) {
+          window.location.assign('/login');
+        }
       }
     }
     return Promise.reject(err);

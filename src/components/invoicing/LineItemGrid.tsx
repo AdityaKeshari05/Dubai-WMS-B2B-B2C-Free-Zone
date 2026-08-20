@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useRef, useState } from 'react';
+import Link from 'next/link';
 import { Plus, Trash2 } from 'lucide-react';
 import api from '@/lib/api';
 import { Button } from '@/components/ui/button';
@@ -213,27 +214,40 @@ export function LineItemGrid({ value, onChange, currency = 'USD', readOnly = fal
                     }}
                     placeholder="Item code"
                   />
-                  {activeLookup === index && options.length > 0 && (
-                    <div className="absolute left-2 right-2 top-11 z-30 max-h-56 overflow-y-auto rounded-md border border-[#e5e2dc] bg-white shadow-lg">
-                      {options.map(option => (
-                        <button
-                          key={option.id}
-                          type="button"
-                          className="flex w-full items-center justify-between gap-3 px-3 py-2 text-left hover:bg-[#eef6fd]"
-                          onMouseDown={event => {
-                            event.preventDefault();
-                            selectProduct(index, option);
-                          }}
+                  {activeLookup === index && (queries[index]?.trim() ? (
+                    options.length > 0 ? (
+                      <div className="absolute left-2 right-2 top-11 z-30 max-h-56 overflow-y-auto rounded-md border border-[#e5e2dc] bg-white shadow-lg">
+                        {options.map(option => (
+                          <button
+                            key={option.id}
+                            type="button"
+                            className="flex w-full items-center justify-between gap-3 px-3 py-2 text-left hover:bg-[#eef6fd]"
+                            onMouseDown={event => {
+                              event.preventDefault();
+                              selectProduct(index, option);
+                            }}
+                          >
+                            <span>
+                              <span className="block font-mono text-xs text-[#1674c4]">{option.sku}</span>
+                              <span className="block text-sm text-[#1f2937]">{option.name}</span>
+                            </span>
+                            <span className="text-xs text-[#6b7280]">{formatCurrency(option.salePrice, currency)} · {option.taxRate}%</span>
+                          </button>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="absolute left-2 right-2 top-11 z-30 flex items-center justify-between gap-2 rounded-md border border-[#e5e2dc] bg-white p-2.5 shadow-lg text-xs">
+                        <span className="text-gray-500">No matching products found</span>
+                        <Link
+                          href="/inventory/products"
+                          className="font-semibold text-blue-600 hover:text-blue-800 underline shrink-0"
+                          onMouseDown={e => e.preventDefault()}
                         >
-                          <span>
-                            <span className="block font-mono text-xs text-[#1674c4]">{option.sku}</span>
-                            <span className="block text-sm text-[#1f2937]">{option.name}</span>
-                          </span>
-                          <span className="text-xs text-[#6b7280]">{formatCurrency(option.salePrice, currency)} · {option.taxRate}%</span>
-                        </button>
-                      ))}
-                    </div>
-                  )}
+                          Create Product &rarr;
+                        </Link>
+                      </div>
+                    )
+                  ) : null)}
                 </td>
                 <td className="border-b border-[#f0ede8] px-2 py-1.5">
                   <Input className="h-7 border-transparent bg-transparent shadow-none hover:border-[#d9d4cc] focus-visible:bg-white" ref={node => { cellRefs.current[`${index}-description`] = node; }} value={row.description} onKeyDown={event => handleKeyDown(event, index, 'description')} onChange={event => updateRow(index, { description: event.target.value })} />

@@ -9,6 +9,7 @@ import api from '@/lib/api';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { StatusBadge } from '@/components/shared/StatusBadge';
+import { showApiError } from '@/lib/apiError';
 import { ContactList, Info, OpportunityList, TimelineCard } from '@/components/crm/CrmDetailBlocks';
 
 export default function OrganizationDetailPage() {
@@ -17,7 +18,9 @@ export default function OrganizationDetailPage() {
   const [org, setOrg] = useState<any>(null);
 
   useEffect(() => {
-    api.get(`/crm/organizations/${params.id}`).then((res) => setOrg(res.data.data)).catch(() => toast.error('Failed to load organization'));
+    api.get(`/crm/organizations/${params.id}`)
+      .then((res) => setOrg(res.data?.data))
+      .catch((err) => showApiError(err, 'Failed to load organization details'));
   }, [params.id]);
 
   if (!org) return <div className="h-40 animate-pulse rounded bg-[#f7f8fa]" />;

@@ -14,7 +14,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import api from '@/lib/api';
 import { Customer, SalesInvoice } from '@/types';
 import { formatCurrency, formatDate } from '@/lib/utils';
-import toast from 'react-hot-toast';
+import { showApiError } from '@/lib/apiError';
 
 interface OutstandingSummary {
   customerId: string;
@@ -47,7 +47,7 @@ export default function CustomerDetailPage() {
   useEffect(() => {
     api.get(`/customers/${params.id}`)
       .then(res => setCustomer(res.data?.data))
-      .catch(() => toast.error('Failed to load customer'))
+      .catch(err => showApiError(err, 'Failed to load customer details'))
       .finally(() => setIsLoading(false));
   }, [params.id]);
 
@@ -61,7 +61,7 @@ export default function CustomerDetailPage() {
         setInvoices(invoicePayload?.items || invoicePayload || []);
         setSummary(outstandingRes.data?.data || outstandingRes.data);
       })
-      .catch(() => toast.error('Failed to load customer invoice data'))
+      .catch(err => showApiError(err, 'Failed to load customer invoice history and balances'))
       .finally(() => setInvoiceLoading(false));
   }, [params.id]);
 

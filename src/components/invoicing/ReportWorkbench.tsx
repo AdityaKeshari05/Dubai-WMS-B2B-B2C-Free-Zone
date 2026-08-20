@@ -10,6 +10,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { formatCurrency } from '@/lib/utils';
+import { showApiError } from '@/lib/apiError';
 
 type FilterConfig = {
   search?: boolean;
@@ -69,7 +70,7 @@ export function ReportWorkbench({
       setRows(Array.isArray(payload) ? payload : payload?.rows || []);
       setTotals(res.data?.totals || payload?.totals || {});
     } catch (err: any) {
-      toast.error(err.response?.data?.message || `Failed to load ${title}`);
+      showApiError(err, `Failed to load ${title}`);
     } finally {
       setIsLoading(false);
     }

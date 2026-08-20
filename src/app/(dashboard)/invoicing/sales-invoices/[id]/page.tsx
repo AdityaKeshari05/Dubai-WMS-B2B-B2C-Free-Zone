@@ -13,9 +13,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { StatusBadge } from '@/components/shared/StatusBadge';
 import { DataTable } from '@/components/shared/DataTable';
 import { LineItemGrid, LineItemRow, calculateLineSummary } from '@/components/invoicing/LineItemGrid';
+import { CurrencySelect } from '@/components/ui/currency-select';
 import api from '@/lib/api';
 import { InvoiceStatus, Payment, PaymentMethod, SalesInvoice } from '@/types';
 import { formatCurrency, formatDate } from '@/lib/utils';
+import { showApiError, showApiSuccess } from '@/lib/apiError';
 import toast from 'react-hot-toast';
 
 const paymentMethods: PaymentMethod[] = ['CASH', 'BANK_TRANSFER', 'UPI', 'CARD', 'CHEQUE'];
@@ -92,12 +94,12 @@ export default function SalesInvoiceDetailPage() {
         dueDate: next.dueDate ? next.dueDate.slice(0, 10) : '',
         notes: next.notes || '',
         terms: next.terms || '',
-        currency: next.currency || 'USD',
+        currency: next.currency || 'INR',
       });
       setRows(toRows(next));
       setPayment(prev => ({ ...prev, amount: String(Math.max(invoiceOutstanding(next), 0)) }));
-    } catch {
-      toast.error('Failed to load invoice');
+    } catch (err: any) {
+      showApiError(err, 'Failed to load invoice');
     } finally {
       setIsLoading(false);
     }
@@ -135,9 +137,9 @@ export default function SalesInvoiceDetailPage() {
       const next = normalizeInvoice(res.data);
       setInvoice(next);
       setRows(toRows(next));
-      toast.success('Draft saved');
+      showApiSuccess('Draft invoice saved');
     } catch (err: any) {
-      toast.error(err.response?.data?.message || 'Failed to save invoice');
+      showApiError(err, 'Failed to save invoice');
     } finally {
       setIsSaving(false);
     }
@@ -147,10 +149,10 @@ export default function SalesInvoiceDetailPage() {
     if (!invoice) return;
     try {
       await api.patch(`/invoices/${invoice.id}/status`, { status: 'SUBMITTED' });
-      toast.success('Invoice submitted');
+      showApiSuccess('Invoice submitted');
       fetchInvoice();
     } catch (err: any) {
-      toast.error(err.response?.data?.message || 'Failed to submit invoice');
+      showApiError(err, 'Failed to submit invoice');
     }
   };
 
@@ -158,11 +160,11 @@ export default function SalesInvoiceDetailPage() {
     if (!invoice) return;
     try {
       await api.patch(`/invoices/${invoice.id}/status`, { status: 'CANCELLED' });
-      toast.success('Invoice cancelled');
+      showApiSuccess('Invoice cancelled');
       setCancelOpen(false);
       fetchInvoice();
     } catch (err: any) {
-      toast.error(err.response?.data?.message || 'Failed to cancel invoice');
+      showApiError(err, 'Failed to cancel invoice');
     }
   };
 
@@ -171,9 +173,10 @@ export default function SalesInvoiceDetailPage() {
     try {
       const res = await api.post(`/invoices/${invoice.id}/amend`);
       const amended = normalizeInvoice(res.data);
+      showApiSuccess('Invoice amended into new draft');
       router.push(`/invoicing/sales-invoices/${amended.id}`);
     } catch (err: any) {
-      toast.error(err.response?.data?.message || 'Failed to amend invoice');
+      showApiError(err, 'Failed to amend invoice');
     }
   };
 
@@ -194,11 +197,11 @@ export default function SalesInvoiceDetailPage() {
         reference: payment.reference,
         notes: payment.notes,
       });
-      toast.success('Payment recorded');
+      showApiSuccess('Payment recorded');
       setPaymentOpen(false);
       fetchInvoice();
     } catch (err: any) {
-      toast.error(err.response?.data?.message || 'Failed to record payment');
+      showApiError(err, 'Failed to record payment');
     }
   };
 
@@ -273,7 +276,11 @@ export default function SalesInvoiceDetailPage() {
                   <Input value={invoice.customer?.name || invoice.customerId} disabled />
                 </Field>
                 <Field label="Currency" value={form.currency} readOnly={readOnly}>
-                  <Input value={form.currency} onChange={event => setForm(prev => ({ ...prev, currency: event.target.value }))} />
+                  <CurrencySelect
+                    value={form.currency}
+                    disabled={readOnly}
+                    onChange={(currency) => setForm(prev => ({ ...prev, currency }))}
+                  />
                 </Field>
                 <Field label="Date" value={formatDate(invoice.date)} readOnly={readOnly}>
                   <Input type="date" value={form.date} onChange={event => setForm(prev => ({ ...prev, date: event.target.value }))} />

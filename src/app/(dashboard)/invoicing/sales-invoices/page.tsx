@@ -12,6 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import api from '@/lib/api';
 import { InvoiceStatus, SalesInvoice } from '@/types';
 import { formatCurrency, formatDate } from '@/lib/utils';
+import { showApiError } from '@/lib/apiError';
 import toast from 'react-hot-toast';
 
 const statuses: Array<{ label: string; value: '' | InvoiceStatus }> = [
@@ -116,8 +117,8 @@ export default function SalesInvoicesPage() {
         setInvoices(paged.items);
         setTotal(paged.total);
         setTotalPages(paged.totalPages);
-      } catch {
-        toast.error('Failed to load invoices');
+      } catch (err: any) {
+        showApiError(err, 'Failed to load invoices');
       } finally {
         setIsLoading(false);
       }

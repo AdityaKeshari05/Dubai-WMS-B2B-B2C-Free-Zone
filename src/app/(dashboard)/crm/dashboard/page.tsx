@@ -10,6 +10,7 @@ import { PageHeader } from '@/components/shared/PageHeader';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { StatusBadge } from '@/components/shared/StatusBadge';
 import { formatCurrency, formatDateTime } from '@/lib/utils';
+import { showApiError } from '@/lib/apiError';
 import { Skeleton } from '@/components/ui/skeleton';
 
 const stages = ['PROSPECTING', 'QUALIFICATION', 'PROPOSAL', 'NEGOTIATION', 'CLOSED_WON', 'CLOSED_LOST'];
@@ -22,8 +23,8 @@ export default function CrmDashboardPage() {
 
   useEffect(() => {
     api.get('/crm/dashboard')
-      .then((res) => setData(res.data.data))
-      .catch(() => toast.error('Failed to load CRM dashboard'))
+      .then((res) => setData(res.data?.data))
+      .catch((err) => showApiError(err, 'Failed to load CRM dashboard'))
       .finally(() => setIsLoading(false));
   }, []);
 

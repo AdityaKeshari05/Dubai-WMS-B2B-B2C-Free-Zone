@@ -9,6 +9,7 @@ import api from '@/lib/api';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Contact } from '@/types';
+import { showApiError } from '@/lib/apiError';
 import { Info, OpportunityList, TimelineCard } from '@/components/crm/CrmDetailBlocks';
 
 export default function ContactDetailPage() {
@@ -17,7 +18,9 @@ export default function ContactDetailPage() {
   const [contact, setContact] = useState<any>(null);
 
   useEffect(() => {
-    api.get(`/crm/contacts/${params.id}`).then((res) => setContact(res.data.data)).catch(() => toast.error('Failed to load contact'));
+    api.get(`/crm/contacts/${params.id}`)
+      .then((res) => setContact(res.data?.data))
+      .catch((err) => showApiError(err, 'Failed to load contact details'));
   }, [params.id]);
 
   if (!contact) return <div className="h-40 animate-pulse rounded bg-[#f7f8fa]" />;

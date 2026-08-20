@@ -1,23 +1,22 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
-import toast from 'react-hot-toast';
+import { useEffect, useState } from 'react';
 import {
-  BadgeCheck, BriefcaseBusiness, CalendarClock, ClipboardList, Clock,
-  FileText, Landmark, Plus, RefreshCcw, UserRoundCheck,
+  BadgeCheck,
+  BriefcaseBusiness,
+  ClipboardList,
+  Clock,
+  Landmark,
+  UserRoundCheck,
 } from 'lucide-react';
 import api from '@/lib/api';
-import { formatCurrency, formatDate, formatDateTime } from '@/lib/utils';
+import { formatDate, formatDateTime } from '@/lib/utils';
 import { PageHeader } from '@/components/shared/PageHeader';
 import { DataTable } from '@/components/shared/DataTable';
 import { StatusBadge } from '@/components/shared/StatusBadge';
-import { EmptyState } from '@/components/shared/EmptyState';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Textarea } from '@/components/ui/textarea';
+import { showApiError, showApiSuccess } from '@/lib/apiError';
 
 type EmployeeOption = {
   id: string;
@@ -29,24 +28,8 @@ type EmployeeOption = {
   status?: string;
 };
 
-type Option = { id: string; name?: string; title?: string; code?: string };
-
 function fullName(employee?: EmployeeOption) {
   return `${employee?.user?.firstName || ''} ${employee?.user?.lastName || ''}`.trim() || 'Employee';
-}
-
-function num(value: any) {
-  return Number(value || 0);
-}
-
-function useEmployees() {
-  const [employees, setEmployees] = useState<EmployeeOption[]>([]);
-  useEffect(() => {
-    api.get('/hr/employees', { params: { limit: 300 } })
-      .then((res) => setEmployees(res.data.data.items || []))
-      .catch(() => setEmployees([]));
-  }, []);
-  return employees;
 }
 
 function DeskStat({ label, value, icon: Icon }: { label: string; value: string | number; icon: any }) {
@@ -79,34 +62,45 @@ export function HRDeskPage() {
         api.get('/hr/me'),
         api.get('/hr/me/attendance'),
       ]);
-      setStats(dash.data.data || {});
-      setProfile(me.data.data);
-      setAttendance(att.data.data || []);
+      setStats(dash.data?.data || {});
+      setProfile(me.data?.data);
+      setAttendance(att.data?.data || []);
     } catch (err: any) {
-      toast.error(err.response?.data?.message || 'Failed to load HR desk');
+      showApiError(err, 'Failed to load HR desk');
     } finally {
       setLoading(false);
     }
   };
 
-  useEffect(() => { fetchAll(); }, []);
+  useEffect(() => {
+    fetchAll();
+  }, []);
 
   const check = async (logType: 'IN' | 'OUT') => {
     try {
       await api.post('/hr/me/checkins', { logType });
-      toast.success(logType === 'IN' ? 'Checked in' : 'Checked out');
+      showApiSuccess(logType === 'IN' ? 'Checked in successfully' : 'Checked out successfully');
       fetchAll();
     } catch (err: any) {
-      toast.error(err.response?.data?.message || 'Check-in failed');
+      showApiError(err, 'Check-in failed');
     }
   };
 
   return (
     <div>
-      <PageHeader title="HR Desk" description="Employee self-service, attendance, leave, and payroll operations">
+      <PageHeader
+        title="HR Desk"
+        description="Employee self-service, attendance, leave, and payroll operations"
+      >
         <div className="flex gap-2">
-          <Button variant="outline" onClick={() => check('IN')}><Clock className="mr-2 h-4 w-4" />Check In</Button>
-          <Button onClick={() => check('OUT')}><BadgeCheck className="mr-2 h-4 w-4" />Check Out</Button>
+          <Button variant="outline" onClick={() => check('IN')}>
+            <Clock className="mr-2 h-4 w-4" />
+            Check In
+          </Button>
+          <Button onClick={() => check('OUT')}>
+            <BadgeCheck className="mr-2 h-4 w-4" />
+            Check Out
+          </Button>
         </div>
       </PageHeader>
 
@@ -119,23 +113,39 @@ export function HRDeskPage() {
 
       <div className="mt-5 grid gap-4 lg:grid-cols-[360px_1fr]">
         <Card>
-          <CardHeader><CardTitle>My Employment</CardTitle></CardHeader>
+          <CardHeader>
+            <CardTitle>My Employment</CardTitle>
+          </CardHeader>
           <CardContent className="space-y-3 text-sm">
             <div>
               <p className="text-xs text-[#6b7280]">Name</p>
-              <p className="font-medium">{fullName(profile)}</p>
+              <p className="font-medium text-gray-900">{fullName(profile)}</p>
             </div>
             <div className="grid grid-cols-2 gap-3">
-              <div><p className="text-xs text-[#6b7280]">Employee ID</p><p>{profile?.employeeId || '-'}</p></div>
-              <div><p className="text-xs text-[#6b7280]">Status</p><StatusBadge status={profile?.status || 'ACTIVE'} /></div>
-              <div><p className="text-xs text-[#6b7280]">Department</p><p>{profile?.department?.name || '-'}</p></div>
-              <div><p className="text-xs text-[#6b7280]">Position</p><p>{profile?.position?.title || '-'}</p></div>
+              <div>
+                <p className="text-xs text-[#6b7280]">Employee ID</p>
+                <p className="font-medium text-gray-900">{profile?.employeeId || '-'}</p>
+              </div>
+              <div>
+                <p className="text-xs text-[#6b7280]">Status</p>
+                <StatusBadge status={profile?.status || 'ACTIVE'} />
+              </div>
+              <div>
+                <p className="text-xs text-[#6b7280]">Department</p>
+                <p className="font-medium text-gray-900">{profile?.department?.name || '-'}</p>
+              </div>
+              <div>
+                <p className="text-xs text-[#6b7280]">Position</p>
+                <p className="font-medium text-gray-900">{profile?.position?.title || '-'}</p>
+              </div>
             </div>
           </CardContent>
         </Card>
 
         <Card>
-          <CardHeader><CardTitle>Recent Attendance</CardTitle></CardHeader>
+          <CardHeader>
+            <CardTitle>Recent Attendance</CardTitle>
+          </CardHeader>
           <CardContent>
             <DataTable
               isLoading={loading}
@@ -143,9 +153,17 @@ export function HRDeskPage() {
               columns={[
                 { key: 'date', header: 'Date', render: (r: any) => formatDate(r.date) },
                 { key: 'status', header: 'Status', render: (r: any) => <StatusBadge status={r.status} /> },
-                { key: 'checkIn', header: 'In', render: (r: any) => r.checkIn ? formatDateTime(r.checkIn) : '-' },
-                { key: 'checkOut', header: 'Out', render: (r: any) => r.checkOut ? formatDateTime(r.checkOut) : '-' },
-                { key: 'hoursWorked', header: 'Hours', render: (r: any) => r.hoursWorked ? Number(r.hoursWorked).toFixed(2) : '-' },
+                { key: 'checkIn', header: 'In', render: (r: any) => (r.checkIn ? formatDateTime(r.checkIn) : '-') },
+                {
+                  key: 'checkOut',
+                  header: 'Out',
+                  render: (r: any) => (r.checkOut ? formatDateTime(r.checkOut) : '-'),
+                },
+                {
+                  key: 'hoursWorked',
+                  header: 'Hours',
+                  render: (r: any) => (r.hoursWorked ? Number(r.hoursWorked).toFixed(2) : '-'),
+                },
               ]}
             />
           </CardContent>

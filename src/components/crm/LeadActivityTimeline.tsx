@@ -14,6 +14,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Textarea } from '@/components/ui/textarea';
 import { StatusBadge } from '@/components/shared/StatusBadge';
 
+import { showApiError, showApiSuccess } from '@/lib/apiError';
+
 type ActivitySummary = {
   total: number;
   open: number;
@@ -64,10 +66,10 @@ export function LeadActivityTimeline({ leadId, onChanged }: { leadId: string; on
     setIsLoading(true);
     try {
       const res = await api.get<{ data: ActivityResponse }>(`/crm/leads/${leadId}/activities`);
-      setActivities(res.data.data.activities);
-      setSummary(res.data.data.summary);
-    } catch {
-      toast.error('Failed to load lead activities');
+      setActivities(res.data?.data?.activities || []);
+      setSummary(res.data?.data?.summary || { total: 0, open: 0, completed: 0, overdue: 0 });
+    } catch (err: any) {
+      showApiError(err, 'Failed to load lead activities');
     } finally {
       setIsLoading(false);
     }
@@ -82,20 +84,22 @@ export function LeadActivityTimeline({ leadId, onChanged }: { leadId: string; on
   }, [activities, filter]);
 
   const createActivity = async () => {
-    if (!form.subject.trim()) return toast.error('Subject is required');
+    const trimmedSubject = form.subject.trim();
+    if (!trimmedSubject) return toast.error('Subject is required');
     setIsSaving(true);
     try {
       await api.post(`/crm/leads/${leadId}/activities`, {
         ...form,
+        subject: trimmedSubject,
         dueDate: form.dueDate || undefined,
         status: form.type === 'NOTE' ? 'COMPLETED' : form.status,
       });
       setForm(emptyForm);
-      toast.success(form.type === 'NOTE' ? 'Note added' : 'Activity scheduled');
+      showApiSuccess(form.type === 'NOTE' ? 'Note added' : 'Activity scheduled');
       await load();
       onChanged?.();
     } catch (err: any) {
-      toast.error(err.response?.data?.message || 'Could not save activity');
+      showApiError(err, 'Could not save activity');
     } finally {
       setIsSaving(false);
     }
@@ -110,11 +114,11 @@ export function LeadActivityTimeline({ leadId, onChanged }: { leadId: string; on
         followUpSubject: followUpSubject || undefined,
         followUpDueDate: followUpDueDate ? new Date(followUpDueDate).toISOString() : undefined,
       });
-      toast.success('Activity completed');
+      showApiSuccess('Activity completed');
       await load();
       onChanged?.();
     } catch (err: any) {
-      toast.error(err.response?.data?.message || 'Could not complete activity');
+      showApiError(err, 'Could not complete activity');
     }
   };
 
@@ -123,11 +127,11 @@ export function LeadActivityTimeline({ leadId, onChanged }: { leadId: string; on
     if (reason === null) return;
     try {
       await api.put(`/crm/activities/${activity.id}/cancel`, { reason });
-      toast.success('Activity cancelled');
+      showApiSuccess('Activity cancelled');
       await load();
       onChanged?.();
     } catch (err: any) {
-      toast.error(err.response?.data?.message || 'Could not cancel activity');
+      showApiError(err, 'Could not cancel activity');
     }
   };
 

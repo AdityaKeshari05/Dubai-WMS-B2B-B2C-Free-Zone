@@ -1,7 +1,25 @@
 'use client';
 
 import { FormEvent, useEffect, useMemo, useState } from 'react';
-import { BarChart3, ClipboardCheck, ClipboardList, FileCheck2, FileText, HandCoins, Landmark, PackageCheck, Plus, Receipt, RefreshCw, Scale, Settings, Truck } from 'lucide-react';
+import Link from 'next/link';
+import {
+  AlertCircle,
+  ArrowUpRight,
+  BarChart3,
+  ClipboardCheck,
+  ClipboardList,
+  FileCheck2,
+  FileText,
+  HandCoins,
+  Landmark,
+  PackageCheck,
+  Plus,
+  Receipt,
+  RefreshCw,
+  Scale,
+  Settings,
+  Truck,
+} from 'lucide-react';
 import toast from 'react-hot-toast';
 import api from '@/lib/api';
 import { Button } from '@/components/ui/button';
@@ -10,28 +28,128 @@ import { Label } from '@/components/ui/label';
 import { DataTable } from '@/components/shared/DataTable';
 import { PageHeader } from '@/components/shared/PageHeader';
 import { StatusBadge } from '@/components/shared/StatusBadge';
+import { SelectEmptyState } from '@/components/shared/SelectEmptyState';
+import { CurrencySelect } from '@/components/ui/currency-select';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { formatCurrency, formatDate } from '@/lib/utils';
+import { showApiError, showApiSuccess } from '@/lib/apiError';
 
-export type ProcurementKind = 'dashboard' | 'material-requests' | 'rfqs' | 'supplier-quotations' | 'blanket-purchase-orders' | 'purchase-orders' | 'purchase-receipts' | 'quality-inspections' | 'landed-cost-vouchers' | 'purchase-invoices' | 'supplier-payments' | 'payment-terms' | 'supplier-items' | 'communications' | 'settings' | 'tracker';
+export type ProcurementKind =
+  | 'dashboard'
+  | 'material-requests'
+  | 'rfqs'
+  | 'supplier-quotations'
+  | 'blanket-purchase-orders'
+  | 'purchase-orders'
+  | 'purchase-receipts'
+  | 'quality-inspections'
+  | 'landed-cost-vouchers'
+  | 'purchase-invoices'
+  | 'supplier-payments'
+  | 'payment-terms'
+  | 'supplier-items'
+  | 'communications'
+  | 'settings'
+  | 'tracker';
 
 const config: Record<ProcurementKind, { title: string; description: string; endpoint: string; icon: any }> = {
-  dashboard: { title: 'Procurement Dashboard', description: 'Request-to-pay cockpit across buying documents', endpoint: '/procurement/dashboard', icon: BarChart3 },
-  'material-requests': { title: 'Material Requests', description: 'Manual and reorder-driven purchase demand', endpoint: '/procurement/material-requests', icon: ClipboardList },
-  rfqs: { title: 'Request for Quotations', description: 'Invite suppliers to quote requested items', endpoint: '/procurement/rfqs', icon: FileText },
-  'supplier-quotations': { title: 'Supplier Quotations', description: 'Supplier pricing, terms, validity, and comparison', endpoint: '/procurement/supplier-quotations', icon: Scale },
-  'blanket-purchase-orders': { title: 'Blanket Purchase Orders', description: 'Long-term supplier agreements by quantity and date range', endpoint: '/procurement/blanket-purchase-orders', icon: Landmark },
-  'purchase-orders': { title: 'Purchase Orders', description: 'Approved supplier commitments with receipt and billing tracking', endpoint: '/procurement/purchase-orders', icon: ClipboardCheck },
-  'purchase-receipts': { title: 'Purchase Receipts', description: 'Receive goods into warehouse and update stock ledger', endpoint: '/procurement/purchase-receipts', icon: PackageCheck },
-  'quality-inspections': { title: 'Quality Inspections', description: 'Accepted and rejected quantities before stock acceptance', endpoint: '/procurement/quality-inspections', icon: FileCheck2 },
-  'landed-cost-vouchers': { title: 'Landed Cost Vouchers', description: 'Distribute freight, customs, insurance, and handling into item valuation', endpoint: '/procurement/landed-cost-vouchers', icon: Truck },
-  'purchase-invoices': { title: 'Purchase Invoices', description: 'Book supplier bills into Accounts Payable', endpoint: '/procurement/purchase-invoices', icon: Receipt },
-  'supplier-payments': { title: 'Supplier Payments', description: 'Advance and invoice payments against suppliers', endpoint: '/procurement/supplier-payments', icon: HandCoins },
-  'payment-terms': { title: 'Payment Terms', description: 'Reusable supplier payment schedules such as advance and delivery milestones', endpoint: '/procurement/payment-terms', icon: Landmark },
-  'supplier-items': { title: 'Supplier Item Codes', description: 'Map supplier item codes and names to your item master', endpoint: '/procurement/supplier-items', icon: PackageCheck },
-  communications: { title: 'Supplier Communications', description: 'RFQ correspondence, calls, notes, and supplier follow-ups', endpoint: '/procurement/communications', icon: FileText },
-  settings: { title: 'Buying Settings', description: 'Global buying controls, tolerances, defaults, and payment terms', endpoint: '/procurement/settings', icon: Settings },
-  tracker: { title: 'Procurement Tracker', description: 'Full document-chain visibility from MR to payment', endpoint: '/procurement/tracker', icon: RefreshCw },
+  dashboard: {
+    title: 'Procurement Dashboard',
+    description: 'Request-to-pay cockpit across buying documents',
+    endpoint: '/procurement/dashboard',
+    icon: BarChart3,
+  },
+  'material-requests': {
+    title: 'Material Requests',
+    description: 'Manual and reorder-driven purchase demand',
+    endpoint: '/procurement/material-requests',
+    icon: ClipboardList,
+  },
+  rfqs: {
+    title: 'Request for Quotations',
+    description: 'Invite suppliers to quote requested items',
+    endpoint: '/procurement/rfqs',
+    icon: FileText,
+  },
+  'supplier-quotations': {
+    title: 'Supplier Quotations',
+    description: 'Supplier pricing, terms, validity, and comparison',
+    endpoint: '/procurement/supplier-quotations',
+    icon: Scale,
+  },
+  'blanket-purchase-orders': {
+    title: 'Blanket Purchase Orders',
+    description: 'Long-term supplier agreements by quantity and date range',
+    endpoint: '/procurement/blanket-purchase-orders',
+    icon: Landmark,
+  },
+  'purchase-orders': {
+    title: 'Purchase Orders',
+    description: 'Approved supplier commitments with receipt and billing tracking',
+    endpoint: '/procurement/purchase-orders',
+    icon: ClipboardCheck,
+  },
+  'purchase-receipts': {
+    title: 'Purchase Receipts',
+    description: 'Receive goods into warehouse and update stock ledger',
+    endpoint: '/procurement/purchase-receipts',
+    icon: PackageCheck,
+  },
+  'quality-inspections': {
+    title: 'Quality Inspections',
+    description: 'Accepted and rejected quantities before stock acceptance',
+    endpoint: '/procurement/quality-inspections',
+    icon: FileCheck2,
+  },
+  'landed-cost-vouchers': {
+    title: 'Landed Cost Vouchers',
+    description: 'Distribute freight, customs, insurance, and handling into item valuation',
+    endpoint: '/procurement/landed-cost-vouchers',
+    icon: Truck,
+  },
+  'purchase-invoices': {
+    title: 'Purchase Invoices',
+    description: 'Book supplier bills into Accounts Payable',
+    endpoint: '/procurement/purchase-invoices',
+    icon: Receipt,
+  },
+  'supplier-payments': {
+    title: 'Supplier Payments',
+    description: 'Advance and invoice payments against suppliers',
+    endpoint: '/procurement/supplier-payments',
+    icon: HandCoins,
+  },
+  'payment-terms': {
+    title: 'Payment Terms',
+    description: 'Reusable supplier payment schedules such as advance and delivery milestones',
+    endpoint: '/procurement/payment-terms',
+    icon: Landmark,
+  },
+  'supplier-items': {
+    title: 'Supplier Item Codes',
+    description: 'Map supplier item codes and names to your item master',
+    endpoint: '/procurement/supplier-items',
+    icon: PackageCheck,
+  },
+  communications: {
+    title: 'Supplier Communications',
+    description: 'RFQ correspondence, calls, notes, and supplier follow-ups',
+    endpoint: '/procurement/communications',
+    icon: FileText,
+  },
+  settings: {
+    title: 'Buying Settings',
+    description: 'Global buying controls, tolerances, defaults, and payment terms',
+    endpoint: '/procurement/settings',
+    icon: Settings,
+  },
+  tracker: {
+    title: 'Procurement Tracker',
+    description: 'Full document-chain visibility from MR to payment',
+    endpoint: '/procurement/tracker',
+    icon: RefreshCw,
+  },
 };
 
 const today = () => new Date().toISOString().slice(0, 10);
@@ -63,40 +181,75 @@ export function ProcurementPage({ kind }: { kind: ProcurementKind }) {
         api.get('/procurement/purchase-receipts', { params: { limit: 200 } }),
         api.get('/procurement/purchase-invoices', { params: { limit: 200 } }),
       ]);
-      if (common[0].status === 'fulfilled') setSuppliers(common[0].value.data.data?.items || []);
-      if (common[1].status === 'fulfilled') setProducts(common[1].value.data.data?.items || []);
-      if (common[2].status === 'fulfilled') setOrders(common[2].value.data.data?.items || []);
-      if (common[3].status === 'fulfilled') setReceipts(common[3].value.data.data?.items || []);
-      if (common[4].status === 'fulfilled') setInvoices(common[4].value.data.data?.items || []);
-      const res = await api.get(meta.endpoint, { params: kind === 'settings' || kind === 'dashboard' || kind === 'tracker' ? undefined : { limit: 100 } });
-      if (kind === 'dashboard') setDashboard(res.data.data);
-      else if (kind === 'settings') setSettings(res.data.data);
-      else setRows(Array.isArray(res.data.data) ? res.data.data : res.data.data.items || []);
+      if (common[0].status === 'fulfilled') setSuppliers(common[0].value.data?.data?.items || []);
+      if (common[1].status === 'fulfilled') setProducts(common[1].value.data?.data?.items || []);
+      if (common[2].status === 'fulfilled') setOrders(common[2].value.data?.data?.items || []);
+      if (common[3].status === 'fulfilled') setReceipts(common[3].value.data?.data?.items || []);
+      if (common[4].status === 'fulfilled') setInvoices(common[4].value.data?.data?.items || []);
+
+      const res = await api.get(meta.endpoint, {
+        params: kind === 'settings' || kind === 'dashboard' || kind === 'tracker' ? undefined : { limit: 100 },
+      });
+      if (kind === 'dashboard') setDashboard(res.data?.data);
+      else if (kind === 'settings') setSettings(res.data?.data);
+      else setRows(Array.isArray(res.data?.data) ? res.data.data : res.data?.data?.items || []);
     } catch (err: any) {
-      toast.error(err.response?.data?.message || `Failed to load ${meta.title}`);
+      showApiError(err, `Failed to load ${meta.title}`);
     } finally {
       setLoading(false);
     }
   }
 
-  useEffect(() => { load(); }, [kind]);
+  useEffect(() => {
+    load();
+  }, [kind]);
 
-  const total = useMemo(() => lines.reduce((sum, line) => sum + Number(line.quantity || 0) * Number(line.unitPrice || line.rate || 0), 0), [lines]);
+  const total = useMemo(
+    () =>
+      lines.reduce(
+        (sum, line) => sum + Number(line.quantity || 0) * Number(line.unitPrice || line.rate || 0),
+        0
+      ),
+    [lines]
+  );
 
   async function create(e: FormEvent) {
     e.preventDefault();
     if (submitting) return;
+
+    if (usesSupplier(kind) && !form.supplierId) {
+      toast.error('Please select a supplier');
+      return;
+    }
+
+    if (needsLines(kind)) {
+      const validLines = lines.filter((l) => l.productId && Number(l.quantity) > 0);
+      if (!validLines.length) {
+        toast.error('Please add at least one line item with a selected product and quantity > 0');
+        return;
+      }
+    }
+
+    if (kind === 'supplier-payments') {
+      if (!form.amount || Number(form.amount) <= 0) {
+        toast.error('Please enter a payment amount greater than 0');
+        return;
+      }
+    }
+
     setSubmitting(true);
     try {
       await api.post(meta.endpoint, payloadFor(kind, form, lines));
-      toast.success(`${meta.title.replace(/s$/, '')} created`);
+      showApiSuccess(`${meta.title.replace(/s$/, '')} created successfully`);
       setOpen(false);
       setForm(defaultForm(kind));
       setLines([blankLine]);
       load();
     } catch (err: any) {
-      toast.error(err.response?.data?.message || 'Create failed');
-    } finally { setSubmitting(false); }
+      showApiError(err, 'Creation failed');
+    } finally {
+      setSubmitting(false);
+    }
   }
 
   async function status(id: string, value: string) {
@@ -104,10 +257,10 @@ export function ProcurementPage({ kind }: { kind: ProcurementKind }) {
     if (!path) return;
     try {
       await api.patch(path, { status: value });
-      toast.success('Status updated');
+      showApiSuccess('Status updated successfully');
       load();
     } catch (err: any) {
-      toast.error(err.response?.data?.message || 'Status update failed');
+      showApiError(err, 'Status update failed');
     }
   }
 
@@ -115,21 +268,91 @@ export function ProcurementPage({ kind }: { kind: ProcurementKind }) {
   if (kind === 'settings') return <BuyingSettings data={settings} reload={load} />;
   if (kind === 'tracker') return <Tracker rows={rows} loading={loading} />;
 
+  const missingSupplier = usesSupplier(kind) && suppliers.length === 0;
+  const missingProduct = needsLines(kind) && products.length === 0;
+
   return (
     <div className="space-y-4">
-      <PageHeader title={meta.title} description={meta.description} action={{ label: `New ${singular(meta.title)}`, onClick: () => setOpen(true), icon: Plus }} />
-      <DataTable data={rows} isLoading={loading} columns={columnsFor(kind, status)} emptyMessage={`No ${meta.title.toLowerCase()} yet`} />
+      <PageHeader
+        title={meta.title}
+        description={meta.description}
+        action={{ label: `New ${singular(meta.title)}`, onClick: () => setOpen(true), icon: Plus }}
+      />
+      <DataTable
+        data={rows}
+        isLoading={loading}
+        columns={columnsFor(kind, status)}
+        emptyMessage={`No ${meta.title.toLowerCase()} yet`}
+      />
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="max-w-5xl">
-          <DialogHeader><DialogTitle>New {singular(meta.title)}</DialogTitle></DialogHeader>
+        <DialogContent className="max-w-5xl max-h-[85vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>New {singular(meta.title)}</DialogTitle>
+          </DialogHeader>
+
+          {missingSupplier && !loading && (
+            <div className="flex items-center justify-between rounded-md border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800">
+              <div className="flex items-center gap-2">
+                <AlertCircle className="h-4 w-4 shrink-0 text-amber-600" />
+                <span>No suppliers found. Create a supplier first to record procurement documents.</span>
+              </div>
+              <Link
+                href="/suppliers"
+                className="inline-flex items-center gap-0.5 font-semibold text-amber-900 underline hover:text-amber-700"
+              >
+                Create Supplier <ArrowUpRight className="h-3 w-3" />
+              </Link>
+            </div>
+          )}
+
+          {missingProduct && !loading && (
+            <div className="flex items-center justify-between rounded-md border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800">
+              <div className="flex items-center gap-2">
+                <AlertCircle className="h-4 w-4 shrink-0 text-amber-600" />
+                <span>No products found. Create items in your catalog before creating procurement orders.</span>
+              </div>
+              <Link
+                href="/inventory/products"
+                className="inline-flex items-center gap-0.5 font-semibold text-amber-900 underline hover:text-amber-700"
+              >
+                Create Product <ArrowUpRight className="h-3 w-3" />
+              </Link>
+            </div>
+          )}
+
           <form onSubmit={create} className="space-y-4">
-            <DocumentFields kind={kind} form={form} setForm={setForm} suppliers={suppliers} products={products} orders={orders} receipts={receipts} invoices={invoices} />
-            {needsLines(kind) && <LineEditor kind={kind} lines={lines} setLines={setLines} products={products} total={total} />}
+            <DocumentFields
+              kind={kind}
+              form={form}
+              setForm={setForm}
+              suppliers={suppliers}
+              products={products}
+              orders={orders}
+              receipts={receipts}
+              invoices={invoices}
+            />
+            {needsLines(kind) && (
+              <LineEditor
+                kind={kind}
+                lines={lines}
+                setLines={setLines}
+                products={products}
+                total={total}
+                currency={form.currency || 'INR'}
+              />
+            )}
             {kind === 'payment-terms' && <PaymentTermEditor lines={lines} setLines={setLines} />}
             {kind === 'landed-cost-vouchers' && <ChargeEditor lines={lines} setLines={setLines} />}
             <div className="flex justify-end gap-2 border-t border-[#e5e2dc] pt-3">
-              <Button type="button" variant="outline" onClick={() => setOpen(false)}>Cancel</Button>
-              <Button type="submit" disabled={submitting}>{submitting ? 'Creating...' : 'Create'}</Button>
+              <Button type="button" variant="outline" onClick={() => setOpen(false)}>
+                Cancel
+              </Button>
+              <Button
+                type="submit"
+                disabled={submitting || (missingSupplier && kind !== 'material-requests' && kind !== 'rfqs')}
+              >
+                {submitting ? 'Creating...' : 'Create'}
+              </Button>
             </div>
           </form>
         </DialogContent>
@@ -154,15 +377,21 @@ function ProcurementDashboard({ meta, data, loading }: any) {
       <PageHeader title={meta.title} description={meta.description} />
       <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
         {cards.map(([label, value, href]) => (
-          <a key={String(label)} href={String(href)} className="rounded-md border border-[#e5e2dc] bg-white p-4 shadow-sm hover:bg-[#f8faf9]">
+          <Link
+            key={String(label)}
+            href={String(href)}
+            className="rounded-md border border-[#e5e2dc] bg-white p-4 shadow-sm hover:bg-[#f8faf9] transition-colors"
+          >
             <p className="text-xs font-medium uppercase text-[#7c8591]">{label}</p>
             <p className="mt-2 text-2xl font-semibold text-[#1f2937]">{loading ? '...' : value || 0}</p>
-          </a>
+          </Link>
         ))}
       </div>
       <div className="rounded-md border border-[#e5e2dc] bg-white p-4">
         <p className="text-sm font-semibold text-[#1f2937]">Outstanding Payable</p>
-        <p className="mt-2 text-3xl font-semibold text-[#c3423f]">{formatCurrency(Number(data?.outstandingPayable || 0))}</p>
+        <p className="mt-2 text-3xl font-semibold text-[#c3423f]">
+          {formatCurrency(Number(data?.outstandingPayable || 0))}
+        </p>
       </div>
     </div>
   );
@@ -170,24 +399,89 @@ function ProcurementDashboard({ meta, data, loading }: any) {
 
 function BuyingSettings({ data, reload }: any) {
   const [form, setForm] = useState<any>({});
+  const [isSaving, setIsSaving] = useState(false);
+
   useEffect(() => setForm(data || {}), [data]);
+
   async function save() {
-    await api.patch('/procurement/settings', form);
-    toast.success('Buying settings saved');
-    reload();
+    setIsSaving(true);
+    try {
+      await api.patch('/procurement/settings', form);
+      showApiSuccess('Buying settings saved successfully');
+      reload();
+    } catch (err: any) {
+      showApiError(err, 'Failed to save buying settings');
+    } finally {
+      setIsSaving(false);
+    }
   }
+
   return (
     <div className="space-y-4">
       <PageHeader title="Buying Settings" description="Control buying tolerances and document requirements" />
       <div className="grid gap-4 rounded-md border border-[#e5e2dc] bg-white p-4 md:grid-cols-3">
-        <Field label="Default Currency"><Input value={form.defaultCurrency || 'USD'} onChange={(e) => setForm({ ...form, defaultCurrency: e.target.value })} /></Field>
-        <Field label="Over Receipt Allowance %"><Input type="number" value={form.overReceiptAllowancePercent || 0} onChange={(e) => setForm({ ...form, overReceiptAllowancePercent: Number(e.target.value) })} /></Field>
-        <Field label="Over Billing Allowance %"><Input type="number" value={form.overBillingAllowancePercent || 0} onChange={(e) => setForm({ ...form, overBillingAllowancePercent: Number(e.target.value) })} /></Field>
-        <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={!!form.requirePurchaseOrderForInvoice} onChange={(e) => setForm({ ...form, requirePurchaseOrderForInvoice: e.target.checked })} /> PO required before invoice</label>
-        <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={!!form.requirePurchaseReceiptForInvoice} onChange={(e) => setForm({ ...form, requirePurchaseReceiptForInvoice: e.target.checked })} /> Receipt required before invoice</label>
-        <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={!!form.autoCreateMaterialRequest} onChange={(e) => setForm({ ...form, autoCreateMaterialRequest: e.target.checked })} /> Auto material request from reorder</label>
-        <div className="md:col-span-3"><Field label="Default RFQ Terms"><Input value={form.defaultRfqTerms || ''} onChange={(e) => setForm({ ...form, defaultRfqTerms: e.target.value })} /></Field></div>
-        <div className="md:col-span-3 flex justify-end"><Button onClick={save}>Save Settings</Button></div>
+        <div className="space-y-1.5">
+          <Label>Default Currency</Label>
+          <CurrencySelect
+            value={form.defaultCurrency || 'INR'}
+            onChange={(currency) => setForm({ ...form, defaultCurrency: currency })}
+          />
+        </div>
+        <Field label="Over Receipt Allowance %">
+          <Input
+            type="number"
+            value={form.overReceiptAllowancePercent || 0}
+            onChange={(e) => setForm({ ...form, overReceiptAllowancePercent: Number(e.target.value) })}
+          />
+        </Field>
+        <Field label="Over Billing Allowance %">
+          <Input
+            type="number"
+            value={form.overBillingAllowancePercent || 0}
+            onChange={(e) => setForm({ ...form, overBillingAllowancePercent: Number(e.target.value) })}
+          />
+        </Field>
+        <label className="flex items-center gap-2 text-sm text-[#374151] cursor-pointer">
+          <input
+            type="checkbox"
+            checked={!!form.requirePurchaseOrderForInvoice}
+            onChange={(e) => setForm({ ...form, requirePurchaseOrderForInvoice: e.target.checked })}
+            className="h-4 w-4 rounded border-gray-300 text-blue-600"
+          />
+          <span>PO required before invoice</span>
+        </label>
+        <label className="flex items-center gap-2 text-sm text-[#374151] cursor-pointer">
+          <input
+            type="checkbox"
+            checked={!!form.requirePurchaseReceiptForInvoice}
+            onChange={(e) => setForm({ ...form, requirePurchaseReceiptForInvoice: e.target.checked })}
+            className="h-4 w-4 rounded border-gray-300 text-blue-600"
+          />
+          <span>Receipt required before invoice</span>
+        </label>
+        <label className="flex items-center gap-2 text-sm text-[#374151] cursor-pointer">
+          <input
+            type="checkbox"
+            checked={!!form.autoCreateMaterialRequest}
+            onChange={(e) => setForm({ ...form, autoCreateMaterialRequest: e.target.checked })}
+            className="h-4 w-4 rounded border-gray-300 text-blue-600"
+          />
+          <span>Auto material request from reorder</span>
+        </label>
+        <div className="md:col-span-3">
+          <Field label="Default RFQ Terms">
+            <Input
+              value={form.defaultRfqTerms || ''}
+              placeholder="Standard payment in 30 days, FOB destination..."
+              onChange={(e) => setForm({ ...form, defaultRfqTerms: e.target.value })}
+            />
+          </Field>
+        </div>
+        <div className="md:col-span-3 flex justify-end">
+          <Button onClick={save} disabled={isSaving}>
+            {isSaving ? 'Saving...' : 'Save Settings'}
+          </Button>
+        </div>
       </div>
     </div>
   );
@@ -196,16 +490,35 @@ function BuyingSettings({ data, reload }: any) {
 function Tracker({ rows, loading }: any) {
   return (
     <div className="space-y-4">
-      <PageHeader title="Procurement Tracker" description="MR to RFQ to Supplier Quotation to PO to Receipt to Invoice to Payment status per order" />
-      <DataTable data={rows} isLoading={loading} columns={[
-        { key: 'orderNo', header: 'PO' },
-        { key: 'supplier', header: 'Supplier' },
-        { key: 'status', header: 'Status', render: (r: any) => <StatusBadge status={r.status} /> },
-        { key: 'receivedPercent', header: 'Received %', render: (r: any) => `${Number(r.receivedPercent || 0).toFixed(0)}%` },
-        { key: 'billedPercent', header: 'Billed %', render: (r: any) => `${Number(r.billedPercent || 0).toFixed(0)}%` },
-        { key: 'total', header: 'Total', render: (r: any) => formatCurrency(Number(r.total || 0)) },
-        { key: 'chain', header: 'Chain', render: (r: any) => `R:${r.receipts} I:${r.invoices} P:${r.payments}` },
-      ]} />
+      <PageHeader
+        title="Procurement Tracker"
+        description="MR to RFQ to Supplier Quotation to PO to Receipt to Invoice to Payment status per order"
+      />
+      <DataTable
+        data={rows}
+        isLoading={loading}
+        columns={[
+          {
+            key: 'orderNo',
+            header: 'PO',
+            render: (r: any) => <span className="font-mono text-xs font-semibold text-[#1674c4]">{r.orderNo}</span>,
+          },
+          { key: 'supplier', header: 'Supplier' },
+          { key: 'status', header: 'Status', render: (r: any) => <StatusBadge status={r.status} /> },
+          {
+            key: 'receivedPercent',
+            header: 'Received %',
+            render: (r: any) => `${Number(r.receivedPercent || 0).toFixed(0)}%`,
+          },
+          {
+            key: 'billedPercent',
+            header: 'Billed %',
+            render: (r: any) => `${Number(r.billedPercent || 0).toFixed(0)}%`,
+          },
+          { key: 'total', header: 'Total', render: (r: any) => formatCurrency(Number(r.total || 0)) },
+          { key: 'chain', header: 'Chain', render: (r: any) => `R:${r.receipts} I:${r.invoices} P:${r.payments}` },
+        ]}
+      />
     </div>
   );
 }
@@ -213,21 +526,501 @@ function Tracker({ rows, loading }: any) {
 function DocumentFields({ kind, form, setForm, suppliers, products, orders, receipts, invoices }: any) {
   return (
     <div className="grid gap-3 rounded-md border border-[#e5e2dc] bg-[#fbfaf8] p-3 md:grid-cols-4">
-      {usesSupplier(kind) && <Field label="Supplier"><select required className="h-8 rounded-md border border-[#d9d4cc] bg-white px-2 text-sm" value={form.supplierId || ''} onChange={(e) => setForm({ ...form, supplierId: e.target.value })}><option value="">Select supplier</option>{suppliers.map((s: any) => <option key={s.id} value={s.id}>{s.name}</option>)}</select></Field>}
-      {kind === 'payment-terms' && <><Field label="Template Name"><Input required value={form.name || ''} onChange={(e) => setForm({ ...form, name: e.target.value })} /></Field><Field label="Description"><Input value={form.description || ''} onChange={(e) => setForm({ ...form, description: e.target.value })} /></Field></>}
-      {kind === 'supplier-items' && <><Field label="Supplier"><select required className="h-8 rounded-md border border-[#d9d4cc] bg-white px-2 text-sm" value={form.supplierId || ''} onChange={(e) => setForm({ ...form, supplierId: e.target.value })}><option value="">Select supplier</option>{suppliers.map((s: any) => <option key={s.id} value={s.id}>{s.name}</option>)}</select></Field><Field label="Item"><select required className="h-8 rounded-md border border-[#d9d4cc] bg-white px-2 text-sm" value={form.productId || ''} onChange={(e) => setForm({ ...form, productId: e.target.value })}><option value="">Select item</option>{products.map((p: any) => <option key={p.id} value={p.id}>{p.sku} - {p.name}</option>)}</select></Field><Field label="Supplier Item Code"><Input required value={form.supplierItemCode || ''} onChange={(e) => setForm({ ...form, supplierItemCode: e.target.value })} /></Field><Field label="Supplier Item Name"><Input value={form.supplierItemName || ''} onChange={(e) => setForm({ ...form, supplierItemName: e.target.value })} /></Field></>}
-      {kind === 'communications' && <><Field label="Supplier"><select className="h-8 rounded-md border border-[#d9d4cc] bg-white px-2 text-sm" value={form.supplierId || ''} onChange={(e) => setForm({ ...form, supplierId: e.target.value })}><option value="">Select supplier</option>{suppliers.map((s: any) => <option key={s.id} value={s.id}>{s.name}</option>)}</select></Field><Field label="Channel"><select className="h-8 rounded-md border border-[#d9d4cc] bg-white px-2 text-sm" value={form.channel || 'EMAIL'} onChange={(e) => setForm({ ...form, channel: e.target.value })}><option>EMAIL</option><option>PHONE</option><option>PORTAL</option><option>NOTE</option></select></Field><Field label="Subject"><Input value={form.subject || ''} onChange={(e) => setForm({ ...form, subject: e.target.value })} /></Field><Field label="Message"><Input required value={form.message || ''} onChange={(e) => setForm({ ...form, message: e.target.value })} /></Field></>}
-      {kind === 'purchase-receipts' && <Field label="From PO"><select className="h-8 rounded-md border border-[#d9d4cc] bg-white px-2 text-sm" value={form.purchaseOrderId || ''} onChange={(e) => setForm({ ...form, purchaseOrderId: e.target.value })}><option value="">Manual receipt</option>{orders.map((o: any) => <option key={o.id} value={o.id}>{o.orderNo} - {o.supplier?.name}</option>)}</select></Field>}
-      {kind === 'purchase-invoices' && <><Field label="PO"><select className="h-8 rounded-md border border-[#d9d4cc] bg-white px-2 text-sm" value={form.purchaseOrderId || ''} onChange={(e) => setForm({ ...form, purchaseOrderId: e.target.value })}><option value="">No PO</option>{orders.map((o: any) => <option key={o.id} value={o.id}>{o.orderNo}</option>)}</select></Field><Field label="Receipt"><select className="h-8 rounded-md border border-[#d9d4cc] bg-white px-2 text-sm" value={form.purchaseReceiptId || ''} onChange={(e) => setForm({ ...form, purchaseReceiptId: e.target.value })}><option value="">No receipt</option>{receipts.map((r: any) => <option key={r.id} value={r.id}>{r.receiptNo}</option>)}</select></Field></>}
-      {kind === 'supplier-payments' && <><Field label="Invoice"><select required={form.type === 'INVOICE_PAYMENT'} className="h-8 rounded-md border border-[#d9d4cc] bg-white px-2 text-sm" value={form.purchaseInvoiceId || ''} onChange={(e) => { const invoice = invoices.find((item: any) => item.id === e.target.value); setForm({ ...form, purchaseInvoiceId: e.target.value, supplierId: invoice?.supplierId || form.supplierId, amount: invoice ? Number(invoice.outstandingAmount || 0) : form.amount }); }}><option value="">{form.type === 'ADVANCE' ? 'Advance / unallocated' : 'Select invoice'}</option>{invoices.filter((i: any) => !['PAID', 'CANCELLED'].includes(i.status) && (!form.supplierId || i.supplierId === form.supplierId)).map((i: any) => <option key={i.id} value={i.id}>{i.invoiceNo} — {i.supplier?.name || 'Supplier'} — {formatCurrency(Number(i.outstandingAmount || 0), i.currency)}</option>)}</select></Field><Field label="Type"><select className="h-8 rounded-md border border-[#d9d4cc] bg-white px-2 text-sm" value={form.type || 'INVOICE_PAYMENT'} onChange={(e) => setForm({ ...form, type: e.target.value, purchaseInvoiceId: e.target.value === 'ADVANCE' ? '' : form.purchaseInvoiceId })}><option>INVOICE_PAYMENT</option><option>ADVANCE</option></select></Field></>}
-      {kind === 'landed-cost-vouchers' && <><Field label="Purchase Receipt"><select required className="h-8 rounded-md border border-[#d9d4cc] bg-white px-2 text-sm" value={form.purchaseReceiptId || ''} onChange={(e) => setForm({ ...form, purchaseReceiptId: e.target.value })}><option value="">Select receipt</option>{receipts.map((r: any) => <option key={r.id} value={r.id}>{r.receiptNo}</option>)}</select></Field><Field label="Allocation Basis"><select className="h-8 rounded-md border border-[#d9d4cc] bg-white px-2 text-sm" value={form.allocationBasis || 'VALUE'} onChange={(e) => setForm({ ...form, allocationBasis: e.target.value })}><option>VALUE</option><option>QUANTITY</option><option>WEIGHT</option></select></Field></>}
-      {kind === 'quality-inspections' && <Field label="Purchase Receipt"><select className="h-8 rounded-md border border-[#d9d4cc] bg-white px-2 text-sm" value={form.purchaseReceiptId || ''} onChange={(e) => setForm({ ...form, purchaseReceiptId: e.target.value })}><option value="">Select receipt</option>{receipts.map((r: any) => <option key={r.id} value={r.id}>{r.receiptNo}</option>)}</select></Field>}
-      {kind === 'quality-inspections' && <><Field label="Inspected Qty"><Input type="number" value={form.inspectedQty || 0} onChange={(e) => setForm({ ...form, inspectedQty: Number(e.target.value) })} /></Field><Field label="Accepted Qty"><Input type="number" value={form.acceptedQty || 0} onChange={(e) => setForm({ ...form, acceptedQty: Number(e.target.value) })} /></Field><Field label="Rejected Qty"><Input type="number" value={form.rejectedQty || 0} onChange={(e) => setForm({ ...form, rejectedQty: Number(e.target.value) })} /></Field></>}
-      {dateField(kind) && <Field label={dateField(kind) || 'Date'}><Input type="date" value={form.date || form.requiredBy || form.validFrom || form.postingDate || today()} onChange={(e) => setForm({ ...form, [dateKey(kind)]: e.target.value })} /></Field>}
-      {kind === 'blanket-purchase-orders' && <Field label="Valid To"><Input type="date" value={form.validTo || today()} onChange={(e) => setForm({ ...form, validTo: e.target.value })} /></Field>}
-      {['purchase-orders', 'purchase-invoices', 'supplier-quotations'].includes(kind) && <><Field label="Currency"><Input value={form.currency || 'USD'} onChange={(e) => setForm({ ...form, currency: e.target.value })} /></Field><Field label="Exchange Rate"><Input type="number" value={form.exchangeRate || 1} onChange={(e) => setForm({ ...form, exchangeRate: Number(e.target.value) })} /></Field><Field label="Shipping/Freight"><Input type="number" value={form.shippingAmount || 0} onChange={(e) => setForm({ ...form, shippingAmount: Number(e.target.value) })} /></Field></>}
-      {kind === 'supplier-payments' && <><Field label="Amount"><Input type="number" required value={form.amount || 0} onChange={(e) => setForm({ ...form, amount: Number(e.target.value) })} /></Field><Field label="Reference"><Input value={form.reference || ''} onChange={(e) => setForm({ ...form, reference: e.target.value })} /></Field></>}
-      <div className="md:col-span-4"><Field label="Notes / Terms"><Input value={form.notes || form.terms || ''} onChange={(e) => setForm({ ...form, notes: e.target.value, terms: e.target.value })} /></Field></div>
+      {usesSupplier(kind) && (
+        <div className="space-y-1.5">
+          <Label>Supplier *</Label>
+          <Select
+            value={form.supplierId || ''}
+            onValueChange={(v) => setForm({ ...form, supplierId: v })}
+          >
+            <SelectTrigger>
+              <SelectValue placeholder="Select supplier" />
+            </SelectTrigger>
+            <SelectContent>
+              {suppliers.length === 0 ? (
+                <SelectEmptyState
+                  message="No suppliers found"
+                  linkHref="/suppliers"
+                  linkText="Create Supplier"
+                />
+              ) : (
+                suppliers.map((s: any) => (
+                  <SelectItem key={s.id} value={s.id}>
+                    {s.name}
+                  </SelectItem>
+                ))
+              )}
+            </SelectContent>
+          </Select>
+        </div>
+      )}
+      {kind === 'payment-terms' && (
+        <>
+          <Field label="Template Name *">
+            <Input
+              required
+              placeholder="e.g. 30-60-10 Milestone Plan"
+              value={form.name || ''}
+              onChange={(e: any) => setForm({ ...form, name: e.target.value })}
+            />
+          </Field>
+          <Field label="Description">
+            <Input
+              placeholder="Schedule details"
+              value={form.description || ''}
+              onChange={(e: any) => setForm({ ...form, description: e.target.value })}
+            />
+          </Field>
+        </>
+      )}
+      {kind === 'supplier-items' && (
+        <>
+          <div className="space-y-1.5">
+            <Label>Supplier *</Label>
+            <Select
+              value={form.supplierId || ''}
+              onValueChange={(v) => setForm({ ...form, supplierId: v })}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Select supplier" />
+              </SelectTrigger>
+              <SelectContent>
+                {suppliers.length === 0 ? (
+                  <SelectEmptyState
+                    message="No suppliers found"
+                    linkHref="/suppliers"
+                    linkText="Create Supplier"
+                  />
+                ) : (
+                  suppliers.map((s: any) => (
+                    <SelectItem key={s.id} value={s.id}>
+                      {s.name}
+                    </SelectItem>
+                  ))
+                )}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-1.5">
+            <Label>Item *</Label>
+            <Select
+              value={form.productId || ''}
+              onValueChange={(v) => setForm({ ...form, productId: v })}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Select item" />
+              </SelectTrigger>
+              <SelectContent>
+                {products.length === 0 ? (
+                  <SelectEmptyState
+                    message="No products found"
+                    linkHref="/inventory/products"
+                    linkText="Create Product"
+                  />
+                ) : (
+                  products.map((p: any) => (
+                    <SelectItem key={p.id} value={p.id}>
+                      {p.sku} - {p.name}
+                    </SelectItem>
+                  ))
+                )}
+              </SelectContent>
+            </Select>
+          </div>
+          <Field label="Supplier Item Code *">
+            <Input
+              required
+              placeholder="e.g. SUP-SKU-990"
+              value={form.supplierItemCode || ''}
+              onChange={(e: any) => setForm({ ...form, supplierItemCode: e.target.value })}
+            />
+          </Field>
+          <Field label="Supplier Item Name">
+            <Input
+              placeholder="e.g. OEM Heavy Fastener"
+              value={form.supplierItemName || ''}
+              onChange={(e: any) => setForm({ ...form, supplierItemName: e.target.value })}
+            />
+          </Field>
+        </>
+      )}
+      {kind === 'communications' && (
+        <>
+          <div className="space-y-1.5">
+            <Label>Supplier</Label>
+            <Select
+              value={form.supplierId || ''}
+              onValueChange={(v) => setForm({ ...form, supplierId: v })}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Select supplier" />
+              </SelectTrigger>
+              <SelectContent>
+                {suppliers.length === 0 ? (
+                  <SelectEmptyState
+                    message="No suppliers found"
+                    linkHref="/suppliers"
+                    linkText="Create Supplier"
+                  />
+                ) : (
+                  suppliers.map((s: any) => (
+                    <SelectItem key={s.id} value={s.id}>
+                      {s.name}
+                    </SelectItem>
+                  ))
+                )}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-1.5">
+            <Label>Channel</Label>
+            <Select
+              value={form.channel || 'EMAIL'}
+              onValueChange={(v) => setForm({ ...form, channel: v })}
+            >
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {['EMAIL', 'PHONE', 'PORTAL', 'NOTE'].map((c) => (
+                  <SelectItem key={c} value={c}>
+                    {c}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <Field label="Subject">
+            <Input
+              placeholder="e.g. RFQ Follow-up"
+              value={form.subject || ''}
+              onChange={(e: any) => setForm({ ...form, subject: e.target.value })}
+            />
+          </Field>
+          <Field label="Message *">
+            <Input
+              required
+              placeholder="Communication summary..."
+              value={form.message || ''}
+              onChange={(e: any) => setForm({ ...form, message: e.target.value })}
+            />
+          </Field>
+        </>
+      )}
+      {kind === 'purchase-receipts' && (
+        <div className="space-y-1.5">
+          <Label>From Purchase Order</Label>
+          <Select
+            value={form.purchaseOrderId || ''}
+            onValueChange={(v) => setForm({ ...form, purchaseOrderId: v })}
+          >
+            <SelectTrigger>
+              <SelectValue placeholder="Manual receipt or select PO" />
+            </SelectTrigger>
+            <SelectContent>
+              {orders.length === 0 ? (
+                <SelectEmptyState
+                  message="No purchase orders found"
+                  linkHref="/procurement/purchase-orders"
+                  linkText="Create Purchase Order"
+                />
+              ) : (
+                orders.map((o: any) => (
+                  <SelectItem key={o.id} value={o.id}>
+                    {o.orderNo} - {o.supplier?.name}
+                  </SelectItem>
+                ))
+              )}
+            </SelectContent>
+          </Select>
+        </div>
+      )}
+      {kind === 'purchase-invoices' && (
+        <>
+          <div className="space-y-1.5">
+            <Label>Purchase Order</Label>
+            <Select
+              value={form.purchaseOrderId || ''}
+              onValueChange={(v) => setForm({ ...form, purchaseOrderId: v })}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="No PO or select PO" />
+              </SelectTrigger>
+              <SelectContent>
+                {orders.length === 0 ? (
+                  <SelectEmptyState
+                    message="No purchase orders found"
+                    linkHref="/procurement/purchase-orders"
+                    linkText="Create Purchase Order"
+                  />
+                ) : (
+                  orders.map((o: any) => (
+                    <SelectItem key={o.id} value={o.id}>
+                      {o.orderNo}
+                    </SelectItem>
+                  ))
+                )}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-1.5">
+            <Label>Purchase Receipt</Label>
+            <Select
+              value={form.purchaseReceiptId || ''}
+              onValueChange={(v) => setForm({ ...form, purchaseReceiptId: v })}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="No receipt or select receipt" />
+              </SelectTrigger>
+              <SelectContent>
+                {receipts.length === 0 ? (
+                  <SelectEmptyState
+                    message="No purchase receipts found"
+                    linkHref="/procurement/purchase-receipts"
+                    linkText="Create Purchase Receipt"
+                  />
+                ) : (
+                  receipts.map((r: any) => (
+                    <SelectItem key={r.id} value={r.id}>
+                      {r.receiptNo}
+                    </SelectItem>
+                  ))
+                )}
+              </SelectContent>
+            </Select>
+          </div>
+        </>
+      )}
+      {kind === 'supplier-payments' && (
+        <>
+          <div className="space-y-1.5 md:col-span-2">
+            <Label>Purchase Invoice</Label>
+            <Select
+              value={form.purchaseInvoiceId || ''}
+              onValueChange={(v) => {
+                const invoice = invoices.find((item: any) => item.id === v);
+                setForm({
+                  ...form,
+                  purchaseInvoiceId: v,
+                  supplierId: invoice?.supplierId || form.supplierId,
+                  amount: invoice ? Number(invoice.outstandingAmount || 0) : form.amount,
+                });
+              }}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder={form.type === 'ADVANCE' ? 'Advance / unallocated' : 'Select invoice'} />
+              </SelectTrigger>
+              <SelectContent>
+                {invoices.length === 0 ? (
+                  <SelectEmptyState
+                    message="No unpaid invoices found"
+                    linkHref="/procurement/purchase-invoices"
+                    linkText="Create Purchase Invoice"
+                  />
+                ) : (
+                  invoices
+                    .filter(
+                      (i: any) =>
+                        !['PAID', 'CANCELLED'].includes(i.status) &&
+                        (!form.supplierId || i.supplierId === form.supplierId)
+                    )
+                    .map((i: any) => (
+                      <SelectItem key={i.id} value={i.id}>
+                        {i.invoiceNo} — {i.supplier?.name || 'Supplier'} —{' '}
+                        {formatCurrency(Number(i.outstandingAmount || 0), i.currency)}
+                      </SelectItem>
+                    ))
+                )}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-1.5">
+            <Label>Type</Label>
+            <Select
+              value={form.type || 'INVOICE_PAYMENT'}
+              onValueChange={(v) =>
+                setForm({ ...form, type: v, purchaseInvoiceId: v === 'ADVANCE' ? '' : form.purchaseInvoiceId })
+              }
+            >
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="INVOICE_PAYMENT">INVOICE_PAYMENT</SelectItem>
+                <SelectItem value="ADVANCE">ADVANCE</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        </>
+      )}
+      {kind === 'landed-cost-vouchers' && (
+        <>
+          <div className="space-y-1.5">
+            <Label>Purchase Receipt *</Label>
+            <Select
+              value={form.purchaseReceiptId || ''}
+              onValueChange={(v) => setForm({ ...form, purchaseReceiptId: v })}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Select receipt" />
+              </SelectTrigger>
+              <SelectContent>
+                {receipts.length === 0 ? (
+                  <SelectEmptyState
+                    message="No purchase receipts found"
+                    linkHref="/procurement/purchase-receipts"
+                    linkText="Create Purchase Receipt"
+                  />
+                ) : (
+                  receipts.map((r: any) => (
+                    <SelectItem key={r.id} value={r.id}>
+                      {r.receiptNo}
+                    </SelectItem>
+                  ))
+                )}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-1.5">
+            <Label>Allocation Basis</Label>
+            <Select
+              value={form.allocationBasis || 'VALUE'}
+              onValueChange={(v) => setForm({ ...form, allocationBasis: v })}
+            >
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="VALUE">VALUE</SelectItem>
+                <SelectItem value="QUANTITY">QUANTITY</SelectItem>
+                <SelectItem value="WEIGHT">WEIGHT</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        </>
+      )}
+      {kind === 'quality-inspections' && (
+        <>
+          <div className="space-y-1.5">
+            <Label>Purchase Receipt</Label>
+            <Select
+              value={form.purchaseReceiptId || ''}
+              onValueChange={(v) => setForm({ ...form, purchaseReceiptId: v })}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Select receipt" />
+              </SelectTrigger>
+              <SelectContent>
+                {receipts.length === 0 ? (
+                  <SelectEmptyState
+                    message="No purchase receipts found"
+                    linkHref="/procurement/purchase-receipts"
+                    linkText="Create Purchase Receipt"
+                  />
+                ) : (
+                  receipts.map((r: any) => (
+                    <SelectItem key={r.id} value={r.id}>
+                      {r.receiptNo}
+                    </SelectItem>
+                  ))
+                )}
+              </SelectContent>
+            </Select>
+          </div>
+          <Field label="Inspected Qty">
+            <Input
+              type="number"
+              value={form.inspectedQty || 0}
+              onChange={(e: any) => setForm({ ...form, inspectedQty: Number(e.target.value) })}
+            />
+          </Field>
+          <Field label="Accepted Qty">
+            <Input
+              type="number"
+              value={form.acceptedQty || 0}
+              onChange={(e: any) => setForm({ ...form, acceptedQty: Number(e.target.value) })}
+            />
+          </Field>
+          <Field label="Rejected Qty">
+            <Input
+              type="number"
+              value={form.rejectedQty || 0}
+              onChange={(e: any) => setForm({ ...form, rejectedQty: Number(e.target.value) })}
+            />
+          </Field>
+        </>
+      )}
+      {dateField(kind) && (
+        <Field label={dateField(kind) || 'Date'}>
+          <Input
+            type="date"
+            value={form.date || form.requiredBy || form.validFrom || form.postingDate || today()}
+            onChange={(e: any) => setForm({ ...form, [dateKey(kind)]: e.target.value })}
+          />
+        </Field>
+      )}
+      {kind === 'blanket-purchase-orders' && (
+        <Field label="Valid To">
+          <Input
+            type="date"
+            value={form.validTo || today()}
+            onChange={(e: any) => setForm({ ...form, validTo: e.target.value })}
+          />
+        </Field>
+      )}
+      {['purchase-orders', 'purchase-invoices', 'supplier-quotations', 'blanket-purchase-orders'].includes(kind) && (
+        <>
+          <div className="space-y-1.5">
+            <Label>Currency</Label>
+            <CurrencySelect
+              value={form.currency || 'INR'}
+              onChange={(currency) => setForm({ ...form, currency })}
+            />
+          </div>
+          <Field label="Exchange Rate">
+            <Input
+              type="number"
+              value={form.exchangeRate || 1}
+              onChange={(e: any) => setForm({ ...form, exchangeRate: Number(e.target.value) })}
+            />
+          </Field>
+          <Field label="Shipping / Freight">
+            <Input
+              type="number"
+              value={form.shippingAmount || 0}
+              onChange={(e: any) => setForm({ ...form, shippingAmount: Number(e.target.value) })}
+            />
+          </Field>
+        </>
+      )}
+      {kind === 'supplier-payments' && (
+        <>
+          <Field label="Amount *">
+            <Input
+              type="number"
+              required
+              value={form.amount || 0}
+              onChange={(e: any) => setForm({ ...form, amount: Number(e.target.value) })}
+            />
+          </Field>
+          <Field label="Reference">
+            <Input
+              placeholder="UTR / Bank Ref / Cheque No"
+              value={form.reference || ''}
+              onChange={(e: any) => setForm({ ...form, reference: e.target.value })}
+            />
+          </Field>
+        </>
+      )}
+      <div className="md:col-span-4">
+        <Field label="Notes / Terms">
+          <Input
+            placeholder="Special delivery instructions, vendor notes, or terms"
+            value={form.notes || form.terms || ''}
+            onChange={(e: any) => setForm({ ...form, notes: e.target.value, terms: e.target.value })}
+          />
+        </Field>
+      </div>
     </div>
   );
 }
@@ -236,38 +1029,146 @@ function PaymentTermEditor({ lines, setLines }: any) {
   const rows = lines.length ? lines : [{ label: 'Advance', percentage: 30, dueAfterDays: 0 }];
   return (
     <div className="space-y-2 rounded-md border border-[#e5e2dc] bg-white p-3">
-      <div className="flex items-center justify-between"><Label>Schedule</Label><Button type="button" variant="outline" size="sm" onClick={() => setLines([...rows, { label: '', percentage: 0, dueAfterDays: 0 }])}>Add Term</Button></div>
+      <div className="flex items-center justify-between">
+        <Label>Schedule</Label>
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          onClick={() => setLines([...rows, { label: '', percentage: 0, dueAfterDays: 0 }])}
+        >
+          Add Term
+        </Button>
+      </div>
       {rows.map((line: any, index: number) => (
         <div key={index} className="grid grid-cols-12 gap-2">
-          <Input className="col-span-5 h-8" placeholder="Milestone" value={line.label || ''} onChange={(e) => updateLine(rows, setLines, index, { label: e.target.value })} />
-          <Input className="col-span-3 h-8" type="number" placeholder="%" value={line.percentage || 0} onChange={(e) => updateLine(rows, setLines, index, { percentage: Number(e.target.value) })} />
-          <Input className="col-span-3 h-8" type="number" placeholder="Due days" value={line.dueAfterDays || 0} onChange={(e) => updateLine(rows, setLines, index, { dueAfterDays: Number(e.target.value) })} />
-          <Button type="button" variant="ghost" size="sm" className="col-span-1" onClick={() => setLines(rows.filter((_: any, i: number) => i !== index))}>×</Button>
+          <Input
+            className="col-span-5 h-8"
+            placeholder="Milestone (e.g. On Delivery)"
+            value={line.label || ''}
+            onChange={(e) => updateLine(rows, setLines, index, { label: e.target.value })}
+          />
+          <Input
+            className="col-span-3 h-8"
+            type="number"
+            placeholder="%"
+            value={line.percentage || 0}
+            onChange={(e) => updateLine(rows, setLines, index, { percentage: Number(e.target.value) })}
+          />
+          <Input
+            className="col-span-3 h-8"
+            type="number"
+            placeholder="Due days"
+            value={line.dueAfterDays || 0}
+            onChange={(e) => updateLine(rows, setLines, index, { dueAfterDays: Number(e.target.value) })}
+          />
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            className="col-span-1"
+            onClick={() => setLines(rows.filter((_: any, i: number) => i !== index))}
+          >
+            ×
+          </Button>
         </div>
       ))}
     </div>
   );
 }
 
-function LineEditor({ kind, lines, setLines, products, total }: any) {
+function LineEditor({ kind, lines, setLines, products, total, currency }: any) {
   return (
     <div className="space-y-2 rounded-md border border-[#e5e2dc] bg-white p-3">
-      <div className="flex items-center justify-between"><Label>Items</Label><Button type="button" variant="outline" size="sm" onClick={() => setLines([...lines, blankLine])}>Add Row</Button></div>
+      <div className="flex items-center justify-between">
+        <Label>Items</Label>
+        <Button type="button" variant="outline" size="sm" onClick={() => setLines([...lines, blankLine])}>
+          Add Row
+        </Button>
+      </div>
       {lines.map((line: any, index: number) => (
         <div key={index} className="grid grid-cols-12 gap-2">
-          <select className="col-span-5 h-8 rounded-md border border-[#d9d4cc] bg-white px-2 text-sm" value={line.productId} onChange={(e) => {
-            const product = products.find((p: any) => p.id === e.target.value);
-            updateLine(lines, setLines, index, { productId: e.target.value, unitPrice: Number(product?.costPrice || 0), rate: Number(product?.costPrice || 0) });
-          }}><option value="">Select item</option>{products.map((p: any) => <option key={p.id} value={p.id}>{p.sku} - {p.name}</option>)}</select>
-          <Input className="col-span-2 h-8" type="number" value={line.quantity} onChange={(e) => updateLine(lines, setLines, index, { quantity: Number(e.target.value) })} />
-          <Input className="col-span-2 h-8" type="number" value={line.unitPrice || line.rate || 0} onChange={(e) => updateLine(lines, setLines, index, { unitPrice: Number(e.target.value), rate: Number(e.target.value) })} />
-          <Input className="col-span-1 h-8" type="number" value={line.taxRate || 0} onChange={(e) => updateLine(lines, setLines, index, { taxRate: Number(e.target.value) })} />
-          <div className="col-span-1 py-1.5 text-right text-sm font-medium">{formatCurrency(Number(line.quantity || 0) * Number(line.unitPrice || line.rate || 0))}</div>
-          <Button type="button" variant="ghost" size="sm" className="col-span-1" onClick={() => setLines(lines.filter((_: any, i: number) => i !== index))}>×</Button>
+          <div className="col-span-5">
+            <Select
+              value={line.productId}
+              onValueChange={(v) => {
+                const product = products.find((p: any) => p.id === v);
+                updateLine(lines, setLines, index, {
+                  productId: v,
+                  unitPrice: Number(product?.costPrice || 0),
+                  rate: Number(product?.costPrice || 0),
+                });
+              }}
+            >
+              <SelectTrigger className="h-8 text-xs">
+                <SelectValue placeholder="Select item" />
+              </SelectTrigger>
+              <SelectContent>
+                {products.length === 0 ? (
+                  <SelectEmptyState
+                    message="No products found"
+                    linkHref="/inventory/products"
+                    linkText="Create Product"
+                  />
+                ) : (
+                  products.map((p: any) => (
+                    <SelectItem key={p.id} value={p.id}>
+                      {p.sku} - {p.name}
+                    </SelectItem>
+                  ))
+                )}
+              </SelectContent>
+            </Select>
+          </div>
+          <Input
+            className="col-span-2 h-8"
+            type="number"
+            placeholder="Qty"
+            value={line.quantity}
+            onChange={(e) => updateLine(lines, setLines, index, { quantity: Number(e.target.value) })}
+          />
+          <Input
+            className="col-span-2 h-8"
+            type="number"
+            placeholder="Rate"
+            value={line.unitPrice || line.rate || 0}
+            onChange={(e) =>
+              updateLine(lines, setLines, index, {
+                unitPrice: Number(e.target.value),
+                rate: Number(e.target.value),
+              })
+            }
+          />
+          <Input
+            className="col-span-1 h-8"
+            type="number"
+            placeholder="Tax %"
+            value={line.taxRate || 0}
+            onChange={(e) => updateLine(lines, setLines, index, { taxRate: Number(e.target.value) })}
+          />
+          <div className="col-span-1 py-1.5 text-right text-xs font-medium text-gray-700">
+            {formatCurrency(Number(line.quantity || 0) * Number(line.unitPrice || line.rate || 0), currency)}
+          </div>
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            className="col-span-1"
+            onClick={() => setLines(lines.filter((_: any, i: number) => i !== index))}
+          >
+            ×
+          </Button>
         </div>
       ))}
-      <div className="text-right text-sm font-semibold">Preview subtotal: {formatCurrency(total)}</div>
-      {kind === 'purchase-receipts' && <p className="text-xs text-[#7c8591]">For receipts, quantity is treated as received and accepted quantity unless a quality inspection later changes it.</p>}
+      <div className="text-right text-sm font-semibold text-gray-900">
+        Preview subtotal: {formatCurrency(total, currency)}
+      </div>
+      {kind === 'purchase-receipts' && (
+        <p className="text-xs text-[#7c8591]">
+          For receipts, quantity is treated as received and accepted quantity unless a quality inspection later
+          changes it.
+        </p>
+      )}
     </div>
   );
 }
@@ -275,13 +1176,58 @@ function LineEditor({ kind, lines, setLines, products, total }: any) {
 function ChargeEditor({ lines, setLines }: any) {
   return (
     <div className="space-y-2 rounded-md border border-[#e5e2dc] bg-white p-3">
-      <div className="flex items-center justify-between"><Label>Landed Charges</Label><Button type="button" variant="outline" size="sm" onClick={() => setLines([...lines, { type: 'FREIGHT', amount: 0, description: '' }])}>Add Charge</Button></div>
+      <div className="flex items-center justify-between">
+        <Label>Landed Charges</Label>
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          onClick={() => setLines([...lines, { type: 'FREIGHT', amount: 0, description: '' }])}
+        >
+          Add Charge
+        </Button>
+      </div>
       {lines.map((line: any, index: number) => (
         <div key={index} className="grid grid-cols-12 gap-2">
-          <select className="col-span-3 h-8 rounded-md border border-[#d9d4cc] bg-white px-2 text-sm" value={line.type || 'FREIGHT'} onChange={(e) => updateLine(lines, setLines, index, { type: e.target.value })}><option>FREIGHT</option><option>CUSTOMS</option><option>INSURANCE</option><option>HANDLING</option><option>OTHER</option></select>
-          <Input className="col-span-6 h-8" value={line.description || ''} onChange={(e) => updateLine(lines, setLines, index, { description: e.target.value })} />
-          <Input className="col-span-2 h-8" type="number" value={line.amount || 0} onChange={(e) => updateLine(lines, setLines, index, { amount: Number(e.target.value) })} />
-          <Button type="button" variant="ghost" size="sm" className="col-span-1" onClick={() => setLines(lines.filter((_: any, i: number) => i !== index))}>×</Button>
+          <div className="col-span-3">
+            <Select
+              value={line.type || 'FREIGHT'}
+              onValueChange={(v) => updateLine(lines, setLines, index, { type: v })}
+            >
+              <SelectTrigger className="h-8 text-xs">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="FREIGHT">FREIGHT</SelectItem>
+                <SelectItem value="CUSTOMS">CUSTOMS</SelectItem>
+                <SelectItem value="INSURANCE">INSURANCE</SelectItem>
+                <SelectItem value="HANDLING">HANDLING</SelectItem>
+                <SelectItem value="OTHER">OTHER</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <Input
+            className="col-span-6 h-8"
+            placeholder="Charge description"
+            value={line.description || ''}
+            onChange={(e) => updateLine(lines, setLines, index, { description: e.target.value })}
+          />
+          <Input
+            className="col-span-2 h-8"
+            type="number"
+            placeholder="Amount"
+            value={line.amount || 0}
+            onChange={(e) => updateLine(lines, setLines, index, { amount: Number(e.target.value) })}
+          />
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            className="col-span-1"
+            onClick={() => setLines(lines.filter((_: any, i: number) => i !== index))}
+          >
+            ×
+          </Button>
         </div>
       ))}
     </div>
@@ -289,7 +1235,12 @@ function ChargeEditor({ lines, setLines }: any) {
 }
 
 function Field({ label, children }: any) {
-  return <div className="space-y-1.5"><Label>{label}</Label>{children}</div>;
+  return (
+    <div className="space-y-1.5">
+      <Label>{label}</Label>
+      {children}
+    </div>
+  );
 }
 
 function updateLine(lines: any[], setLines: any, index: number, patch: any) {
@@ -299,48 +1250,242 @@ function updateLine(lines: any[], setLines: any, index: number, patch: any) {
 }
 
 function defaultForm(kind: ProcurementKind) {
-  const base: any = { date: today(), currency: 'USD', exchangeRate: 1 };
+  const base: any = { date: today(), currency: 'INR', exchangeRate: 1 };
   if (kind === 'material-requests') return { requiredBy: today(), source: 'MANUAL' };
   if (kind === 'rfqs') return { validUntil: today() };
-  if (kind === 'blanket-purchase-orders') return { validFrom: today(), validTo: today(), currency: 'USD' };
+  if (kind === 'blanket-purchase-orders') return { validFrom: today(), validTo: today(), currency: 'INR' };
   if (kind === 'purchase-receipts') return { postingDate: today() };
-  if (kind === 'supplier-payments') return { date: today(), type: 'INVOICE_PAYMENT', method: 'BANK_TRANSFER', amount: 0 };
+  if (kind === 'supplier-payments')
+    return { date: today(), type: 'INVOICE_PAYMENT', method: 'BANK_TRANSFER', amount: 0 };
   if (kind === 'communications') return { channel: 'EMAIL', direction: 'OUTBOUND', message: '' };
   return base;
 }
 
 function payloadFor(kind: ProcurementKind, form: any, lines: any[]) {
-  if (kind === 'landed-cost-vouchers') return { ...form, charges: lines.filter((line) => Number(line.amount || 0) > 0) };
-  if (kind === 'payment-terms') return { ...form, terms: lines.filter((line) => line.label).map((line, index) => ({ ...line, rowOrder: index })) };
-  if (kind === 'supplier-payments' || kind === 'quality-inspections' || kind === 'supplier-items' || kind === 'communications') return form;
-  if (kind === 'purchase-receipts') return form.purchaseOrderId ? form : { ...form, supplierId: form.supplierId, items: lines.map((line) => ({ ...line, receivedQty: line.quantity, acceptedQty: line.quantity, rate: line.unitPrice || line.rate })) };
-  if (kind === 'supplier-quotations') return { ...form, items: lines.map((line) => ({ ...line, rate: line.unitPrice || line.rate })) };
+  if (kind === 'landed-cost-vouchers')
+    return { ...form, charges: lines.filter((line) => Number(line.amount || 0) > 0) };
+  if (kind === 'payment-terms')
+    return {
+      ...form,
+      terms: lines.filter((line) => line.label).map((line, index) => ({ ...line, rowOrder: index })),
+    };
+  if (
+    kind === 'supplier-payments' ||
+    kind === 'quality-inspections' ||
+    kind === 'supplier-items' ||
+    kind === 'communications'
+  )
+    return form;
+  if (kind === 'purchase-receipts')
+    return form.purchaseOrderId
+      ? form
+      : {
+          ...form,
+          supplierId: form.supplierId,
+          items: lines.map((line) => ({
+            ...line,
+            receivedQty: line.quantity,
+            acceptedQty: line.quantity,
+            rate: line.unitPrice || line.rate,
+          })),
+        };
+  if (kind === 'supplier-quotations')
+    return { ...form, items: lines.map((line) => ({ ...line, rate: line.unitPrice || line.rate })) };
   return { ...form, items: lines };
 }
 
 function columnsFor(kind: ProcurementKind, status: (id: string, value: string) => void) {
   const actions = (row: any) => <Actions kind={kind} row={row} status={status} />;
-  if (kind === 'material-requests') return [{ key: 'requestNo', header: 'Request #' }, { key: 'status', header: 'Status', render: (r: any) => <StatusBadge status={r.status} /> }, { key: 'requiredBy', header: 'Required By', render: (r: any) => r.requiredBy ? formatDate(r.requiredBy) : '-' }, { key: 'items', header: 'Items', render: (r: any) => r.items?.length || 0 }, { key: 'actions', header: '', render: actions }];
-  if (kind === 'rfqs') return [{ key: 'rfqNo', header: 'RFQ #' }, { key: 'status', header: 'Status', render: (r: any) => <StatusBadge status={r.status} /> }, { key: 'validUntil', header: 'Valid Until', render: (r: any) => r.validUntil ? formatDate(r.validUntil) : '-' }, { key: 'suppliers', header: 'Suppliers', render: (r: any) => r.suppliers?.length || 0 }, { key: 'actions', header: '', render: actions }];
-  if (kind === 'supplier-quotations') return [{ key: 'quotationNo', header: 'Quote #' }, { key: 'supplier', header: 'Supplier', render: (r: any) => r.supplier?.name }, { key: 'status', header: 'Status', render: (r: any) => <StatusBadge status={r.status} /> }, { key: 'total', header: 'Total', render: (r: any) => formatCurrency(Number(r.total || 0), r.currency) }, { key: 'actions', header: '', render: actions }];
-  if (kind === 'purchase-orders') return [{ key: 'orderNo', header: 'PO #' }, { key: 'supplier', header: 'Supplier', render: (r: any) => r.supplier?.name }, { key: 'status', header: 'Status', render: (r: any) => <StatusBadge status={r.status} /> }, { key: 'receivedPercent', header: 'Received', render: (r: any) => `${Number(r.receivedPercent || 0).toFixed(0)}%` }, { key: 'total', header: 'Total', render: (r: any) => formatCurrency(Number(r.total || 0), r.currency) }, { key: 'actions', header: '', render: actions }];
-  if (kind === 'purchase-receipts') return [{ key: 'receiptNo', header: 'Receipt #' }, { key: 'supplier', header: 'Supplier', render: (r: any) => r.supplier?.name }, { key: 'status', header: 'Status', render: (r: any) => <StatusBadge status={r.status} /> }, { key: 'acceptedQty', header: 'Accepted' }, { key: 'landedCostAmount', header: 'Landed Cost', render: (r: any) => formatCurrency(Number(r.landedCostAmount || 0), r.currency) }, { key: 'actions', header: '', render: actions }];
-  if (kind === 'purchase-invoices') return [{ key: 'invoiceNo', header: 'Invoice #' }, { key: 'supplier', header: 'Supplier', render: (r: any) => r.supplier?.name }, { key: 'status', header: 'Status', render: (r: any) => <StatusBadge status={r.status} /> }, { key: 'total', header: 'Total', render: (r: any) => formatCurrency(Number(r.total || 0), r.currency) }, { key: 'outstandingAmount', header: 'Outstanding', render: (r: any) => formatCurrency(Number(r.outstandingAmount || 0), r.currency) }, { key: 'actions', header: '', render: actions }];
-  if (kind === 'supplier-payments') return [{ key: 'paymentNo', header: 'Payment #' }, { key: 'supplier', header: 'Supplier', render: (r: any) => r.supplier?.name }, { key: 'status', header: 'Status', render: (r: any) => <StatusBadge status={r.status} /> }, { key: 'type', header: 'Type' }, { key: 'amount', header: 'Amount', render: (r: any) => formatCurrency(Number(r.amount || 0), r.currency) }, { key: 'actions', header: '', render: actions }];
-  if (kind === 'payment-terms') return [{ key: 'name', header: 'Template' }, { key: 'description', header: 'Description' }, { key: 'terms', header: 'Terms', render: (r: any) => r.terms?.length || 0 }, { key: 'isActive', header: 'Active', render: (r: any) => r.isActive ? 'Yes' : 'No' }];
-  if (kind === 'supplier-items') return [{ key: 'supplier', header: 'Supplier', render: (r: any) => r.supplier?.name }, { key: 'product', header: 'Item', render: (r: any) => r.product?.name }, { key: 'supplierItemCode', header: 'Supplier Code' }, { key: 'supplierItemName', header: 'Supplier Name' }, { key: 'leadTimeDays', header: 'Lead Time' }];
-  if (kind === 'communications') return [{ key: 'sentAt', header: 'Date', render: (r: any) => formatDate(r.sentAt) }, { key: 'channel', header: 'Channel' }, { key: 'subject', header: 'Subject' }, { key: 'message', header: 'Message' }, { key: 'direction', header: 'Direction' }];
-  if (kind === 'landed-cost-vouchers') return [{ key: 'voucherNo', header: 'Voucher #' }, { key: 'status', header: 'Status', render: (r: any) => <StatusBadge status={r.status} /> }, { key: 'allocationBasis', header: 'Basis' }, { key: 'totalCharges', header: 'Charges', render: (r: any) => formatCurrency(Number(r.totalCharges || 0)) }, { key: 'actions', header: '', render: actions }];
-  if (kind === 'quality-inspections') return [{ key: 'inspectionNo', header: 'Inspection #' }, { key: 'status', header: 'Status', render: (r: any) => <StatusBadge status={r.status} /> }, { key: 'inspectedQty', header: 'Inspected' }, { key: 'acceptedQty', header: 'Accepted' }, { key: 'rejectedQty', header: 'Rejected' }];
-  return [{ key: 'agreementNo', header: 'Agreement #' }, { key: 'supplier', header: 'Supplier', render: (r: any) => r.supplier?.name }, { key: 'status', header: 'Status', render: (r: any) => <StatusBadge status={r.status} /> }, { key: 'validFrom', header: 'Valid From', render: (r: any) => formatDate(r.validFrom) }, { key: 'validTo', header: 'Valid To', render: (r: any) => formatDate(r.validTo) }];
+  if (kind === 'material-requests')
+    return [
+      { key: 'requestNo', header: 'Request #' },
+      { key: 'status', header: 'Status', render: (r: any) => <StatusBadge status={r.status} /> },
+      { key: 'requiredBy', header: 'Required By', render: (r: any) => (r.requiredBy ? formatDate(r.requiredBy) : '-') },
+      { key: 'items', header: 'Items', render: (r: any) => r.items?.length || 0 },
+      { key: 'actions', header: '', render: actions },
+    ];
+  if (kind === 'rfqs')
+    return [
+      { key: 'rfqNo', header: 'RFQ #' },
+      { key: 'status', header: 'Status', render: (r: any) => <StatusBadge status={r.status} /> },
+      { key: 'validUntil', header: 'Valid Until', render: (r: any) => (r.validUntil ? formatDate(r.validUntil) : '-') },
+      { key: 'suppliers', header: 'Suppliers', render: (r: any) => r.suppliers?.length || 0 },
+      { key: 'actions', header: '', render: actions },
+    ];
+  if (kind === 'supplier-quotations')
+    return [
+      { key: 'quotationNo', header: 'Quote #' },
+      { key: 'supplier', header: 'Supplier', render: (r: any) => r.supplier?.name },
+      { key: 'status', header: 'Status', render: (r: any) => <StatusBadge status={r.status} /> },
+      { key: 'total', header: 'Total', render: (r: any) => formatCurrency(Number(r.total || 0), r.currency) },
+      { key: 'actions', header: '', render: actions },
+    ];
+  if (kind === 'purchase-orders')
+    return [
+      {
+        key: 'orderNo',
+        header: 'PO #',
+        render: (r: any) => <span className="font-mono text-xs font-semibold text-[#1674c4]">{r.orderNo}</span>,
+      },
+      { key: 'supplier', header: 'Supplier', render: (r: any) => r.supplier?.name },
+      { key: 'status', header: 'Status', render: (r: any) => <StatusBadge status={r.status} /> },
+      {
+        key: 'receivedPercent',
+        header: 'Received',
+        render: (r: any) => `${Number(r.receivedPercent || 0).toFixed(0)}%`,
+      },
+      { key: 'total', header: 'Total', render: (r: any) => formatCurrency(Number(r.total || 0), r.currency) },
+      { key: 'actions', header: '', render: actions },
+    ];
+  if (kind === 'purchase-receipts')
+    return [
+      { key: 'receiptNo', header: 'Receipt #' },
+      { key: 'supplier', header: 'Supplier', render: (r: any) => r.supplier?.name },
+      { key: 'status', header: 'Status', render: (r: any) => <StatusBadge status={r.status} /> },
+      { key: 'acceptedQty', header: 'Accepted' },
+      {
+        key: 'landedCostAmount',
+        header: 'Landed Cost',
+        render: (r: any) => formatCurrency(Number(r.landedCostAmount || 0), r.currency),
+      },
+      { key: 'actions', header: '', render: actions },
+    ];
+  if (kind === 'purchase-invoices')
+    return [
+      { key: 'invoiceNo', header: 'Invoice #' },
+      { key: 'supplier', header: 'Supplier', render: (r: any) => r.supplier?.name },
+      { key: 'status', header: 'Status', render: (r: any) => <StatusBadge status={r.status} /> },
+      { key: 'total', header: 'Total', render: (r: any) => formatCurrency(Number(r.total || 0), r.currency) },
+      {
+        key: 'outstandingAmount',
+        header: 'Outstanding',
+        render: (r: any) => formatCurrency(Number(r.outstandingAmount || 0), r.currency),
+      },
+      { key: 'actions', header: '', render: actions },
+    ];
+  if (kind === 'supplier-payments')
+    return [
+      { key: 'paymentNo', header: 'Payment #' },
+      { key: 'supplier', header: 'Supplier', render: (r: any) => r.supplier?.name },
+      { key: 'status', header: 'Status', render: (r: any) => <StatusBadge status={r.status} /> },
+      { key: 'type', header: 'Type' },
+      { key: 'amount', header: 'Amount', render: (r: any) => formatCurrency(Number(r.amount || 0), r.currency) },
+      { key: 'actions', header: '', render: actions },
+    ];
+  if (kind === 'payment-terms')
+    return [
+      { key: 'name', header: 'Template' },
+      { key: 'description', header: 'Description' },
+      { key: 'terms', header: 'Terms', render: (r: any) => r.terms?.length || 0 },
+      { key: 'isActive', header: 'Active', render: (r: any) => (r.isActive ? 'Yes' : 'No') },
+    ];
+  if (kind === 'supplier-items')
+    return [
+      { key: 'supplier', header: 'Supplier', render: (r: any) => r.supplier?.name },
+      { key: 'product', header: 'Item', render: (r: any) => r.product?.name },
+      { key: 'supplierItemCode', header: 'Supplier Code' },
+      { key: 'supplierItemName', header: 'Supplier Name' },
+      { key: 'leadTimeDays', header: 'Lead Time' },
+    ];
+  if (kind === 'communications')
+    return [
+      { key: 'sentAt', header: 'Date', render: (r: any) => formatDate(r.sentAt) },
+      { key: 'channel', header: 'Channel' },
+      { key: 'subject', header: 'Subject' },
+      { key: 'message', header: 'Message' },
+      { key: 'direction', header: 'Direction' },
+    ];
+  if (kind === 'landed-cost-vouchers')
+    return [
+      { key: 'voucherNo', header: 'Voucher #' },
+      { key: 'status', header: 'Status', render: (r: any) => <StatusBadge status={r.status} /> },
+      { key: 'allocationBasis', header: 'Basis' },
+      { key: 'totalCharges', header: 'Charges', render: (r: any) => formatCurrency(Number(r.totalCharges || 0)) },
+      { key: 'actions', header: '', render: actions },
+    ];
+  if (kind === 'quality-inspections')
+    return [
+      { key: 'inspectionNo', header: 'Inspection #' },
+      { key: 'status', header: 'Status', render: (r: any) => <StatusBadge status={r.status} /> },
+      { key: 'inspectedQty', header: 'Inspected' },
+      { key: 'acceptedQty', header: 'Accepted' },
+      { key: 'rejectedQty', header: 'Rejected' },
+    ];
+  return [
+    { key: 'agreementNo', header: 'Agreement #' },
+    { key: 'supplier', header: 'Supplier', render: (r: any) => r.supplier?.name },
+    { key: 'status', header: 'Status', render: (r: any) => <StatusBadge status={r.status} /> },
+    { key: 'validFrom', header: 'Valid From', render: (r: any) => formatDate(r.validFrom) },
+    { key: 'validTo', header: 'Valid To', render: (r: any) => formatDate(r.validTo) },
+  ];
 }
 
 function Actions({ kind, row, status }: any) {
-  if (['material-requests', 'purchase-receipts', 'landed-cost-vouchers'].includes(kind) && row.status === 'DRAFT') return <Button size="sm" variant="outline" onClick={(e) => { e.stopPropagation(); status(row.id, 'SUBMITTED'); }}>Submit</Button>;
-  if (kind === 'purchase-orders' && row.status === 'DRAFT') return <Button size="sm" variant="outline" onClick={(e) => { e.stopPropagation(); status(row.id, 'CONFIRMED'); }}>Confirm</Button>;
-  if (kind === 'purchase-invoices' && row.status === 'DRAFT') return <Button size="sm" variant="outline" onClick={(e) => { e.stopPropagation(); status(row.id, 'SUBMITTED'); }}>Submit</Button>;
-  if (kind === 'supplier-payments' && row.status === 'DRAFT') return <Button size="sm" variant="outline" onClick={(e) => { e.stopPropagation(); status(row.id, 'SUBMITTED'); }}>Submit</Button>;
-  if (kind === 'rfqs' && row.status === 'DRAFT') return <Button size="sm" variant="outline" onClick={(e) => { e.stopPropagation(); status(row.id, 'SENT'); }}>Send</Button>;
+  if (['material-requests', 'purchase-receipts', 'landed-cost-vouchers'].includes(kind) && row.status === 'DRAFT')
+    return (
+      <Button
+        size="sm"
+        variant="outline"
+        onClick={(e) => {
+          e.stopPropagation();
+          status(row.id, 'SUBMITTED');
+        }}
+      >
+        Submit
+      </Button>
+    );
+  if (kind === 'purchase-orders' && row.status === 'DRAFT')
+    return (
+      <Button
+        size="sm"
+        variant="outline"
+        onClick={(e) => {
+          e.stopPropagation();
+          status(row.id, 'CONFIRMED');
+        }}
+      >
+        Confirm
+      </Button>
+    );
+  if (kind === 'purchase-invoices' && row.status === 'DRAFT')
+    return (
+      <Button
+        size="sm"
+        variant="outline"
+        onClick={(e) => {
+          e.stopPropagation();
+          status(row.id, 'SUBMITTED');
+        }}
+      >
+        Submit
+      </Button>
+    );
+  if (kind === 'supplier-payments' && row.status === 'DRAFT')
+    return (
+      <Button
+        size="sm"
+        variant="outline"
+        onClick={(e) => {
+          e.stopPropagation();
+          status(row.id, 'SUBMITTED');
+        }}
+      >
+        Submit
+      </Button>
+    );
+  if (kind === 'rfqs' && row.status === 'DRAFT')
+    return (
+      <Button
+        size="sm"
+        variant="outline"
+        onClick={(e) => {
+          e.stopPropagation();
+          status(row.id, 'SENT');
+        }}
+      >
+        Send
+      </Button>
+    );
   return <span className="text-xs text-[#8a929d]">-</span>;
 }
 
@@ -358,11 +1503,26 @@ function statusPath(kind: ProcurementKind, id: string) {
 }
 
 function needsLines(kind: ProcurementKind) {
-  return ['material-requests', 'rfqs', 'supplier-quotations', 'blanket-purchase-orders', 'purchase-orders', 'purchase-receipts', 'purchase-invoices'].includes(kind);
+  return [
+    'material-requests',
+    'rfqs',
+    'supplier-quotations',
+    'blanket-purchase-orders',
+    'purchase-orders',
+    'purchase-receipts',
+    'purchase-invoices',
+  ].includes(kind);
 }
 
 function usesSupplier(kind: ProcurementKind) {
-  return ['supplier-quotations', 'blanket-purchase-orders', 'purchase-orders', 'purchase-receipts', 'purchase-invoices', 'supplier-payments'].includes(kind);
+  return [
+    'supplier-quotations',
+    'blanket-purchase-orders',
+    'purchase-orders',
+    'purchase-receipts',
+    'purchase-invoices',
+    'supplier-payments',
+  ].includes(kind);
 }
 
 function dateField(kind: ProcurementKind) {

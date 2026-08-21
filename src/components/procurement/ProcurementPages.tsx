@@ -441,6 +441,16 @@ function BuyingSettings({ data, reload }: any) {
             onChange={(e) => setForm({ ...form, overBillingAllowancePercent: Number(e.target.value) })}
           />
         </Field>
+        {[
+          ['Rate Match Tolerance %', 'rateTolerancePercent'],
+          ['Quantity Match Tolerance %', 'quantityTolerancePercent'],
+          ['Tax Match Tolerance %', 'taxTolerancePercent'],
+          ['MSME Payment Days', 'msmePaymentDays'],
+        ].map(([label, key]) => (
+          <Field key={key} label={label}>
+            <Input type="number" value={form[key] ?? (key === 'msmePaymentDays' ? 45 : 0)} onChange={(e) => setForm({ ...form, [key]: Number(e.target.value) })} />
+          </Field>
+        ))}
         <label className="flex items-center gap-2 text-sm text-[#374151] cursor-pointer">
           <input
             type="checkbox"
@@ -468,6 +478,16 @@ function BuyingSettings({ data, reload }: any) {
           />
           <span>Auto material request from reorder</span>
         </label>
+        {[
+          ['Require gate entry before GRN', 'requireGateEntry'],
+          ['Require configured incoming inspections', 'requireInspectionForConfiguredItems'],
+          ['Block posting until three-way match', 'requireThreeWayMatch'],
+        ].map(([label, key]) => (
+          <label key={key} className="flex items-center gap-2 text-sm text-[#374151] cursor-pointer">
+            <input type="checkbox" checked={form[key] !== false} onChange={(e) => setForm({ ...form, [key]: e.target.checked })} className="h-4 w-4 rounded border-gray-300 text-blue-600" />
+            <span>{label}</span>
+          </label>
+        ))}
         <div className="md:col-span-3">
           <Field label="Default RFQ Terms">
             <Input

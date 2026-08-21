@@ -140,6 +140,7 @@ export const navItems: NavItem[] = [
       { label: 'Supplier Item Codes', href: '/procurement/supplier-items', icon: Tags, permission: 'procurement:supplier-items:read' },
       { label: 'Communications', href: '/procurement/communications', icon: Activity, permission: 'procurement:communications:read' },
       { label: 'Procurement Tracker', href: '/procurement/tracker', icon: BarChart3, permission: 'procurement:tracker:read' },
+      { label: 'Procurement Reports', href: '/procurement/reports', icon: ChartColumnIncreasing, permission: 'procurement:reports:read' },
       { label: 'Buying Settings', href: '/procurement/settings', icon: Settings, permission: 'procurement:settings:read' },
     ],
   },

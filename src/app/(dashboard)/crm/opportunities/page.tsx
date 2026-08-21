@@ -131,7 +131,19 @@ export default function OpportunitiesPage() {
 
   const moveStage = async (id: string, stage: string) => {
     try {
-      await api.patch(`/crm/opportunities/${id}`, { stage });
+      if (stage === 'CLOSED_LOST') {
+        const response = await api.get('/crm/lost-reasons');
+        const reasons = response.data?.data || [];
+        if (!reasons.length) throw new Error('Configure a mandatory loss reason in CRM Configuration first');
+        const choice = window.prompt(`Enter loss reason number:\n${reasons.map((item: any, index: number) => `${index + 1}. ${item.name}`).join('\n')}`);
+        const selected = reasons[Number(choice) - 1];
+        if (!selected) return;
+        await api.post(`/crm/opportunities/${id}/lose`, { lostReasonId: selected.id });
+      } else if (stage === 'CLOSED_WON') {
+        await api.post(`/crm/opportunities/${id}/win`, {});
+      } else {
+        await api.post(`/crm/opportunities/${id}/stage`, { stage });
+      }
       showApiSuccess(`Opportunity stage updated to ${stage.replace('_', ' ')}`);
       fetchOpps();
     } catch (err: any) {

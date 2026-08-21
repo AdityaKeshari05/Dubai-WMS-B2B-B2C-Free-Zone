@@ -99,12 +99,19 @@ export default function LeadsPage() {
 
     setIsSubmitting(true);
     try {
+      const duplicateCheck = await api.post('/crm/leads/check-duplicate', { email: form.email, phone: form.phone, country: form.country });
+      const suggestions = duplicateCheck.data?.data?.suggestions || [];
+      const allowDuplicate = suggestions.length > 0
+        ? window.confirm(`Possible duplicate found: ${suggestions.map((item: any) => item.title).join(', ')}. Create this lead anyway?`)
+        : false;
+      if (suggestions.length > 0 && !allowDuplicate) return;
       await api.post('/crm/leads', {
         ...form,
         title: trimmedTitle,
         firstName: trimmedFirst,
         lastName: trimmedLast,
         value: numValue,
+        allowDuplicate,
       });
       showApiSuccess('Lead created successfully');
       setShowModal(false);
@@ -135,7 +142,7 @@ export default function LeadsPage() {
     if (convertingId) return;
     setConvertingId(id);
     try {
-      await api.post(`/crm/leads/${id}/convert`);
+      await api.post(`/crm/leads/${id}/convert`, {});
       showApiSuccess('Lead converted to customer and opportunity');
       fetchLeads();
     } catch (err: any) {

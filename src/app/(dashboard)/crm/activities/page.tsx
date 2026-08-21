@@ -32,6 +32,7 @@ export default function ActivitiesPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [typeFilter, setTypeFilter] = useState('');
+  const [worklist, setWorklist] = useState<'all' | 'my-day' | 'overdue'>('all');
   const [showModal, setShowModal] = useState(false);
   const [leads, setLeads] = useState<Lead[]>([]);
   const [form, setForm] = useState({
@@ -48,9 +49,11 @@ export default function ActivitiesPage() {
   const fetchActivities = async () => {
     setIsLoading(true);
     try {
-      const res = await api.get('/crm/activities', { params: { page, limit, type: typeFilter || undefined } });
-      setActivities(res.data?.data?.items || []);
-      setTotal(res.data?.data?.total || 0);
+      const path = worklist === 'my-day' ? '/crm/activities-my-day' : worklist === 'overdue' ? '/crm/activities-overdue' : '/crm/activities';
+      const res = await api.get(path, { params: { page, limit, type: typeFilter || undefined } });
+      const payload = res.data?.data;
+      setActivities(Array.isArray(payload) ? payload : payload?.items || []);
+      setTotal(Array.isArray(payload) ? payload.length : payload?.total || 0);
     } catch (err: any) {
       showApiError(err, 'Failed to load activities');
     } finally {
@@ -69,7 +72,7 @@ export default function ActivitiesPage() {
 
   useEffect(() => {
     fetchActivities();
-  }, [page, typeFilter]);
+  }, [page, typeFilter, worklist]);
 
   useEffect(() => {
     fetchLeads();
@@ -175,6 +178,9 @@ export default function ActivitiesPage() {
         action={{ label: 'Log Activity', onClick: () => setShowModal(true), icon: Plus }}
       />
       <div className="flex gap-2 mb-4 flex-wrap">
+        <Button variant={worklist === 'all' ? 'default' : 'outline'} size="sm" onClick={() => setWorklist('all')}>All work</Button>
+        <Button variant={worklist === 'my-day' ? 'default' : 'outline'} size="sm" onClick={() => setWorklist('my-day')}>My day</Button>
+        <Button variant={worklist === 'overdue' ? 'default' : 'outline'} size="sm" onClick={() => setWorklist('overdue')}>Overdue</Button>
         <Button
           variant={typeFilter === '' ? 'default' : 'outline'}
           size="sm"

@@ -82,6 +82,8 @@ export const navItems: NavItem[] = [
       { label: 'Opportunities', href: '/crm/opportunities', icon: TrendingUp },
       { label: 'Activities', href: '/crm/activities', icon: Activity },
       { label: 'Assignment Rules', href: '/crm/assignment-rules', icon: Route, permission: 'crm:assignment-rules:read' },
+      { label: 'CRM Reports', href: '/crm/reports', icon: BarChart3, permission: 'crm:reports:read' },
+      { label: 'CRM Configuration', href: '/crm/settings', icon: Settings },
     ],
   },
   {

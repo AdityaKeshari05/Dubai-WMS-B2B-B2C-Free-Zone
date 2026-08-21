@@ -42,6 +42,11 @@ export const navItems: NavItem[] = [
 	      { label: 'Stock Entries', href: '/inventory/stock-entries', icon: ClipboardList, permission: 'inventory:stock-entries:read' },
 	      { label: 'Stock Movements', href: '/inventory/stock-movements', icon: ArrowLeftRight, permission: 'inventory:stock-movements:read' },
 	      { label: 'Pricing', href: '/inventory/pricing', icon: Tags, permission: 'inventory:price-lists:read' },
+	      { label: 'Reconciliation', href: '/inventory/reconciliations', icon: ClipboardCheck },
+	      { label: 'Transfer Orders', href: '/inventory/transfers', icon: ArrowLeftRight },
+	      { label: 'Traceability', href: '/inventory/traceability', icon: Route },
+	      { label: 'Inventory Monitoring', href: '/inventory/reports/advanced', icon: BarChart3 },
+	      { label: 'Inventory Configuration', href: '/inventory/settings', icon: Settings },
 	      { label: 'Stock Balance', href: '/inventory/reports/stock-balance', icon: Boxes, permission: 'inventory:stock-balance:read' },
 	      { label: 'Stock Ledger', href: '/inventory/reports/stock-ledger', icon: BookOpen, permission: 'inventory:stock-ledger:read' },
 	      { label: 'Projected Stock', href: '/inventory/reports/projected-stock', icon: TrendingUp, permission: 'inventory:projected-stock:read' },
@@ -91,6 +96,10 @@ export const navItems: NavItem[] = [
     children: [
       { label: 'Sales Orders', href: '/sales/orders', icon: ShoppingCart, permission: 'sales:sales-orders:read' },
       { label: 'Quotations', href: '/sales/quotations', icon: FileCheck2, permission: 'sales:quotations:read' },
+      { label: 'Sales Enquiries', href: '/sales/enquiries', icon: ClipboardSignature },
+      { label: 'Fulfilment', href: '/sales/fulfilment', icon: PackageCheck },
+      { label: 'Sales Reports', href: '/sales/reports', icon: BarChart3 },
+      { label: 'Sales Configuration', href: '/sales/settings', icon: Settings },
     ],
   },
   {

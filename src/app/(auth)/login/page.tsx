@@ -245,7 +245,7 @@ export default function LoginPage() {
               <p className="text-xs text-[#6b7280]">
                 Need to create a new company workspace?{' '}
                 <a
-                  href={`${marketingUrl}/register`}
+                  href={`/register`}
                   className="font-medium text-[#1674c4] hover:underline"
                 >
                   Register Organization

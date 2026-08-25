@@ -4,6 +4,7 @@ import './globals.css';
 import { AuthProvider } from '@/contexts/AuthContext';
 import { WorkspaceProvider } from '@/contexts/WorkspaceContext';
 import { Toaster } from 'react-hot-toast';
+import Chatbot from '@/components/Chatbot';
 
 const inter = Inter({ subsets: ['latin'] });
 
@@ -59,6 +60,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             />
           </AuthProvider>
         </WorkspaceProvider>
+        <Chatbot />
       </body>
     </html>
   );

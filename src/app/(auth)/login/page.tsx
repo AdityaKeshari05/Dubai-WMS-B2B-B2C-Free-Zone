@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { useWorkspace } from '@/contexts/WorkspaceContext';
+import { isSubdomainEnabled } from '@/lib/subdomain';
 import { WorkspaceNotFound } from '@/components/workspace/WorkspaceNotFound';
 import { WorkspaceMismatch } from '@/components/workspace/WorkspaceMismatch';
 import { Button } from '@/components/ui/button';
@@ -38,6 +39,8 @@ export default function LoginPage() {
   const marketingUrl = process.env.NEXT_PUBLIC_MARKETING_URL || 'http://localhost:3001';
   const rootDomain = process.env.NEXT_PUBLIC_ROOT_DOMAIN || 'localhost:3000';
 
+  const isSubdomainActive = isSubdomainEnabled();
+
   // 1. Loading state while verifying workspace
   if (isLoading) {
     return (
@@ -46,24 +49,24 @@ export default function LoginPage() {
           <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-[#eef6fd] text-[#2490ef]">
             <Loader2 className="h-6 w-6 animate-spin" />
           </div>
-          <p className="text-sm font-medium text-[#6b7280]">Verifying company workspace...</p>
+          <p className="text-sm font-medium text-[#6b7280]">Verifying workspace...</p>
         </div>
       </div>
     );
   }
 
-  // 2. Workspace Not Found (404)
-  if (slug && isValid === false) {
+  // 2. Workspace Not Found (404) - only relevant when explicitly using a subdomain
+  if (isSubdomainActive && slug && isValid === false) {
     return <WorkspaceNotFound slug={slug} onRetry={refetchWorkspace} />;
   }
 
-  // 3. User session belongs to another company
-  if (slug && isMismatch) {
+  // 3. User session belongs to another company - only relevant when explicitly using a subdomain
+  if (isSubdomainActive && slug && isMismatch) {
     return <WorkspaceMismatch currentWorkspace={company} activeSlug={slug} />;
   }
 
-  // 4. Root Domain Visitor (No Subdomain provided, e.g. http://localhost:3000)
-  if (!slug) {
+  // 4. Subdomain Mode Visitor on bare root domain who needs to find their workspace
+  if (isSubdomainActive && !slug) {
     const handleGoToWorkspace = (e: React.FormEvent) => {
       e.preventDefault();
       const cleanSlug = slugify(targetSlug);
@@ -134,7 +137,7 @@ export default function LoginPage() {
     );
   }
 
-  // 5. Active Subdomain Login (e.g. http://gurudas.localhost:3000/login)
+  // 5. Direct / Active Login Form (Single Project Mode & Subdomain Mode)
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoggingIn(true);

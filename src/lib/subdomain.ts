@@ -1,7 +1,16 @@
+export function isSubdomainEnabled(): boolean {
+  return process.env.NEXT_PUBLIC_ENABLE_SUBDOMAINS === 'true';
+}
+
 /**
  * Extracts the workspace subdomain slug from a hostname.
  */
 export function extractSubdomain(hostname?: string): string | null {
+  // If subdomains are explicitly disabled in environment, return null
+  if (process.env.NEXT_PUBLIC_ENABLE_SUBDOMAINS === 'false') {
+    return null;
+  }
+
   const host = (
     hostname || (typeof window !== 'undefined' ? window.location.hostname : '')
   ).toLowerCase().split(':')[0]; // strip port if present
@@ -22,7 +31,7 @@ export function extractSubdomain(hostname?: string): string | null {
     return null;
   }
 
-  const rootDomain = (process.env.NEXT_PUBLIC_ROOT_DOMAIN || 'erp.com').toLowerCase();
+  const rootDomain = (process.env.NEXT_PUBLIC_ROOT_DOMAIN || 'localhost:3000').toLowerCase().split(':')[0];
 
   // If host is exactly the root domain or www
   if (host === rootDomain || host === `www.${rootDomain}`) {
@@ -45,3 +54,4 @@ export function extractSubdomain(hostname?: string): string | null {
 
   return null;
 }
+

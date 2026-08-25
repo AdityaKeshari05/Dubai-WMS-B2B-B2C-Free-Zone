@@ -6,6 +6,7 @@ import { Sidebar } from '@/components/layout/Sidebar';
 import { Header } from '@/components/layout/Header';
 import { useAuth } from '@/contexts/AuthContext';
 import { useWorkspace } from '@/contexts/WorkspaceContext';
+import { isSubdomainEnabled } from '@/lib/subdomain';
 import { WorkspaceNotFound } from '@/components/workspace/WorkspaceNotFound';
 import { WorkspaceMismatch } from '@/components/workspace/WorkspaceMismatch';
 import { LoadingSpinner } from '@/components/shared/LoadingSpinner';
@@ -16,15 +17,17 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const { slug, company, isValid, isLoading: isWorkspaceLoading, isMismatch } = useWorkspace();
   const router = useRouter();
 
+  const isSubdomainActive = isSubdomainEnabled();
+
   useEffect(() => {
     if (!isLoading && !isWorkspaceLoading) {
-      if (!slug) {
+      if (!user || !token) {
         router.replace('/login');
-      } else if (!user || !token) {
+      } else if (isSubdomainActive && !slug) {
         router.replace('/login');
       }
     }
-  }, [user, token, isLoading, isWorkspaceLoading, slug, router]);
+  }, [user, token, isLoading, isWorkspaceLoading, slug, isSubdomainActive, router]);
 
   if (isLoading || isWorkspaceLoading) {
     return (
@@ -34,22 +37,22 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     );
   }
 
-  // Guard against bare root domain (e.g. localhost:3000/dashboard without subdomain)
-  if (!slug) {
+  if (!user || !token) return null;
+
+  // Guard against bare root domain ONLY when strict subdomain mode is active
+  if (isSubdomainActive && !slug) {
     return null;
   }
 
-  // Guard against non-existent workspace (404)
-  if (slug && isValid === false) {
+  // Guard against non-existent workspace (404) - only when subdomain is active
+  if (isSubdomainActive && slug && isValid === false) {
     return <WorkspaceNotFound slug={slug} />;
   }
 
-  // Guard against tenant session mismatch
-  if (slug && isMismatch) {
+  // Guard against tenant session mismatch - only when subdomain is active
+  if (isSubdomainActive && slug && isMismatch) {
     return <WorkspaceMismatch currentWorkspace={company} activeSlug={slug} />;
   }
-
-  if (!user || !token) return null;
 
   return (
     <div className="flex h-screen overflow-hidden desk-surface">
@@ -63,3 +66,4 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     </div>
   );
 }
+

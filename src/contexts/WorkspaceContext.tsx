@@ -2,7 +2,7 @@
 
 import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
 import api from '@/lib/api';
-import { extractSubdomain } from '@/lib/subdomain';
+import { extractSubdomain, isSubdomainEnabled } from '@/lib/subdomain';
 
 export interface WorkspaceCompany {
   id: string;
@@ -19,6 +19,7 @@ interface WorkspaceContextType {
   isValid: boolean | null;
   isLoading: boolean;
   isMismatch: boolean;
+  isSubdomainMode: boolean;
   error: string | null;
   refetchWorkspace: () => Promise<void>;
   clearMismatch: () => void;
@@ -62,13 +63,32 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
     if (detectedSlug) {
       fetchWorkspace(detectedSlug);
     } else {
-      // Root domain / Localhost direct
+      // Single Project / Root domain direct mode
+      if (typeof window !== 'undefined') {
+        try {
+          const savedUserStr = localStorage.getItem('user');
+          if (savedUserStr) {
+            const user = JSON.parse(savedUserStr);
+            const userCompany = user?.company;
+            if (userCompany) {
+              setCompany({
+                id: userCompany.id || user.companyId,
+                name: userCompany.name || 'My Workspace',
+                slug: userCompany.slug || user.companySlug || '',
+                logo: userCompany.logo || null,
+                currency: userCompany.currency || 'USD',
+              });
+              setIsValid(true);
+            }
+          }
+        } catch {}
+      }
       setIsLoading(false);
-      setIsValid(null);
+      setIsValid(true);
     }
   }, [fetchWorkspace]);
 
-  // Check for session mismatch
+  // Check for session mismatch (only active when in subdomain mode with an explicit slug)
   useEffect(() => {
     if (typeof window !== 'undefined' && slug) {
       try {
@@ -105,6 +125,8 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  const isSubdomainMode = Boolean(slug && isSubdomainEnabled());
+
   return (
     <WorkspaceContext.Provider
       value={{
@@ -113,6 +135,7 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
         isValid,
         isLoading,
         isMismatch,
+        isSubdomainMode,
         error,
         refetchWorkspace,
         clearMismatch,
@@ -128,3 +151,4 @@ export function useWorkspace() {
   if (!ctx) throw new Error('useWorkspace must be used within WorkspaceProvider');
   return ctx;
 }
+

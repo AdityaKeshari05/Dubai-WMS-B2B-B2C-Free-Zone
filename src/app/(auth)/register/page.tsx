@@ -37,7 +37,7 @@ export default function RegisterPage() {
       const payload = await register({ ...form, slug: suggestedSlug });
       const createdSlug = payload.user.companySlug || payload.user.company?.slug || suggestedSlug;
       toast.success('Workspace created successfully');
-      window.location.href = `${window.location.protocol}//${createdSlug}.localhost:3001/dashboard`;
+      window.location.href = `${window.location.protocol}//${createdSlug}.#/dashboard`;
     } catch (err: any) {
       toast.error(err.response?.data?.message || 'Workspace registration failed');
     } finally {
@@ -57,11 +57,10 @@ export default function RegisterPage() {
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="space-y-1.5"><Label>Company name</Label><Input value={form.companyName} onChange={(e) => update('companyName', e.target.value)} required /></div>
-              <div className="space-y-1.5">
+              {/* <div className="space-y-1.5">
                 <Label>Workspace URL</Label>
                 <div className="flex gap-2"><Input value={form.slug} onChange={(e) => { update('slug', slugify(e.target.value)); setSlugStatus(null); }} placeholder={slugify(form.companyName) || 'your-company'} /><Button type="button" variant="outline" onClick={checkSlug}>Check</Button></div>
-                <p className="text-xs text-[#6b7280]">{suggestedSlug || 'your-company'}.localhost:3001 {slugStatus && `— ${slugStatus}`}</p>
-              </div>
+              </div> */}
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1.5"><Label>First name</Label><Input value={form.firstName} onChange={(e) => update('firstName', e.target.value)} required /></div>
                 <div className="space-y-1.5"><Label>Last name</Label><Input value={form.lastName} onChange={(e) => update('lastName', e.target.value)} required /></div>

@@ -1,7 +1,9 @@
 'use client';
 
 import { useMemo, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
+import { isSubdomainEnabled } from '@/lib/subdomain';
 import api from '@/lib/api';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -12,6 +14,7 @@ import toast from 'react-hot-toast';
 const slugify = (value: string) => value.toLowerCase().trim().replace(/[^a-z0-9\s-]/g, '').replace(/[\s_]+/g, '-').replace(/-+/g, '-').replace(/^-+|-+$/g, '');
 
 export default function RegisterPage() {
+  const router = useRouter();
   const [form, setForm] = useState({ firstName: '', lastName: '', email: '', password: '', phone: '', companyName: '', companyPhone: '', country: 'IN', currency: 'INR', slug: '' });
   const [isLoading, setIsLoading] = useState(false);
   const [slugStatus, setSlugStatus] = useState<string | null>(null);
@@ -37,7 +40,18 @@ export default function RegisterPage() {
       const payload = await register({ ...form, slug: suggestedSlug });
       const createdSlug = payload.user.companySlug || payload.user.company?.slug || suggestedSlug;
       toast.success('Workspace created successfully');
-      window.location.href = `${window.location.protocol}//${createdSlug}.#/dashboard`;
+      
+      if (isSubdomainEnabled()) {
+        const rootDomain = process.env.NEXT_PUBLIC_ROOT_DOMAIN || 'localhost:3000';
+        const isLocal = typeof window !== 'undefined' && (window.location.hostname.includes('localhost') || window.location.hostname.includes('127.0.0.1'));
+        const protocol = typeof window !== 'undefined' ? window.location.protocol : 'https:';
+        const destination = isLocal
+          ? `${protocol}//${createdSlug}.${rootDomain}/dashboard`
+          : `https://${createdSlug}.${rootDomain}/dashboard`;
+        window.location.href = destination;
+      } else {
+        router.push('/dashboard');
+      }
     } catch (err: any) {
       toast.error(err.response?.data?.message || 'Workspace registration failed');
     } finally {

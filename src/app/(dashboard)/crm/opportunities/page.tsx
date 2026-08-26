@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Plus, TrendingUp } from 'lucide-react';
+import { Plus, TrendingUp, Pencil } from 'lucide-react';
 import { PageHeader } from '@/components/shared/PageHeader';
 import { DataTable } from '@/components/shared/DataTable';
 import { Pagination } from '@/components/shared/Pagination';
@@ -31,6 +31,7 @@ export default function OpportunitiesPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [stageFilter, setStageFilter] = useState('');
   const [showModal, setShowModal] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState({
     title: '',
     value: '',
@@ -84,13 +85,14 @@ export default function OpportunitiesPage() {
 
     setIsSubmitting(true);
     try {
-      await api.post('/crm/opportunities', {
+      const payload = {
         ...form,
         title: trimmedTitle,
         value: valNum,
         probability: probNum,
-      });
-      showApiSuccess('Opportunity created successfully');
+      };
+      if (editingId) await api.put(`/crm/opportunities/${editingId}`, payload); else await api.post('/crm/opportunities', payload);
+      showApiSuccess(`Opportunity ${editingId ? 'updated' : 'created'} successfully`);
       setShowModal(false);
       setForm({
         title: '',
@@ -101,6 +103,7 @@ export default function OpportunitiesPage() {
         expectedClose: '',
         notes: '',
       });
+      setEditingId(null);
       fetchOpps();
     } catch (err: any) {
       showApiError(err, 'Failed to create opportunity');
@@ -108,6 +111,7 @@ export default function OpportunitiesPage() {
       setIsSubmitting(false);
     }
   };
+  const edit = (o: any) => { setEditingId(o.id); setForm({ title: o.title || '', value: String(o.value || ''), currency: o.currency || 'INR', stage: o.stage || 'PROSPECTING', probability: String(o.probability ?? 10), expectedClose: o.expectedClose ? String(o.expectedClose).slice(0, 10) : '', notes: o.notes || '' }); setShowModal(true); };
 
   const columns = [
     {
@@ -127,6 +131,7 @@ export default function OpportunitiesPage() {
       header: 'Expected Close',
       render: (o: Opportunity) => (o.expectedClose ? formatDate(o.expectedClose) : '—'),
     },
+    { key: 'actions', header: '', render: (o: any) => <Button size="sm" variant="outline" onClick={(e) => { e.stopPropagation(); edit(o); }}><Pencil className="mr-1 h-3.5 w-3.5" />Edit</Button> },
   ];
 
   const moveStage = async (id: string, stage: string) => {
@@ -156,7 +161,7 @@ export default function OpportunitiesPage() {
       <PageHeader
         title="Opportunities"
         description="Track sales opportunities and deals through the pipeline"
-        action={{ label: 'New Opportunity', onClick: () => setShowModal(true), icon: Plus }}
+        action={{ label: 'New Opportunity', onClick: () => { setEditingId(null); setShowModal(true); }, icon: Plus }}
       />
       <div className="mb-4 grid gap-3 xl:grid-cols-6">
         {pipeline.map((column) => (
@@ -236,7 +241,7 @@ export default function OpportunitiesPage() {
       <Dialog open={showModal} onOpenChange={setShowModal}>
         <DialogContent className="max-w-xl">
           <DialogHeader>
-            <DialogTitle>New Opportunity</DialogTitle>
+            <DialogTitle>{editingId ? 'Edit' : 'New'} Opportunity</DialogTitle>
           </DialogHeader>
           <form onSubmit={handleCreate} className="grid grid-cols-2 gap-4 mt-2">
             <div className="col-span-2 space-y-1.5">
@@ -303,7 +308,7 @@ export default function OpportunitiesPage() {
                 Cancel
               </Button>
               <Button type="submit" disabled={isSubmitting}>
-                {isSubmitting ? 'Creating...' : 'Create Opportunity'}
+                {isSubmitting ? 'Saving...' : editingId ? 'Update Opportunity' : 'Create Opportunity'}
               </Button>
             </div>
           </form>

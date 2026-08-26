@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { Plus, Calendar, Check, XCircle, AlertCircle, ArrowUpRight } from 'lucide-react';
+import { Plus, Calendar, Check, XCircle, AlertCircle, ArrowUpRight, Pencil } from 'lucide-react';
 import { PageHeader } from '@/components/shared/PageHeader';
 import { DataTable } from '@/components/shared/DataTable';
 import { Pagination } from '@/components/shared/Pagination';
@@ -34,6 +34,7 @@ export default function ActivitiesPage() {
   const [typeFilter, setTypeFilter] = useState('');
   const [worklist, setWorklist] = useState<'all' | 'my-day' | 'overdue'>('all');
   const [showModal, setShowModal] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [leads, setLeads] = useState<Lead[]>([]);
   const [form, setForm] = useState({
     leadId: '',
@@ -94,14 +95,16 @@ export default function ActivitiesPage() {
 
     setIsSubmitting(true);
     try {
-      await api.post('/crm/activities', {
+      const payload = {
         ...form,
         subject: trimmedSubject,
         dueDate: form.dueDate || undefined,
-      });
-      showApiSuccess('Activity created successfully');
+      };
+      if (editingId) await api.put(`/crm/activities/${editingId}`, payload); else await api.post('/crm/activities', payload);
+      showApiSuccess(`Activity ${editingId ? 'updated' : 'created'} successfully`);
       setShowModal(false);
       setForm({ leadId: '', type: 'CALL', subject: '', description: '', dueDate: '', status: 'PLANNED' });
+      setEditingId(null);
       fetchActivities();
     } catch (err: any) {
       showApiError(err, 'Failed to create activity');
@@ -109,6 +112,7 @@ export default function ActivitiesPage() {
       setIsSubmitting(false);
     }
   };
+  const editActivity = (a: any) => { setEditingId(a.id); setForm({ leadId: a.leadId || '', type: a.type || 'CALL', subject: a.subject || '', description: a.description || '', dueDate: a.dueDate ? String(a.dueDate).slice(0, 16) : '', status: a.status || 'PLANNED' }); setShowModal(true); };
 
   const columns = [
     { key: 'type', header: 'Type', render: (a: Activity) => <StatusBadge status={a.type} /> },
@@ -132,6 +136,7 @@ export default function ActivitiesPage() {
       render: (a: Activity) =>
         !['COMPLETED', 'CANCELLED'].includes(a.status) ? (
           <div className="flex justify-end gap-1" onClick={(event) => event.stopPropagation()}>
+            <Button size="sm" variant="outline" onClick={() => editActivity(a)}><Pencil className="h-3.5 w-3.5" /></Button>
             <Button size="sm" variant="outline" onClick={() => completeActivity(a)}>
               <Check className="h-3.5 w-3.5" />
             </Button>
@@ -175,7 +180,7 @@ export default function ActivitiesPage() {
       <PageHeader
         title="Activities"
         description="Track calls, emails, and meetings"
-        action={{ label: 'Log Activity', onClick: () => setShowModal(true), icon: Plus }}
+        action={{ label: 'Log Activity', onClick: () => { setEditingId(null); setShowModal(true); }, icon: Plus }}
       />
       <div className="flex gap-2 mb-4 flex-wrap">
         <Button variant={worklist === 'all' ? 'default' : 'outline'} size="sm" onClick={() => setWorklist('all')}>All work</Button>
@@ -223,7 +228,7 @@ export default function ActivitiesPage() {
       <Dialog open={showModal} onOpenChange={setShowModal}>
         <DialogContent className="max-w-lg">
           <DialogHeader>
-            <DialogTitle>Log Activity</DialogTitle>
+            <DialogTitle>{editingId ? 'Edit' : 'Log'} Activity</DialogTitle>
           </DialogHeader>
 
           {leads.length === 0 && !isLoading && (

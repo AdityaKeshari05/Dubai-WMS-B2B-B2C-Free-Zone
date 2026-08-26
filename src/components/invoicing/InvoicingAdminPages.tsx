@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
-import { FileText, Plus, RotateCcw, Trash2, Play, Printer, Repeat, Settings2, AlertCircle, ArrowUpRight } from 'lucide-react';
+import { FileText, Plus, RotateCcw, Trash2, Play, Printer, Repeat, Settings2, AlertCircle, ArrowUpRight, Pencil } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -94,6 +94,7 @@ export function TaxTemplatesPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [open, setOpen] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState({ name: '', code: '', scope: 'BOTH', description: '', isDefault: false });
   const [lines, setLines] = useState<any[]>([{ label: 'GST', rate: 18, chargeType: 'ON_NET_TOTAL', isRecoverable: false }]);
 
@@ -126,18 +127,20 @@ export function TaxTemplatesPage() {
 
     setIsSubmitting(true);
     try {
-      await api.post('/invoicing/tax-templates', {
+      const payload = {
         name: trimmedName,
         code: trimmedCode,
         scope: form.scope,
         description: form.description,
         isDefault: form.isDefault,
         lines,
-      });
-      showApiSuccess(`Tax template "${trimmedName}" created successfully`);
+      };
+      if (editingId) await api.patch(`/invoicing/tax-templates/${editingId}`, payload); else await api.post('/invoicing/tax-templates', payload);
+      showApiSuccess(`Tax template "${trimmedName}" ${editingId ? 'updated' : 'created'} successfully`);
       setOpen(false);
       setForm({ name: '', code: '', scope: 'BOTH', description: '', isDefault: false });
       setLines([{ label: 'GST', rate: 18, chargeType: 'ON_NET_TOTAL', isRecoverable: false }]);
+      setEditingId(null);
       fetchTemplates();
     } catch (err: any) {
       showApiError(err, 'Failed to create tax template');
@@ -145,13 +148,14 @@ export function TaxTemplatesPage() {
       setIsSubmitting(false);
     }
   };
+  const editTemplate = (row: any) => { setEditingId(row.id); setForm({ name: row.name || '', code: row.code || '', scope: row.scope || 'BOTH', description: row.description || '', isDefault: !!row.isDefault }); setLines(row.lines?.length ? row.lines : [{ label: 'GST', rate: 18, chargeType: 'ON_NET_TOTAL', isRecoverable: false }]); setOpen(true); };
 
   return (
     <CrudShell
       title="Tax Templates"
       description="Reusable GST/tax templates used by invoice line items."
       actionLabel="New Template"
-      onAction={() => setOpen(true)}
+      onAction={() => { setEditingId(null); setOpen(true); }}
     >
       <DataTable
         data={templates}
@@ -170,12 +174,13 @@ export function TaxTemplatesPage() {
             header: 'Status',
             render: (t: any) => <StatusBadge status={t.isActive ? 'ACTIVE' : 'INACTIVE'} />,
           },
+          { key: 'actions', header: '', render: (row: any) => <Button size="sm" variant="outline" onClick={() => editTemplate(row)}><Pencil className="mr-1 h-3.5 w-3.5" />Edit</Button> },
         ]}
       />
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="max-w-3xl">
           <DialogHeader>
-            <DialogTitle>New Tax Template</DialogTitle>
+            <DialogTitle>{editingId ? 'Edit' : 'New'} Tax Template</DialogTitle>
           </DialogHeader>
           <div className="grid gap-3">
             <div className="grid gap-3 md:grid-cols-3">
@@ -311,7 +316,7 @@ export function TaxTemplatesPage() {
                 Cancel
               </Button>
               <Button onClick={create} disabled={isSubmitting}>
-                {isSubmitting ? 'Creating...' : 'Create'}
+                {isSubmitting ? 'Saving...' : editingId ? 'Update' : 'Create'}
               </Button>
             </div>
           </div>
@@ -327,6 +332,7 @@ export function CreditNotesPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [open, setOpen] = useState(false);
+  const [editingCreditId, setEditingCreditId] = useState<string | null>(null);
   const [form, setForm] = useState({
     originalInvoiceId: '',
     reason: 'SALES_RETURN',
@@ -412,10 +418,11 @@ export function CreditNotesPage() {
 
     setIsSubmitting(true);
     try {
-      await api.post(`/invoicing/credit-notes/from-invoice/${form.originalInvoiceId}`, { ...form, items });
-      showApiSuccess('Draft credit note created successfully');
+      if (editingCreditId) await api.put(`/invoicing/credit-notes/${editingCreditId}`, { ...form, items }); else await api.post(`/invoicing/credit-notes/from-invoice/${form.originalInvoiceId}`, { ...form, items });
+      showApiSuccess(`Draft credit note ${editingCreditId ? 'updated' : 'created'} successfully`);
       setOpen(false);
       reset();
+      setEditingCreditId(null);
       load();
     } catch (err: any) {
       showApiError(err, 'Failed to create credit note');
@@ -423,6 +430,7 @@ export function CreditNotesPage() {
       setIsSubmitting(false);
     }
   };
+  const editCredit = (note: any) => { setEditingCreditId(note.id); setForm({ originalInvoiceId: note.originalInvoiceId, reason: note.reason || 'OTHER', date: String(note.date).slice(0, 10), notes: note.notes || '' }); setRows((note.items || []).map((i: any) => ({ productId: i.productId, itemCode: i.itemCode, description: i.description || '', quantity: Number(i.quantity), unitPrice: Number(i.rate), discount: Number(i.discount || 0), taxRate: Number(i.taxRate || 0) }))); setOpen(true); };
 
   const setStatus = async (id: string, status: string) => {
     try {
@@ -439,7 +447,7 @@ export function CreditNotesPage() {
       title="Credit Notes"
       description="Create customer credits from submitted invoices, then submit to reduce receivables and post ledger reversal."
       actionLabel="New Credit Note"
-      onAction={() => setOpen(true)}
+      onAction={() => { setEditingCreditId(null); setOpen(true); }}
     >
       {notes.length || isLoading ? (
         <DataTable
@@ -458,6 +466,9 @@ export function CreditNotesPage() {
               header: '',
               render: (n: any) => (
                 <div className="flex justify-end gap-2">
+                  {n.status === 'DRAFT' && (
+                    <Button size="sm" variant="outline" onClick={() => editCredit(n)}>Edit</Button>
+                  )}
                   {n.status === 'DRAFT' && (
                     <Button size="sm" onClick={() => setStatus(n.id, 'SUBMITTED')}>
                       Submit
@@ -485,7 +496,7 @@ export function CreditNotesPage() {
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="max-w-5xl">
           <DialogHeader>
-            <DialogTitle>New Credit Note</DialogTitle>
+            <DialogTitle>{editingCreditId ? 'Edit' : 'New'} Credit Note</DialogTitle>
           </DialogHeader>
           <div className="grid gap-4">
             <div className="rounded-md border border-[#e5e2dc] bg-[#f8faf9] p-3 text-sm text-[#4b5563]">
@@ -587,7 +598,7 @@ export function CreditNotesPage() {
                 </Button>
                 <Button onClick={create} disabled={isSubmitting || invoices.length === 0}>
                   <RotateCcw className="mr-2 h-4 w-4" />
-                  {isSubmitting ? 'Creating...' : 'Create Draft Credit'}
+                  {isSubmitting ? 'Saving...' : editingCreditId ? 'Update Draft Credit' : 'Create Draft Credit'}
                 </Button>
               </div>
             </div>
@@ -712,6 +723,7 @@ export function PrintFormatsPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [open, setOpen] = useState(false);
+  const [editingFormatId, setEditingFormatId] = useState<string | null>(null);
   const [form, setForm] = useState({
     name: 'Default GST Invoice',
     docType: 'SALES_INVOICE',
@@ -742,7 +754,7 @@ export function PrintFormatsPage() {
     if (isSubmitting) return;
     setIsSubmitting(true);
     try {
-      await api.post('/invoicing/print-formats', {
+      const payload = {
         name: form.name,
         docType: form.docType,
         isDefault: form.isDefault || formats.filter((f) => f.docType === form.docType).length === 0,
@@ -756,9 +768,11 @@ export function PrintFormatsPage() {
           showAmountInWords: form.showAmountInWords,
           showPaymentTerms: form.showPaymentTerms,
         },
-      });
-      showApiSuccess('Print format created successfully');
+      };
+      if (editingFormatId) await api.patch(`/invoicing/print-formats/${editingFormatId}`, payload); else await api.post('/invoicing/print-formats', payload);
+      showApiSuccess(`Print format ${editingFormatId ? 'updated' : 'created'} successfully`);
       setOpen(false);
+      setEditingFormatId(null);
       fetchFormats();
     } catch (err: any) {
       showApiError(err, 'Failed to create format');
@@ -766,6 +780,7 @@ export function PrintFormatsPage() {
       setIsSubmitting(false);
     }
   };
+  const editFormat = (row: any) => { const t = row.template || {}; setEditingFormatId(row.id); setForm({ name: row.name || '', docType: row.docType || 'SALES_INVOICE', title: t.title || '', footer: row.footer || '', isDefault: !!row.isDefault, isActive: row.isActive !== false, showLogo: t.showLogo !== false, showHsnSummary: t.showHsnSummary !== false, showAmountInWords: t.showAmountInWords !== false, showPaymentTerms: t.showPaymentTerms !== false }); setOpen(true); };
 
   const patchFormat = async (id: string, payload: any) => {
     try {
@@ -782,7 +797,7 @@ export function PrintFormatsPage() {
       title="Print Formats"
       description="Reusable PDF layouts. The default active Sales Invoice format is used by the invoice PDF endpoint."
       actionLabel="New Format"
-      onAction={() => setOpen(true)}
+      onAction={() => { setEditingFormatId(null); setOpen(true); }}
     >
       <DataTable
         data={formats}
@@ -816,9 +831,9 @@ export function PrintFormatsPage() {
             key: 'actions',
             header: '',
             render: (f: any) => (
-              <Button size="sm" variant="outline" onClick={() => patchFormat(f.id, { isActive: !f.isActive })}>
+              <div className="flex gap-2"><Button size="sm" variant="outline" onClick={() => editFormat(f)}><Pencil className="mr-1 h-3.5 w-3.5" />Edit</Button><Button size="sm" variant="outline" onClick={() => patchFormat(f.id, { isActive: !f.isActive })}>
                 {f.isActive ? 'Disable' : 'Enable'}
-              </Button>
+              </Button></div>
             ),
           },
         ]}
@@ -826,7 +841,7 @@ export function PrintFormatsPage() {
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="max-w-3xl">
           <DialogHeader>
-            <DialogTitle>New Print Format</DialogTitle>
+            <DialogTitle>{editingFormatId ? 'Edit' : 'New'} Print Format</DialogTitle>
           </DialogHeader>
           <div className="grid gap-4">
             <div className="grid gap-3 md:grid-cols-3">
@@ -886,7 +901,7 @@ export function PrintFormatsPage() {
               </Button>
               <Button onClick={create} disabled={isSubmitting}>
                 <Printer className="mr-2 h-4 w-4" />
-                {isSubmitting ? 'Creating...' : 'Create Format'}
+                {isSubmitting ? 'Saving...' : editingFormatId ? 'Update Format' : 'Create Format'}
               </Button>
             </div>
           </div>
@@ -902,6 +917,7 @@ export function SubscriptionsPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [open, setOpen] = useState(false);
+  const [editingSubscriptionId, setEditingSubscriptionId] = useState<string | null>(null);
   const [form, setForm] = useState({
     name: '',
     customerId: '',
@@ -963,13 +979,15 @@ export function SubscriptionsPage() {
 
     setIsSubmitting(true);
     try {
-      await api.post('/invoicing/subscriptions', {
+      const payload = {
         ...form,
         endDate: form.endDate || undefined,
         items,
-      });
-      showApiSuccess('Subscription created successfully');
+      };
+      if (editingSubscriptionId) await api.patch(`/invoicing/subscriptions/${editingSubscriptionId}`, payload); else await api.post('/invoicing/subscriptions', payload);
+      showApiSuccess(`Subscription ${editingSubscriptionId ? 'updated' : 'created'} successfully`);
       setOpen(false);
+      setEditingSubscriptionId(null);
       fetchSubscriptions();
     } catch (err: any) {
       showApiError(err, 'Failed to create subscription');
@@ -977,6 +995,7 @@ export function SubscriptionsPage() {
       setIsSubmitting(false);
     }
   };
+  const editSubscription = (row: any) => { setEditingSubscriptionId(row.id); setForm({ name: row.name || '', customerId: row.customerId || '', frequency: row.frequency || 'MONTHLY', startDate: String(row.startDate).slice(0, 10), nextRunDate: String(row.nextRunDate).slice(0, 10), endDate: row.endDate ? String(row.endDate).slice(0, 10) : '', currency: row.currency || 'INR', autoSubmit: !!row.autoSubmit, notes: row.notes || '', terms: row.terms || '' }); setRows((row.items || []).map((i: any) => ({ ...i, total: Number(i.quantity) * Number(i.unitPrice) }))); setOpen(true); };
 
   const toggleSubscription = async (subscription: any) => {
     try {
@@ -993,7 +1012,7 @@ export function SubscriptionsPage() {
       title="Recurring Invoices"
       description="Templates that generate real sales invoices on schedule, with optional auto-submit."
       actionLabel="New Subscription"
-      onAction={() => setOpen(true)}
+      onAction={() => { setEditingSubscriptionId(null); setOpen(true); }}
       extraAction={<RecurringRunnerButton onDone={fetchSubscriptions} />}
     >
       {subscriptions.length || isLoading ? (
@@ -1026,9 +1045,9 @@ export function SubscriptionsPage() {
               key: 'actions',
               header: '',
               render: (s: any) => (
-                <Button size="sm" variant="outline" onClick={() => toggleSubscription(s)}>
+                <div className="flex gap-2"><Button size="sm" variant="outline" onClick={() => editSubscription(s)}><Pencil className="mr-1 h-3.5 w-3.5" />Edit</Button><Button size="sm" variant="outline" onClick={() => toggleSubscription(s)}>
                   {s.isActive ? 'Pause' : 'Resume'}
-                </Button>
+                </Button></div>
               ),
             },
           ]}
@@ -1043,7 +1062,7 @@ export function SubscriptionsPage() {
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="max-w-5xl">
           <DialogHeader>
-            <DialogTitle>New Recurring Invoice</DialogTitle>
+            <DialogTitle>{editingSubscriptionId ? 'Edit' : 'New'} Recurring Invoice</DialogTitle>
           </DialogHeader>
           <div className="grid gap-4">
             {customers.length === 0 && !isLoading && (
@@ -1172,7 +1191,7 @@ export function SubscriptionsPage() {
                   Cancel
                 </Button>
                 <Button onClick={createSubscription} disabled={isSubmitting || customers.length === 0}>
-                  {isSubmitting ? 'Creating...' : 'Create Subscription'}
+                  {isSubmitting ? 'Saving...' : editingSubscriptionId ? 'Update Subscription' : 'Create Subscription'}
                 </Button>
               </div>
             </div>

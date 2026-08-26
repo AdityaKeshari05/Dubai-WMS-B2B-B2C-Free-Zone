@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Plus, Users } from 'lucide-react';
+import { Plus, Users, Pencil } from 'lucide-react';
 import { PageHeader } from '@/components/shared/PageHeader';
 import { DataTable } from '@/components/shared/DataTable';
 import { Pagination } from '@/components/shared/Pagination';
@@ -27,6 +27,7 @@ export default function ContactsPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [search, setSearch] = useState('');
   const [showModal, setShowModal] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
   const emptyForm = {
     leadId: '',
     firstName: '',
@@ -100,15 +101,17 @@ export default function ContactsPage() {
 
     setIsSubmitting(true);
     try {
-      await api.post('/crm/contacts', {
+      const payload = {
         ...form,
         firstName: trimmedFirst,
         lastName: trimmedLast,
         leadId: form.leadId || undefined,
-      });
-      showApiSuccess(`Contact "${trimmedFirst} ${trimmedLast}" created successfully`);
+      };
+      if (editingId) await api.put(`/crm/contacts/${editingId}`, payload); else await api.post('/crm/contacts', payload);
+      showApiSuccess(`Contact "${trimmedFirst} ${trimmedLast}" ${editingId ? 'updated' : 'created'} successfully`);
       setShowModal(false);
       setForm(emptyForm);
+      setEditingId(null);
       fetchContacts();
     } catch (err: any) {
       showApiError(err, 'Failed to create contact');
@@ -116,6 +119,8 @@ export default function ContactsPage() {
       setIsSubmitting(false);
     }
   };
+
+  const editContact = (contact: any) => { setEditingId(contact.id); setForm({ leadId: contact.leadId || '', firstName: contact.firstName || '', lastName: contact.lastName || '', email: contact.email || '', phone: contact.phone || '', mobile: contact.mobile || '', company: contact.company || '', position: contact.position || '', city: contact.city || '', country: contact.country || '' }); setShowModal(true); };
 
   const columns = [
     {
@@ -137,6 +142,7 @@ export default function ContactsPage() {
       header: 'City',
       render: (c: Contact) => [c.city, c.country].filter(Boolean).join(', ') || '—',
     },
+    { key: 'actions', header: '', render: (c: any) => <Button size="sm" variant="outline" onClick={(e) => { e.stopPropagation(); editContact(c); }}><Pencil className="mr-1 h-3.5 w-3.5" />Edit</Button> },
   ];
 
   return (
@@ -144,7 +150,7 @@ export default function ContactsPage() {
       <PageHeader
         title="Contacts"
         description="Manage your CRM contacts"
-        action={{ label: 'New Contact', onClick: () => setShowModal(true), icon: Plus }}
+        action={{ label: 'New Contact', onClick: () => { setEditingId(null); setForm(emptyForm); setShowModal(true); }, icon: Plus }}
       />
       <div className="mb-4">
         <Input
@@ -186,7 +192,7 @@ export default function ContactsPage() {
       <Dialog open={showModal} onOpenChange={setShowModal}>
         <DialogContent className="max-w-xl">
           <DialogHeader>
-            <DialogTitle>New Contact</DialogTitle>
+            <DialogTitle>{editingId ? 'Edit' : 'New'} Contact</DialogTitle>
           </DialogHeader>
           <form onSubmit={handleCreate} className="grid grid-cols-2 gap-4 mt-2">
             <div className="col-span-2 space-y-1.5">
@@ -283,7 +289,7 @@ export default function ContactsPage() {
                 Cancel
               </Button>
               <Button type="submit" disabled={isSubmitting}>
-                {isSubmitting ? 'Creating...' : 'Create Contact'}
+                {isSubmitting ? 'Saving...' : editingId ? 'Update Contact' : 'Create Contact'}
               </Button>
             </div>
           </form>

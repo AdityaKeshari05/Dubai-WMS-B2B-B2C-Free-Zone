@@ -14,6 +14,7 @@ import {
   Landmark,
   PackageCheck,
   Plus,
+  Pencil,
   Receipt,
   RefreshCw,
   Scale,
@@ -170,6 +171,22 @@ export function ProcurementPage({ kind }: { kind: ProcurementKind }) {
   const [submitting, setSubmitting] = useState(false);
   const [form, setForm] = useState<any>(defaultForm(kind));
   const [lines, setLines] = useState<any[]>([blankLine]);
+  const [editingId, setEditingId] = useState<string | null>(null);
+
+  function openCreate() {
+    setEditingId(null); setForm(defaultForm(kind)); setLines([blankLine]); setOpen(true);
+  }
+
+  function openEdit(row: any) {
+    const dateKeys = ['date', 'requiredBy', 'validUntil', 'validFrom', 'validTo', 'startDate', 'endDate', 'postingDate', 'dueDate'];
+    const next = { ...defaultForm(kind), ...row };
+    for (const key of dateKeys) if (next[key]) next[key] = new Date(next[key]).toISOString().slice(0, 10);
+    setEditingId(row.id);
+    setForm(next);
+    const sourceLines = kind === 'payment-terms' ? row.terms : kind === 'landed-cost-vouchers' ? row.charges : row.items;
+    setLines(sourceLines?.length ? sourceLines.map((line: any) => ({ ...line, quantity: line.quantity ?? line.receivedQty ?? line.targetQty, unitPrice: line.unitPrice ?? line.rate })) : [blankLine]);
+    setOpen(true);
+  }
 
   async function load() {
     setLoading(true);
@@ -239,11 +256,14 @@ export function ProcurementPage({ kind }: { kind: ProcurementKind }) {
 
     setSubmitting(true);
     try {
-      await api.post(meta.endpoint, payloadFor(kind, form, lines));
-      showApiSuccess(`${meta.title.replace(/s$/, '')} created successfully`);
+      const payload = payloadFor(kind, form, lines);
+      if (editingId) await api.put(`${meta.endpoint}/${editingId}`, payload);
+      else await api.post(meta.endpoint, payload);
+      showApiSuccess(`${meta.title.replace(/s$/, '')} ${editingId ? 'updated' : 'created'} successfully`);
       setOpen(false);
       setForm(defaultForm(kind));
       setLines([blankLine]);
+      setEditingId(null);
       load();
     } catch (err: any) {
       showApiError(err, 'Creation failed');
@@ -276,18 +296,18 @@ export function ProcurementPage({ kind }: { kind: ProcurementKind }) {
       <PageHeader
         title={meta.title}
         description={meta.description}
-        action={{ label: `New ${singular(meta.title)}`, onClick: () => setOpen(true), icon: Plus }}
+        action={{ label: `New ${singular(meta.title)}`, onClick: openCreate, icon: Plus }}
       />
       <DataTable
         data={rows}
         isLoading={loading}
-        columns={columnsFor(kind, status)}
+        columns={columnsFor(kind, status, openEdit)}
         emptyMessage={`No ${meta.title.toLowerCase()} yet`}
       />
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="max-w-5xl max-h-[85vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>New {singular(meta.title)}</DialogTitle>
+            <DialogTitle>{editingId ? 'Edit' : 'New'} {singular(meta.title)}</DialogTitle>
           </DialogHeader>
 
           {missingSupplier && !loading && (
@@ -351,7 +371,7 @@ export function ProcurementPage({ kind }: { kind: ProcurementKind }) {
                 type="submit"
                 disabled={submitting || (missingSupplier && kind !== 'material-requests' && kind !== 'rfqs')}
               >
-                {submitting ? 'Creating...' : 'Create'}
+                {submitting ? 'Saving...' : editingId ? 'Update' : 'Create'}
               </Button>
             </div>
           </form>
@@ -1314,8 +1334,8 @@ function payloadFor(kind: ProcurementKind, form: any, lines: any[]) {
   return { ...form, items: lines };
 }
 
-function columnsFor(kind: ProcurementKind, status: (id: string, value: string) => void) {
-  const actions = (row: any) => <Actions kind={kind} row={row} status={status} />;
+function columnsFor(kind: ProcurementKind, status: (id: string, value: string) => void, edit: (row: any) => void) {
+  const actions = (row: any) => <Actions kind={kind} row={row} status={status} edit={edit} />;
   if (kind === 'material-requests')
     return [
       { key: 'requestNo', header: 'Request #' },
@@ -1398,6 +1418,7 @@ function columnsFor(kind: ProcurementKind, status: (id: string, value: string) =
       { key: 'description', header: 'Description' },
       { key: 'terms', header: 'Terms', render: (r: any) => r.terms?.length || 0 },
       { key: 'isActive', header: 'Active', render: (r: any) => (r.isActive ? 'Yes' : 'No') },
+      { key: 'actions', header: '', render: actions },
     ];
   if (kind === 'supplier-items')
     return [
@@ -1406,6 +1427,7 @@ function columnsFor(kind: ProcurementKind, status: (id: string, value: string) =
       { key: 'supplierItemCode', header: 'Supplier Code' },
       { key: 'supplierItemName', header: 'Supplier Name' },
       { key: 'leadTimeDays', header: 'Lead Time' },
+      { key: 'actions', header: '', render: actions },
     ];
   if (kind === 'communications')
     return [
@@ -1414,6 +1436,7 @@ function columnsFor(kind: ProcurementKind, status: (id: string, value: string) =
       { key: 'subject', header: 'Subject' },
       { key: 'message', header: 'Message' },
       { key: 'direction', header: 'Direction' },
+      { key: 'actions', header: '', render: actions },
     ];
   if (kind === 'landed-cost-vouchers')
     return [
@@ -1430,6 +1453,7 @@ function columnsFor(kind: ProcurementKind, status: (id: string, value: string) =
       { key: 'inspectedQty', header: 'Inspected' },
       { key: 'acceptedQty', header: 'Accepted' },
       { key: 'rejectedQty', header: 'Rejected' },
+      { key: 'actions', header: '', render: actions },
     ];
   return [
     { key: 'agreementNo', header: 'Agreement #' },
@@ -1437,13 +1461,16 @@ function columnsFor(kind: ProcurementKind, status: (id: string, value: string) =
     { key: 'status', header: 'Status', render: (r: any) => <StatusBadge status={r.status} /> },
     { key: 'validFrom', header: 'Valid From', render: (r: any) => formatDate(r.validFrom) },
     { key: 'validTo', header: 'Valid To', render: (r: any) => formatDate(r.validTo) },
+    { key: 'actions', header: '', render: actions },
   ];
 }
 
-function Actions({ kind, row, status }: any) {
+function Actions({ kind, row, status, edit }: any) {
+  const editable = !row.status || row.status === 'DRAFT' || (kind === 'quality-inspections' && row.status === 'PENDING');
+  const editButton = editable ? <Button size="sm" variant="outline" onClick={(e) => { e.stopPropagation(); edit(row); }}><Pencil className="mr-1 h-3.5 w-3.5" />Edit</Button> : null;
   if (['material-requests', 'purchase-receipts', 'landed-cost-vouchers'].includes(kind) && row.status === 'DRAFT')
     return (
-      <Button
+      <div className="flex gap-2">{editButton}<Button
         size="sm"
         variant="outline"
         onClick={(e) => {
@@ -1452,11 +1479,11 @@ function Actions({ kind, row, status }: any) {
         }}
       >
         Submit
-      </Button>
+      </Button></div>
     );
   if (kind === 'purchase-orders' && row.status === 'DRAFT')
     return (
-      <Button
+      <div className="flex gap-2">{editButton}<Button
         size="sm"
         variant="outline"
         onClick={(e) => {
@@ -1465,11 +1492,11 @@ function Actions({ kind, row, status }: any) {
         }}
       >
         Confirm
-      </Button>
+      </Button></div>
     );
   if (kind === 'purchase-invoices' && row.status === 'DRAFT')
     return (
-      <Button
+      <div className="flex gap-2">{editButton}<Button
         size="sm"
         variant="outline"
         onClick={(e) => {
@@ -1478,11 +1505,11 @@ function Actions({ kind, row, status }: any) {
         }}
       >
         Submit
-      </Button>
+      </Button></div>
     );
   if (kind === 'supplier-payments' && row.status === 'DRAFT')
     return (
-      <Button
+      <div className="flex gap-2">{editButton}<Button
         size="sm"
         variant="outline"
         onClick={(e) => {
@@ -1491,11 +1518,11 @@ function Actions({ kind, row, status }: any) {
         }}
       >
         Submit
-      </Button>
+      </Button></div>
     );
   if (kind === 'rfqs' && row.status === 'DRAFT')
     return (
-      <Button
+      <div className="flex gap-2">{editButton}<Button
         size="sm"
         variant="outline"
         onClick={(e) => {
@@ -1504,9 +1531,9 @@ function Actions({ kind, row, status }: any) {
         }}
       >
         Send
-      </Button>
+      </Button></div>
     );
-  return <span className="text-xs text-[#8a929d]">-</span>;
+  return editButton || <span className="text-xs text-[#8a929d]">Locked</span>;
 }
 
 function statusPath(kind: ProcurementKind, id: string) {

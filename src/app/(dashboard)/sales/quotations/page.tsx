@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { Plus, FileText, AlertCircle, ArrowRight } from 'lucide-react';
+import { Plus, FileText, AlertCircle, ArrowRight, Pencil } from 'lucide-react';
 import { PageHeader } from '@/components/shared/PageHeader';
 import { DataTable } from '@/components/shared/DataTable';
 import { Pagination } from '@/components/shared/Pagination';
@@ -28,6 +28,7 @@ export default function QuotationsPage() {
   const [customers, setCustomers] = useState<any[]>([]);
   const [sourceQuotation, setSourceQuotation] = useState<Quotation | null>(null);
   const [newOpen, setNewOpen] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isConverting, setIsConverting] = useState(false);
   const [form, setForm] = useState({
@@ -143,8 +144,9 @@ export default function QuotationsPage() {
 
     setIsSubmitting(true);
     try {
-      await api.post('/sales/quotations', { ...form, items });
-      showApiSuccess('Quotation created successfully');
+      if (editingId) await api.put(`/sales/quotations/${editingId}`, { ...form, items });
+      else await api.post('/sales/quotations', { ...form, items });
+      showApiSuccess(`Quotation ${editingId ? 'updated' : 'created'} successfully`);
       setNewOpen(false);
       setForm({
         customerId: '',
@@ -157,12 +159,22 @@ export default function QuotationsPage() {
       setRows([
         { productId: '', itemCode: '', description: '', quantity: 1, unitPrice: 0, discount: 0, taxRate: 0, total: 0 },
       ]);
+      setEditingId(null);
       fetchQuotations();
     } catch (err: any) {
       showApiError(err, 'Failed to create quotation');
     } finally {
       setIsSubmitting(false);
     }
+  };
+
+  const editQuotation = async (quotation: Quotation) => {
+    try {
+      const res = await api.get(`/sales/quotations/${quotation.id}`); const q = res.data?.data || quotation;
+      setEditingId(q.id); setForm({ customerId: q.customerId, date: String(q.date).slice(0, 10), validUntil: q.validUntil ? String(q.validUntil).slice(0, 10) : '', currency: q.currency, notes: q.notes || '', terms: q.terms || '' });
+      setRows((q.items || []).map((i: any) => ({ ...i, itemCode: i.itemCode || i.product?.sku || '', total: Number(i.total || 0) })));
+      setNewOpen(true);
+    } catch (err) { showApiError(err, 'Failed to load quotation for editing'); }
   };
 
   const columns = [
@@ -187,8 +199,8 @@ export default function QuotationsPage() {
     {
       key: 'actions',
       header: '',
-      render: (q: Quotation) =>
-        q.status === 'ACCEPTED' || q.status === 'SENT' ? (
+      render: (q: Quotation) => <div className="flex gap-2">{q.status === 'DRAFT' && <Button size="sm" variant="outline" onClick={(e) => { e.stopPropagation(); editQuotation(q); }}><Pencil className="mr-1 h-3.5 w-3.5" />Edit</Button>}
+        {q.status === 'ACCEPTED' || q.status === 'SENT' ? (
           <Button
             size="sm"
             onClick={(e) => {
@@ -198,7 +210,7 @@ export default function QuotationsPage() {
           >
             Create Sales Order
           </Button>
-        ) : null,
+        ) : null}</div>,
     },
   ];
 
@@ -207,7 +219,7 @@ export default function QuotationsPage() {
       <PageHeader
         title="Quotations"
         description="Create and manage customer quotations"
-        action={{ label: 'New Quotation', onClick: () => setNewOpen(true), icon: Plus }}
+        action={{ label: 'New Quotation', onClick: () => { setEditingId(null); setNewOpen(true); }, icon: Plus }}
       />
       {quotations.length === 0 && !isLoading ? (
         <EmptyState
@@ -273,7 +285,7 @@ export default function QuotationsPage() {
       <Dialog open={newOpen} onOpenChange={setNewOpen}>
         <DialogContent className="max-w-5xl">
           <DialogHeader>
-            <DialogTitle>New Quotation</DialogTitle>
+            <DialogTitle>{editingId ? 'Edit' : 'New'} Quotation</DialogTitle>
           </DialogHeader>
 
           {customers.length === 0 && (
@@ -359,7 +371,7 @@ export default function QuotationsPage() {
                 Cancel
               </Button>
               <Button onClick={createQuotation} disabled={isSubmitting || customers.length === 0}>
-                {isSubmitting ? 'Creating Quotation...' : 'Create Quotation'}
+                {isSubmitting ? 'Saving Quotation...' : editingId ? 'Update Quotation' : 'Create Quotation'}
               </Button>
             </div>
           </div>

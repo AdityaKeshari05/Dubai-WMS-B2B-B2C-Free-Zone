@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { Plus, ShoppingCart, AlertCircle, ArrowRight } from 'lucide-react';
+import { Plus, ShoppingCart, AlertCircle, ArrowRight, Pencil } from 'lucide-react';
 import { PageHeader } from '@/components/shared/PageHeader';
 import { DataTable } from '@/components/shared/DataTable';
 import { Pagination } from '@/components/shared/Pagination';
@@ -28,6 +28,7 @@ export default function SalesOrdersPage() {
   const [customers, setCustomers] = useState<any[]>([]);
   const [sourceOrder, setSourceOrder] = useState<SalesOrder | null>(null);
   const [newOpen, setNewOpen] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isCreatingInvoice, setIsCreatingInvoice] = useState(false);
   const [isCreatingDelivery, setIsCreatingDelivery] = useState(false);
@@ -167,8 +168,9 @@ export default function SalesOrdersPage() {
 
     setIsSubmitting(true);
     try {
-      await api.post('/sales/orders', { ...form, items });
-      showApiSuccess('Sales order created successfully');
+      if (editingId) await api.put(`/sales/orders/${editingId}`, { ...form, items });
+      else await api.post('/sales/orders', { ...form, items });
+      showApiSuccess(`Sales order ${editingId ? 'updated' : 'created'} successfully`);
       setNewOpen(false);
       setForm({
         customerId: '',
@@ -181,12 +183,23 @@ export default function SalesOrdersPage() {
       setRows([
         { productId: '', itemCode: '', description: '', quantity: 1, unitPrice: 0, discount: 0, taxRate: 0, total: 0 },
       ]);
+      setEditingId(null);
       fetchOrders();
     } catch (err: any) {
       showApiError(err, 'Failed to create sales order');
     } finally {
       setIsSubmitting(false);
     }
+  };
+
+  const editOrder = async (order: SalesOrder) => {
+    try {
+      const res = await api.get(`/sales/orders/${order.id}`); const row = res.data?.data || order;
+      setEditingId(row.id);
+      setForm({ customerId: row.customerId, date: String(row.date).slice(0, 10), deliveryDate: row.deliveryDate ? String(row.deliveryDate).slice(0, 10) : '', currency: row.currency, notes: row.notes || '', terms: row.terms || '' });
+      setRows((row.items || []).map((i: any) => ({ ...i, itemCode: i.itemCode || i.product?.sku || '', total: Number(i.total || 0) })));
+      setNewOpen(true);
+    } catch (err) { showApiError(err, 'Failed to load sales order for editing'); }
   };
 
   const columns = [
@@ -213,6 +226,7 @@ export default function SalesOrdersPage() {
       header: '',
       render: (o: SalesOrder) => (
         <div className="flex gap-1">
+          {o.status === 'DRAFT' && <Button size="sm" variant="outline" onClick={(e) => { e.stopPropagation(); editOrder(o); }}><Pencil className="mr-1 h-3.5 w-3.5" />Edit</Button>}
           {o.status === 'DRAFT' && (
             <Button
               size="sm"
@@ -261,7 +275,7 @@ export default function SalesOrdersPage() {
       <PageHeader
         title="Sales Orders"
         description="Manage and track customer sales orders"
-        action={{ label: 'New Sales Order', onClick: () => setNewOpen(true), icon: Plus }}
+        action={{ label: 'New Sales Order', onClick: () => { setEditingId(null); setNewOpen(true); }, icon: Plus }}
       />
       {orders.length === 0 && !isLoading ? (
         <EmptyState
@@ -327,7 +341,7 @@ export default function SalesOrdersPage() {
       <Dialog open={newOpen} onOpenChange={setNewOpen}>
         <DialogContent className="max-w-5xl">
           <DialogHeader>
-            <DialogTitle>New Sales Order</DialogTitle>
+            <DialogTitle>{editingId ? 'Edit' : 'New'} Sales Order</DialogTitle>
           </DialogHeader>
 
           {customers.length === 0 && (
@@ -413,7 +427,7 @@ export default function SalesOrdersPage() {
                 Cancel
               </Button>
               <Button onClick={createOrder} disabled={isSubmitting || customers.length === 0}>
-                {isSubmitting ? 'Creating Order...' : 'Create Sales Order'}
+                {isSubmitting ? 'Saving Order...' : editingId ? 'Update Sales Order' : 'Create Sales Order'}
               </Button>
             </div>
           </div>

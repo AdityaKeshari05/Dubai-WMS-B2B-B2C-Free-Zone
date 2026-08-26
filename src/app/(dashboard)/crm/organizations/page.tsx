@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Building2, Plus } from 'lucide-react';
+import { Building2, Plus, Pencil } from 'lucide-react';
 import api from '@/lib/api';
 import { PageHeader } from '@/components/shared/PageHeader';
 import { DataTable } from '@/components/shared/DataTable';
@@ -20,6 +20,7 @@ export default function OrganizationsPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [open, setOpen] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState({
     name: '',
     industry: '',
@@ -59,13 +60,15 @@ export default function OrganizationsPage() {
 
     setIsSubmitting(true);
     try {
-      await api.post('/crm/organizations', {
+      const payload = {
         ...form,
         name: trimmedName,
-      });
-      showApiSuccess(`Organization "${trimmedName}" created successfully`);
+      };
+      if (editingId) await api.put(`/crm/organizations/${editingId}`, payload); else await api.post('/crm/organizations', payload);
+      showApiSuccess(`Organization "${trimmedName}" ${editingId ? 'updated' : 'created'} successfully`);
       setOpen(false);
       setForm({ name: '', industry: '', website: '', email: '', phone: '', city: '', country: '' });
+      setEditingId(null);
       load();
     } catch (err: any) {
       showApiError(err, 'Failed to create organization');
@@ -73,13 +76,14 @@ export default function OrganizationsPage() {
       setIsSubmitting(false);
     }
   };
+  const edit = (org: any) => { setEditingId(org.id); setForm({ name: org.name || '', industry: org.industry || '', website: org.website || '', email: org.email || '', phone: org.phone || '', city: org.city || '', country: org.country || '' }); setOpen(true); };
 
   return (
     <div>
       <PageHeader
         title="Organizations"
         description="Company-level CRM accounts connected to leads, contacts, and opportunities"
-        action={{ label: 'New Organization', onClick: () => setOpen(true), icon: Plus }}
+        action={{ label: 'New Organization', onClick: () => { setEditingId(null); setOpen(true); }, icon: Plus }}
       />
       {organizations.length || isLoading ? (
         <DataTable
@@ -107,6 +111,7 @@ export default function OrganizationsPage() {
               render: (org: CrmOrganization) =>
                 `${org._count?.leads || 0} leads / ${org._count?.opportunities || 0} deals`,
             },
+            { key: 'actions', header: '', render: (org: any) => <Button size="sm" variant="outline" onClick={(e) => { e.stopPropagation(); edit(org); }}><Pencil className="mr-1 h-3.5 w-3.5" />Edit</Button> },
           ]}
         />
       ) : (
@@ -121,7 +126,7 @@ export default function OrganizationsPage() {
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>New Organization</DialogTitle>
+            <DialogTitle>{editingId ? 'Edit' : 'New'} Organization</DialogTitle>
           </DialogHeader>
           <form onSubmit={create} className="grid grid-cols-2 gap-3">
             <Field label="Name *">
@@ -173,7 +178,7 @@ export default function OrganizationsPage() {
                 Cancel
               </Button>
               <Button type="submit" disabled={isSubmitting}>
-                {isSubmitting ? 'Creating...' : 'Create'}
+                {isSubmitting ? 'Saving...' : editingId ? 'Update' : 'Create'}
               </Button>
             </div>
           </form>

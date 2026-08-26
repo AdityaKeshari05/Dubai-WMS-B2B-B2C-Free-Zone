@@ -33,6 +33,7 @@ export function PaymentEntriesPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [open, setOpen] = useState(false);
+  const [editingPaymentEntryId, setEditingPaymentEntryId] = useState<string | null>(null);
   const [form, setForm] = useState({
     customerId: '',
     paidAmount: '',
@@ -93,7 +94,7 @@ export function PaymentEntriesPage() {
     setIsSubmitting(true);
     try {
       const allocatedAmount = Number(form.allocatedAmount || form.paidAmount || 0);
-      await api.post('/payments/entries', {
+      const payload = {
         type: 'RECEIVED',
         customerId,
         paidAmount: paidNum,
@@ -101,10 +102,12 @@ export function PaymentEntriesPage() {
         reference: form.reference,
         currency: selectedInvoice?.currency || 'INR',
         allocations: form.invoiceId ? [{ invoiceId: form.invoiceId, allocatedAmount }] : [],
-      });
-      showApiSuccess('Payment entry drafted');
+      };
+      if (editingPaymentEntryId) await api.put(`/payments/entries/${editingPaymentEntryId}`, payload); else await api.post('/payments/entries', payload);
+      showApiSuccess(`Payment entry ${editingPaymentEntryId ? 'updated' : 'drafted'}`);
       setOpen(false);
       setForm({ customerId: '', paidAmount: '', method: 'BANK_TRANSFER', reference: '', invoiceId: '', allocatedAmount: '' });
+      setEditingPaymentEntryId(null);
       load();
     } catch (err: any) {
       showApiError(err, 'Failed to create payment entry');
@@ -112,6 +115,7 @@ export function PaymentEntriesPage() {
       setIsSubmitting(false);
     }
   };
+  const editPaymentEntry = (entry: any) => { const allocation = entry.allocations?.[0] || {}; setEditingPaymentEntryId(entry.id); setForm({ customerId: entry.customerId || '', paidAmount: String(entry.paidAmount || ''), method: entry.method || 'BANK_TRANSFER', reference: entry.reference || '', invoiceId: allocation.invoiceId || '', allocatedAmount: allocation.allocatedAmount == null ? '' : String(allocation.allocatedAmount) }); setOpen(true); };
 
   const setStatus = async (id: string, status: string) => {
     try {
@@ -128,7 +132,7 @@ export function PaymentEntriesPage() {
       title="Payment Entries"
       description="Allocate one receipt across invoices or keep the balance as customer advance."
       action={
-        <Button onClick={() => setOpen(true)}>
+        <Button onClick={() => { setEditingPaymentEntryId(null); setOpen(true); }}>
           <Plus className="mr-2 h-4 w-4" />
           New Entry
         </Button>
@@ -150,6 +154,9 @@ export function PaymentEntriesPage() {
               header: '',
               render: (e: any) => (
                 <div className="flex justify-end gap-2">
+                  {e.status === 'DRAFT' && (
+                    <Button size="sm" variant="outline" onClick={() => editPaymentEntry(e)}>Edit</Button>
+                  )}
                   {e.status === 'DRAFT' && (
                     <Button size="sm" onClick={() => setStatus(e.id, 'SUBMITTED')}>
                       Submit
@@ -177,7 +184,7 @@ export function PaymentEntriesPage() {
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="max-w-2xl">
           <DialogHeader>
-            <DialogTitle>New Payment Entry</DialogTitle>
+            <DialogTitle>{editingPaymentEntryId ? 'Edit' : 'New'} Payment Entry</DialogTitle>
           </DialogHeader>
           <div className="grid gap-4">
             <div className="grid grid-cols-2 gap-3">
@@ -289,7 +296,7 @@ export function PaymentEntriesPage() {
                 Cancel
               </Button>
               <Button onClick={create} disabled={isSubmitting}>
-                {isSubmitting ? 'Creating...' : 'Create Draft'}
+                {isSubmitting ? 'Saving...' : editingPaymentEntryId ? 'Update Draft' : 'Create Draft'}
               </Button>
             </div>
           </div>
@@ -307,6 +314,7 @@ export function DeliveryNotesPage() {
   const [products, setProducts] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [open, setOpen] = useState(false);
+  const [editingDeliveryId, setEditingDeliveryId] = useState<string | null>(null);
   const [form, setForm] = useState({
     customerId: '',
     salesOrderId: '',
@@ -389,21 +397,24 @@ export function DeliveryNotesPage() {
     const rows = deliveryRows.filter((row) => row.productId && Number(row.quantity) > 0);
     if (!rows.length) return toast.error('Add at least one product to deliver');
     try {
-      await api.post('/delivery-notes', {
+      const payload = {
         ...form,
         salesOrderId: form.salesOrderId || undefined,
         warehouseId: form.warehouseId || undefined,
         postingDate: form.postingDate || undefined,
         items: rows,
-      });
-      showApiSuccess('Draft delivery note created');
+      };
+      if (editingDeliveryId) await api.put(`/delivery-notes/${editingDeliveryId}`, payload); else await api.post('/delivery-notes', payload);
+      showApiSuccess(`Draft delivery note ${editingDeliveryId ? 'updated' : 'created'}`);
       setOpen(false);
       resetDeliveryForm();
+      setEditingDeliveryId(null);
       load();
     } catch (err: any) {
       showApiError(err, 'Failed to create delivery note');
     }
   };
+  const editDelivery = (note: any) => { setEditingDeliveryId(note.id); setForm({ customerId: note.customerId || '', salesOrderId: note.salesOrderId || '', warehouseId: note.warehouseId || '', date: String(note.date).slice(0, 10), postingDate: note.postingDate ? String(note.postingDate).slice(0, 10) : '', notes: note.notes || '' }); setDeliveryRows((note.items || []).map((i: any) => ({ productId: i.productId, description: i.description || '', quantity: Number(i.quantity) }))); setOpen(true); };
 
   const resetDeliveryForm = () => {
     setForm({
@@ -423,7 +434,7 @@ export function DeliveryNotesPage() {
       description="Draft the shipment, submit when goods leave stock, then invoice from the delivered document."
       meta={`${totalRows} records`}
       action={
-        <Button onClick={() => setOpen(true)}>
+        <Button onClick={() => { setEditingDeliveryId(null); setOpen(true); }}>
           <Plus className="mr-2 h-4 w-4" />
           New Delivery Note
         </Button>
@@ -446,6 +457,9 @@ export function DeliveryNotesPage() {
               header: '',
               render: (n: any) => (
                 <div className="flex justify-end gap-2">
+                  {n.status === 'DRAFT' && (
+                    <Button size="sm" variant="outline" onClick={() => editDelivery(n)}>Edit</Button>
+                  )}
                   {n.status === 'DRAFT' && (
                     <Button size="sm" onClick={() => setStatus(n.id, 'SUBMITTED')}>
                       Submit
@@ -478,7 +492,7 @@ export function DeliveryNotesPage() {
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="max-w-5xl">
           <DialogHeader>
-            <DialogTitle>New Delivery Note</DialogTitle>
+            <DialogTitle>{editingDeliveryId ? 'Edit' : 'New'} Delivery Note</DialogTitle>
           </DialogHeader>
           <div className="grid gap-4">
             <div className="rounded-md border border-[#e5e2dc] bg-[#f8faf9] p-3 text-sm text-[#4b5563]">

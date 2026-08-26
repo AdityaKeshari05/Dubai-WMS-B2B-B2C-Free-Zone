@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Plus, TrendingUp, Upload } from 'lucide-react';
+import { Plus, TrendingUp, Upload, Pencil } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { PageHeader } from '@/components/shared/PageHeader';
 import { DataTable } from '@/components/shared/DataTable';
@@ -31,6 +31,7 @@ export default function LeadsPage() {
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
   const [showModal, setShowModal] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [showImport, setShowImport] = useState(false);
   const [openingContactId, setOpeningContactId] = useState<string | null>(null);
   const [form, setForm] = useState({
@@ -99,21 +100,22 @@ export default function LeadsPage() {
 
     setIsSubmitting(true);
     try {
-      const duplicateCheck = await api.post('/crm/leads/check-duplicate', { email: form.email, phone: form.phone, country: form.country });
-      const suggestions = duplicateCheck.data?.data?.suggestions || [];
+      const duplicateCheck = editingId ? null : await api.post('/crm/leads/check-duplicate', { email: form.email, phone: form.phone, country: form.country });
+      const suggestions = duplicateCheck?.data?.data?.suggestions || [];
       const allowDuplicate = suggestions.length > 0
         ? window.confirm(`Possible duplicate found: ${suggestions.map((item: any) => item.title).join(', ')}. Create this lead anyway?`)
         : false;
       if (suggestions.length > 0 && !allowDuplicate) return;
-      await api.post('/crm/leads', {
+      const payload = {
         ...form,
         title: trimmedTitle,
         firstName: trimmedFirst,
         lastName: trimmedLast,
         value: numValue,
         allowDuplicate,
-      });
-      showApiSuccess('Lead created successfully');
+      };
+      if (editingId) await api.put(`/crm/leads/${editingId}`, payload); else await api.post('/crm/leads', payload);
+      showApiSuccess(`Lead ${editingId ? 'updated' : 'created'} successfully`);
       setShowModal(false);
       setForm({
         title: '',
@@ -130,6 +132,7 @@ export default function LeadsPage() {
         value: '',
         notes: '',
       });
+      setEditingId(null);
       fetchLeads();
     } catch (err: any) {
       showApiError(err, 'Failed to create lead');
@@ -137,6 +140,8 @@ export default function LeadsPage() {
       setIsSubmitting(false);
     }
   };
+
+  const editLead = (lead: any) => { setEditingId(lead.id); setForm({ title: lead.title || '', firstName: lead.firstName || '', lastName: lead.lastName || '', email: lead.email || '', phone: lead.phone || '', company: lead.company || '', city: lead.city || '', country: lead.country || '', source: lead.source || 'WEBSITE', status: lead.status || 'NEW', priority: lead.priority || 'MEDIUM', value: lead.value == null ? '' : String(lead.value), notes: lead.notes || '' }); setShowModal(true); };
 
   const handleConvert = async (id: string) => {
     if (convertingId) return;
@@ -193,6 +198,7 @@ export default function LeadsPage() {
       header: '',
       render: (l: Lead) => (
         <div className="flex gap-2">
+          <Button size="sm" variant="outline" onClick={(e) => { e.stopPropagation(); editLead(l); }}><Pencil className="mr-1 h-3.5 w-3.5" />Edit</Button>
           <Button
             size="sm"
             variant="outline"
@@ -229,7 +235,7 @@ export default function LeadsPage() {
       <PageHeader
         title="Leads"
         description="Capture, import, qualify, and convert sales leads"
-        action={{ label: 'New Lead', onClick: () => setShowModal(true), icon: Plus }}
+        action={{ label: 'New Lead', onClick: () => { setEditingId(null); setShowModal(true); }, icon: Plus }}
       >
         <Button variant="outline" onClick={() => setShowImport(true)}>
           <Upload className="mr-2 h-4 w-4" />
@@ -298,7 +304,7 @@ export default function LeadsPage() {
       <Dialog open={showModal} onOpenChange={setShowModal}>
         <DialogContent className="max-w-2xl">
           <DialogHeader>
-            <DialogTitle>New Lead</DialogTitle>
+            <DialogTitle>{editingId ? 'Edit' : 'New'} Lead</DialogTitle>
           </DialogHeader>
           <form onSubmit={handleCreate} className="grid grid-cols-2 gap-4 mt-2">
             <div className="col-span-2 space-y-1.5">
@@ -415,7 +421,7 @@ export default function LeadsPage() {
                 Cancel
               </Button>
               <Button type="submit" disabled={isSubmitting}>
-                {isSubmitting ? 'Creating...' : 'Create Lead'}
+                {isSubmitting ? 'Saving...' : editingId ? 'Update Lead' : 'Create Lead'}
               </Button>
             </div>
           </form>

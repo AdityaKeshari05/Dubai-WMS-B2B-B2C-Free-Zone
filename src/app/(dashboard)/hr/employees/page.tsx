@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Building2, Plus, ShieldCheck, Users } from 'lucide-react';
+import { Building2, Pencil, Plus, ShieldCheck, Trash2, Users } from 'lucide-react';
 import { PageHeader } from '@/components/shared/PageHeader';
 import { DataTable } from '@/components/shared/DataTable';
 import { Pagination } from '@/components/shared/Pagination';
@@ -30,6 +30,7 @@ export default function EmployeesPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [search, setSearch] = useState('');
   const [showModal, setShowModal] = useState(false);
+  const [editingEmployee, setEditingEmployee] = useState<Employee | null>(null);
   const [showDepartmentForm, setShowDepartmentForm] = useState(false);
   const [showPositionForm, setShowPositionForm] = useState(false);
   const [form, setForm] = useState({
@@ -42,6 +43,7 @@ export default function EmployeesPage() {
     hireDate: new Date().toISOString().split('T')[0],
     salary: '',
     salaryType: 'MONTHLY',
+    status: 'ACTIVE',
     address: '',
     city: '',
     country: '',
@@ -78,7 +80,53 @@ export default function EmployeesPage() {
     fetchAll();
   }, [page, search]);
 
-  const handleCreate = async (e: React.FormEvent) => {
+  const handleOpenCreate = () => {
+    setEditingEmployee(null);
+    setForm({
+      firstName: '',
+      lastName: '',
+      email: '',
+      phone: '',
+      departmentId: '',
+      positionId: '',
+      hireDate: new Date().toISOString().split('T')[0],
+      salary: '',
+      salaryType: 'MONTHLY',
+      status: 'ACTIVE',
+      address: '',
+      city: '',
+      country: '',
+      emergencyName: '',
+      emergencyPhone: '',
+      roleIds: [],
+    });
+    setShowModal(true);
+  };
+
+  const handleOpenEdit = (e: Employee) => {
+    setEditingEmployee(e);
+    setForm({
+      firstName: e.user?.firstName || '',
+      lastName: e.user?.lastName || '',
+      email: e.user?.email || '',
+      phone: (e.user as any)?.phone || '',
+      departmentId: e.departmentId || '',
+      positionId: e.positionId || '',
+      hireDate: e.hireDate ? new Date(e.hireDate).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
+      salary: e.salary !== undefined ? String(e.salary) : '',
+      salaryType: (e as any).salaryType || 'MONTHLY',
+      status: e.status || 'ACTIVE',
+      address: (e as any).address || '',
+      city: (e as any).city || '',
+      country: (e as any).country || '',
+      emergencyName: (e as any).emergencyName || '',
+      emergencyPhone: (e as any).emergencyPhone || '',
+      roleIds: [],
+    });
+    setShowModal(true);
+  };
+
+  const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     if (isSubmitting) return;
 
@@ -90,46 +138,61 @@ export default function EmployeesPage() {
       toast.error('First and last name are required');
       return;
     }
-    if (!trimmedEmail) {
-      toast.error('Email address is required');
-      return;
-    }
 
     setIsSubmitting(true);
     try {
-      await api.post('/hr/employees', {
-        ...form,
-        firstName: trimmedFirstName,
-        lastName: trimmedLastName,
-        email: trimmedEmail,
-        salary: Number(form.salary || 0),
-        departmentId: form.departmentId || undefined,
-        positionId: form.positionId || undefined,
-      });
-      showApiSuccess('Employee created. Issue login password from Access Control.');
+      if (editingEmployee) {
+        await api.put(`/hr/employees/${editingEmployee.id}`, {
+          firstName: trimmedFirstName,
+          lastName: trimmedLastName,
+          phone: form.phone,
+          departmentId: form.departmentId || null,
+          positionId: form.positionId || null,
+          salary: Number(form.salary || 0),
+          salaryType: form.salaryType,
+          status: form.status,
+          address: form.address,
+          city: form.city,
+          country: form.country,
+          emergencyName: form.emergencyName,
+          emergencyPhone: form.emergencyPhone,
+        });
+        showApiSuccess('Employee updated successfully');
+      } else {
+        if (!trimmedEmail) {
+          toast.error('Email address is required');
+          setIsSubmitting(false);
+          return;
+        }
+        await api.post('/hr/employees', {
+          ...form,
+          firstName: trimmedFirstName,
+          lastName: trimmedLastName,
+          email: trimmedEmail,
+          salary: Number(form.salary || 0),
+          departmentId: form.departmentId || undefined,
+          positionId: form.positionId || undefined,
+        });
+        showApiSuccess('Employee created. Issue login password from Access Control.');
+      }
       setShowModal(false);
-      setForm({
-        firstName: '',
-        lastName: '',
-        email: '',
-        phone: '',
-        departmentId: '',
-        positionId: '',
-        hireDate: new Date().toISOString().split('T')[0],
-        salary: '',
-        salaryType: 'MONTHLY',
-        address: '',
-        city: '',
-        country: '',
-        emergencyName: '',
-        emergencyPhone: '',
-        roleIds: [],
-      });
+      setEditingEmployee(null);
       fetchAll();
     } catch (err: any) {
-      showApiError(err, 'Failed to create employee');
+      showApiError(err, editingEmployee ? 'Failed to update employee' : 'Failed to create employee');
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  const handleTerminate = async (e: Employee) => {
+    if (!window.confirm(`Are you sure you want to terminate employee ${e.user?.firstName} ${e.user?.lastName}?`)) return;
+    try {
+      await api.delete(`/hr/employees/${e.id}`);
+      showApiSuccess('Employee status updated to TERMINATED');
+      fetchAll();
+    } catch (err: any) {
+      showApiError(err, 'Failed to terminate employee');
     }
   };
 
@@ -195,23 +258,52 @@ export default function EmployeesPage() {
       render: (e: Employee) => (
         <div className="flex items-center gap-3">
           <div className="h-8 w-8 rounded-full bg-blue-600 flex items-center justify-center shrink-0">
-            <span className="text-white text-xs font-semibold">{getInitials(e.user.firstName, e.user.lastName)}</span>
+            <span className="text-white text-xs font-semibold">{getInitials(e.user?.firstName || '', e.user?.lastName || '')}</span>
           </div>
           <div>
             <p className="font-medium text-gray-900">
-              {e.user.firstName} {e.user.lastName}
+              {e.user?.firstName} {e.user?.lastName}
             </p>
             <p className="text-xs text-gray-400">{e.employeeId}</p>
           </div>
         </div>
       ),
     },
-    { key: 'email', header: 'Email', render: (e: Employee) => e.user.email },
+    { key: 'email', header: 'Email', render: (e: Employee) => e.user?.email || '—' },
     { key: 'department', header: 'Department', render: (e: Employee) => e.department?.name || '—' },
     { key: 'position', header: 'Position', render: (e: Employee) => e.position?.title || '—' },
     { key: 'salary', header: 'Salary', render: (e: Employee) => formatCurrency(e.salary) },
     { key: 'hireDate', header: 'Hire Date', render: (e: Employee) => formatDate(e.hireDate) },
     { key: 'status', header: 'Status', render: (e: Employee) => <StatusBadge status={e.status} /> },
+    {
+      key: 'actions',
+      header: 'Actions',
+      className: 'text-right',
+      render: (e: Employee) => (
+        <div className="flex items-center justify-end gap-1" onClick={(evt) => evt.stopPropagation()}>
+          <Button
+            size="sm"
+            variant="ghost"
+            className="h-8 w-8 p-0 text-gray-500 hover:text-blue-600"
+            title="Edit Employee"
+            onClick={() => handleOpenEdit(e)}
+          >
+            <Pencil className="h-4 w-4" />
+          </Button>
+          {e.status !== 'TERMINATED' && (
+            <Button
+              size="sm"
+              variant="ghost"
+              className="h-8 w-8 p-0 text-gray-500 hover:text-red-600"
+              title="Terminate Employee"
+              onClick={() => handleTerminate(e)}
+            >
+              <Trash2 className="h-4 w-4" />
+            </Button>
+          )}
+        </div>
+      ),
+    },
   ];
 
   return (
@@ -219,7 +311,7 @@ export default function EmployeesPage() {
       <PageHeader
         title="Employees"
         description="Manage your workforce"
-        action={{ label: 'New Employee', onClick: () => setShowModal(true), icon: Plus }}
+        action={{ label: 'New Employee', onClick: handleOpenCreate, icon: Plus }}
       />
       <div className="mb-4">
         <Input
@@ -237,7 +329,7 @@ export default function EmployeesPage() {
           icon={Users}
           title="No employees yet"
           description="Add your first employee"
-          action={{ label: 'Add Employee', onClick: () => setShowModal(true) }}
+          action={{ label: 'Add Employee', onClick: handleOpenCreate }}
         />
       ) : (
         <>
@@ -257,9 +349,9 @@ export default function EmployeesPage() {
       <Dialog open={showModal} onOpenChange={setShowModal}>
         <DialogContent className="max-w-3xl">
           <DialogHeader>
-            <DialogTitle>New Employee</DialogTitle>
+            <DialogTitle>{editingEmployee ? `Edit Employee (${editingEmployee.employeeId})` : 'New Employee'}</DialogTitle>
           </DialogHeader>
-          <form onSubmit={handleCreate} className="grid grid-cols-2 gap-4 mt-2 max-h-[70vh] overflow-y-auto pr-2">
+          <form onSubmit={handleSave} className="grid grid-cols-2 gap-4 mt-2 max-h-[70vh] overflow-y-auto pr-2">
             <div className="space-y-1.5">
               <Label>First Name *</Label>
               <Input
@@ -284,6 +376,7 @@ export default function EmployeesPage() {
                 type="email"
                 placeholder="john.doe@company.com"
                 value={form.email}
+                disabled={Boolean(editingEmployee)}
                 onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))}
                 required
               />
@@ -424,22 +517,41 @@ export default function EmployeesPage() {
                 </div>
               </div>
             )}
+            {!editingEmployee && (
+              <div className="space-y-1.5">
+                <Label>Hire Date *</Label>
+                <Input
+                  type="date"
+                  value={form.hireDate}
+                  onChange={(e) => setForm((f) => ({ ...f, hireDate: e.target.value }))}
+                  required
+                />
+              </div>
+            )}
+            {editingEmployee && (
+              <div className="space-y-1.5">
+                <Label>Status</Label>
+                <Select value={form.status} onValueChange={(v) => setForm((f) => ({ ...f, status: v }))}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {['ACTIVE', 'PROBATION', 'ON_LEAVE', 'SUSPENDED', 'TERMINATED'].map((s) => (
+                      <SelectItem key={s} value={s}>
+                        {s}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
             <div className="space-y-1.5">
-              <Label>Hire Date *</Label>
-              <Input
-                type="date"
-                value={form.hireDate}
-                onChange={(e) => setForm((f) => ({ ...f, hireDate: e.target.value }))}
-                required
-              />
-            </div>
-            <div className="space-y-1.5">
-              <Label>Salary *</Label>
+              <Label>Salary</Label>
               <Input
                 type="number"
                 value={form.salary}
+                placeholder="0.00"
                 onChange={(e) => setForm((f) => ({ ...f, salary: e.target.value }))}
-                required
               />
             </div>
             <div className="space-y-1.5">
@@ -460,37 +572,39 @@ export default function EmployeesPage() {
                 </SelectContent>
               </Select>
             </div>
-            <div className="col-span-2 space-y-1.5">
-              <div className="flex items-center gap-2">
-                <ShieldCheck className="h-4 w-4 text-[#1674c4]" />
-                <Label>Access Roles</Label>
+            {!editingEmployee && (
+              <div className="col-span-2 space-y-1.5">
+                <div className="flex items-center gap-2">
+                  <ShieldCheck className="h-4 w-4 text-[#1674c4]" />
+                  <Label>Access Roles</Label>
+                </div>
+                <div className="grid max-h-32 grid-cols-2 gap-2 overflow-y-auto rounded-md border border-[#e5e2dc] p-2">
+                  {roles.length ? (
+                    roles.map((role) => (
+                      <label key={role.id} className="flex items-center gap-2 text-sm text-[#374151]">
+                        <input
+                          type="checkbox"
+                          checked={form.roleIds.includes(role.id)}
+                          onChange={() =>
+                            setForm((f) => ({
+                              ...f,
+                              roleIds: f.roleIds.includes(role.id)
+                               ? f.roleIds.filter((id) => id !== role.id)
+                                : [...f.roleIds, role.id],
+                            }))
+                          }
+                        />
+                        {role.title || role.name}
+                      </label>
+                    ))
+                  ) : (
+                    <p className="col-span-2 text-sm text-[#6b7280]">
+                      No access roles visible. The backend will assign Employee Self Service by default.
+                    </p>
+                  )}
+                </div>
               </div>
-              <div className="grid max-h-32 grid-cols-2 gap-2 overflow-y-auto rounded-md border border-[#e5e2dc] p-2">
-                {roles.length ? (
-                  roles.map((role) => (
-                    <label key={role.id} className="flex items-center gap-2 text-sm text-[#374151]">
-                      <input
-                        type="checkbox"
-                        checked={form.roleIds.includes(role.id)}
-                        onChange={() =>
-                          setForm((f) => ({
-                            ...f,
-                            roleIds: f.roleIds.includes(role.id)
-                              ? f.roleIds.filter((id) => id !== role.id)
-                              : [...f.roleIds, role.id],
-                          }))
-                        }
-                      />
-                      {role.title || role.name}
-                    </label>
-                  ))
-                ) : (
-                  <p className="col-span-2 text-sm text-[#6b7280]">
-                    No access roles visible. The backend will assign Employee Self Service by default.
-                  </p>
-                )}
-              </div>
-            </div>
+            )}
             <div className="col-span-2 space-y-1.5">
               <Label>Address</Label>
               <Input
@@ -536,7 +650,7 @@ export default function EmployeesPage() {
                 Cancel
               </Button>
               <Button type="submit" disabled={isSubmitting}>
-                {isSubmitting ? 'Creating...' : 'Create Employee'}
+                {isSubmitting ? 'Saving...' : editingEmployee ? 'Save Changes' : 'Create Employee'}
               </Button>
             </div>
           </form>

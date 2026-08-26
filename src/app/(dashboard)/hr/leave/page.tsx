@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import toast from 'react-hot-toast';
-import { Calendar, Check, Plus, X } from 'lucide-react';
+import { Calendar, Check, Pencil, Plus, Settings2, Trash2, X } from 'lucide-react';
 import { PageHeader } from '@/components/shared/PageHeader';
 import { DataTable } from '@/components/shared/DataTable';
 import { Pagination } from '@/components/shared/Pagination';
@@ -63,12 +63,14 @@ export default function LeavePage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [statusFilter, setStatusFilter] = useState('');
   const [showModal, setShowModal] = useState(false);
+  const [editingRequest, setEditingRequest] = useState<LeaveRequest | null>(null);
+  const [showLeaveTypesModal, setShowLeaveTypesModal] = useState(false);
+  const [editingLeaveType, setEditingLeaveType] = useState<LeaveType | null>(null);
   const [showLeaveTypeForm, setShowLeaveTypeForm] = useState(false);
   const [form, setForm] = useState({ employeeId: '', leaveTypeId: '', startDate: '', endDate: '', reason: '' });
   const [leaveTypeForm, setLeaveTypeForm] = useState({ name: '', daysAllowed: 0, isPaid: true, description: '' });
   const limit = 20;
   const requestedDays = inclusiveDays(form.startDate, form.endDate);
-  const selectedBalance = balances.find((item) => item.leaveTypeId === form.leaveTypeId);
 
   const stats = useMemo(
     () => ({
@@ -118,7 +120,31 @@ export default function LeavePage() {
     fetchBalances(form.employeeId, form.startDate);
   }, [form.employeeId, form.startDate]);
 
-  const handleCreate = async (event: React.FormEvent) => {
+  const handleOpenCreate = () => {
+    setEditingRequest(null);
+    setForm({
+      employeeId: employees[0]?.id || '',
+      leaveTypeId: leaveTypes[0]?.id || '',
+      startDate: new Date().toISOString().split('T')[0],
+      endDate: new Date().toISOString().split('T')[0],
+      reason: '',
+    });
+    setShowModal(true);
+  };
+
+  const handleOpenEditRequest = (req: LeaveRequest) => {
+    setEditingRequest(req);
+    setForm({
+      employeeId: req.employeeId,
+      leaveTypeId: req.leaveTypeId,
+      startDate: req.startDate ? new Date(req.startDate).toISOString().split('T')[0] : '',
+      endDate: req.endDate ? new Date(req.endDate).toISOString().split('T')[0] : '',
+      reason: req.reason || '',
+    });
+    setShowModal(true);
+  };
+
+  const handleSaveRequest = async (event: React.FormEvent) => {
     event.preventDefault();
     if (isSubmitting) return;
 
@@ -141,16 +167,38 @@ export default function LeavePage() {
 
     setIsSubmitting(true);
     try {
-      await api.post('/hr/leave-requests', { ...form, days: requestedDays });
-      showApiSuccess('Leave request created successfully');
+      if (editingRequest) {
+        await api.put(`/hr/leave-requests/${editingRequest.id}`, {
+          leaveTypeId: form.leaveTypeId,
+          startDate: form.startDate,
+          endDate: form.endDate,
+          reason: form.reason,
+        });
+        showApiSuccess('Leave request updated successfully');
+      } else {
+        await api.post('/hr/leave-requests', { ...form, days: requestedDays });
+        showApiSuccess('Leave request created successfully');
+      }
       setShowModal(false);
+      setEditingRequest(null);
       setForm({ employeeId: '', leaveTypeId: '', startDate: '', endDate: '', reason: '' });
       setBalances([]);
       fetchAll();
     } catch (err: any) {
-      showApiError(err, 'Could not create leave request');
+      showApiError(err, editingRequest ? 'Could not update leave request' : 'Could not create leave request');
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  const handleDeleteRequest = async (req: LeaveRequest) => {
+    if (!window.confirm('Are you sure you want to delete this pending leave request?')) return;
+    try {
+      await api.delete(`/hr/leave-requests/${req.id}`);
+      showApiSuccess('Leave request deleted');
+      fetchAll();
+    } catch (err: any) {
+      showApiError(err, 'Failed to delete leave request');
     }
   };
 
@@ -164,7 +212,7 @@ export default function LeavePage() {
     }
   };
 
-  const createLeaveType = async () => {
+  const handleSaveLeaveType = async () => {
     const trimmedName = leaveTypeForm.name.trim();
     if (!trimmedName) {
       toast.error('Leave type name is required');
@@ -172,15 +220,42 @@ export default function LeavePage() {
     }
 
     try {
-      const res = await api.post('/hr/leave-types', { ...leaveTypeForm, name: trimmedName });
-      const created = res.data?.data;
-      setLeaveTypes((prev) => [...prev, created].sort((a, b) => a.name.localeCompare(b.name)));
-      setForm((prev) => ({ ...prev, leaveTypeId: created.id }));
+      if (editingLeaveType) {
+        await api.put(`/hr/leave-types/${editingLeaveType.id}`, {
+          ...leaveTypeForm,
+          name: trimmedName,
+          daysAllowed: Number(leaveTypeForm.daysAllowed || 0),
+        });
+        showApiSuccess(`Leave type "${trimmedName}" updated`);
+      } else {
+        const res = await api.post('/hr/leave-types', {
+          ...leaveTypeForm,
+          name: trimmedName,
+          daysAllowed: Number(leaveTypeForm.daysAllowed || 0),
+        });
+        const created = res.data?.data;
+        setForm((prev) => ({ ...prev, leaveTypeId: created.id }));
+        showApiSuccess(`Leave type "${trimmedName}" created`);
+      }
+      setEditingLeaveType(null);
       setLeaveTypeForm({ name: '', daysAllowed: 0, isPaid: true, description: '' });
       setShowLeaveTypeForm(false);
-      showApiSuccess(`Leave type "${trimmedName}" created`);
+      const ltRes = await api.get('/hr/leave-types');
+      setLeaveTypes(ltRes.data?.data || []);
     } catch (err: any) {
-      showApiError(err, 'Could not create leave type');
+      showApiError(err, 'Could not save leave type');
+    }
+  };
+
+  const handleDeleteLeaveType = async (lt: LeaveType) => {
+    if (!window.confirm(`Are you sure you want to delete leave type "${lt.name}"?`)) return;
+    try {
+      await api.delete(`/hr/leave-types/${lt.id}`);
+      showApiSuccess('Leave type deleted');
+      const ltRes = await api.get('/hr/leave-types');
+      setLeaveTypes(ltRes.data?.data || []);
+    } catch (err: any) {
+      showApiError(err, 'Failed to delete leave type');
     }
   };
 
@@ -199,18 +274,52 @@ export default function LeavePage() {
     { key: 'status', header: 'Status', render: (request: LeaveRequest) => <StatusBadge status={request.status} /> },
     {
       key: 'actions',
-      header: '',
-      render: (request: LeaveRequest) =>
-        request.status === 'PENDING' ? (
-          <div className="flex gap-1">
-            <Button size="sm" variant="success" onClick={() => handleApprove(request.id, 'APPROVED')}>
-              <Check className="h-3 w-3" />
-            </Button>
-            <Button size="sm" variant="destructive" onClick={() => handleApprove(request.id, 'REJECTED')}>
-              <X className="h-3 w-3" />
-            </Button>
-          </div>
-        ) : null,
+      header: 'Actions',
+      className: 'text-right',
+      render: (request: LeaveRequest) => (
+        <div className="flex items-center justify-end gap-1" onClick={(e) => e.stopPropagation()}>
+          {request.status === 'PENDING' && (
+            <>
+              <Button
+                size="sm"
+                variant="ghost"
+                className="h-8 w-8 p-0 text-gray-500 hover:text-blue-600"
+                title="Edit Request"
+                onClick={() => handleOpenEditRequest(request)}
+              >
+                <Pencil className="h-4 w-4" />
+              </Button>
+              <Button
+                size="sm"
+                variant="ghost"
+                className="h-8 w-8 p-0 text-gray-500 hover:text-red-600"
+                title="Delete Request"
+                onClick={() => handleDeleteRequest(request)}
+              >
+                <Trash2 className="h-4 w-4" />
+              </Button>
+              <Button
+                size="sm"
+                variant="ghost"
+                className="h-8 w-8 p-0 text-green-600 hover:bg-green-50"
+                title="Approve Leave"
+                onClick={() => handleApprove(request.id, 'APPROVED')}
+              >
+                <Check className="h-4 w-4" />
+              </Button>
+              <Button
+                size="sm"
+                variant="ghost"
+                className="h-8 w-8 p-0 text-red-600 hover:bg-red-50"
+                title="Reject Leave"
+                onClick={() => handleApprove(request.id, 'REJECTED')}
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            </>
+          )}
+        </div>
+      ),
     },
   ];
 
@@ -219,10 +328,21 @@ export default function LeavePage() {
       <PageHeader
         title="Leave Management"
         description="Create leave requests for employees, review pending requests, and approve them into the leave ledger"
-        action={{ label: 'Request for Employee', onClick: () => setShowModal(true), icon: Plus }}
+        action={{ label: 'Request for Employee', onClick: handleOpenCreate, icon: Plus }}
       />
       <div className="grid gap-3 md:grid-cols-4">
-        <Metric label="Leave Types" value={leaveTypes.length} />
+        <div className="relative">
+          <Metric label="Leave Types" value={leaveTypes.length} />
+          <Button
+            size="sm"
+            variant="ghost"
+            className="absolute top-2 right-2 text-xs text-blue-600"
+            onClick={() => setShowLeaveTypesModal(true)}
+          >
+            <Settings2 className="h-3.5 w-3.5 mr-1" />
+            Manage
+          </Button>
+        </div>
         <Metric label="Pending" value={stats.pending} />
         <Metric label="Approved On Page" value={stats.approved} />
         <Metric label="Rejected On Page" value={stats.rejected} />
@@ -244,7 +364,7 @@ export default function LeavePage() {
           icon={Calendar}
           title="No leave requests"
           description="Create a leave request for an employee"
-          action={{ label: 'Request for Employee', onClick: () => setShowModal(true) }}
+          action={{ label: 'Request for Employee', onClick: handleOpenCreate }}
         />
       ) : (
         <>
@@ -261,16 +381,18 @@ export default function LeavePage() {
         </>
       )}
 
+      {/* LEAVE REQUEST MODAL */}
       <Dialog open={showModal} onOpenChange={setShowModal}>
         <DialogContent className="max-w-2xl">
           <DialogHeader>
-            <DialogTitle>Request Leave for Employee</DialogTitle>
+            <DialogTitle>{editingRequest ? 'Edit Leave Request' : 'Request Leave for Employee'}</DialogTitle>
           </DialogHeader>
-          <form onSubmit={handleCreate} className="space-y-4 pt-2">
+          <form onSubmit={handleSaveRequest} className="space-y-4 pt-2">
             <div className="grid gap-3 md:grid-cols-2">
               <Field label="Employee *">
                 <Select
                   value={form.employeeId}
+                  disabled={Boolean(editingRequest)}
                   onValueChange={(employeeId) => setForm((prev) => ({ ...prev, employeeId, leaveTypeId: '' }))}
                 >
                   <SelectTrigger>
@@ -368,7 +490,7 @@ export default function LeavePage() {
                       setLeaveTypeForm((prev) => ({ ...prev, description: event.target.value }))
                     }
                   />
-                  <Button type="button" onClick={createLeaveType}>
+                  <Button type="button" onClick={handleSaveLeaveType}>
                     Create Type
                   </Button>
                 </div>
@@ -408,7 +530,7 @@ export default function LeavePage() {
                     >
                       <p className="text-xs text-[#6b7280]">{balance.leaveType?.name}</p>
                       <p className="text-sm font-semibold text-[#1f2937]">
-                        {balance.remainingDays} days remaining
+                        {balance.balance} days balance
                       </p>
                     </div>
                   ))
@@ -430,10 +552,101 @@ export default function LeavePage() {
                 Cancel
               </Button>
               <Button type="submit" disabled={isSubmitting || employees.length === 0}>
-                {isSubmitting ? 'Submitting...' : 'Submit Leave Request'}
+                {isSubmitting ? 'Saving...' : editingRequest ? 'Save Changes' : 'Submit Leave Request'}
               </Button>
             </div>
           </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* MANAGE LEAVE TYPES MODAL */}
+      <Dialog open={showLeaveTypesModal} onOpenChange={setShowLeaveTypesModal}>
+        <DialogContent className="max-w-xl">
+          <DialogHeader>
+            <DialogTitle>Manage Leave Types</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 mt-2">
+            <div className="rounded-md border p-3 bg-gray-50 space-y-3">
+              <p className="text-sm font-medium">{editingLeaveType ? 'Edit Leave Type' : 'Add New Leave Type'}</p>
+              <div className="grid grid-cols-2 gap-2">
+                <Input
+                  placeholder="Leave Name (e.g. Annual Leave)"
+                  value={leaveTypeForm.name}
+                  onChange={(e) => setLeaveTypeForm((f) => ({ ...f, name: e.target.value }))}
+                />
+                <Input
+                  type="number"
+                  placeholder="Days allowed"
+                  value={leaveTypeForm.daysAllowed}
+                  onChange={(e) => setLeaveTypeForm((f) => ({ ...f, daysAllowed: Number(e.target.value) }))}
+                />
+              </div>
+              <div className="flex items-center justify-between">
+                <label className="flex items-center gap-2 text-sm">
+                  <input
+                    type="checkbox"
+                    checked={leaveTypeForm.isPaid}
+                    onChange={(e) => setLeaveTypeForm((f) => ({ ...f, isPaid: e.target.checked }))}
+                  />
+                  Paid Leave
+                </label>
+                <div className="flex gap-2">
+                  {editingLeaveType && (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => {
+                        setEditingLeaveType(null);
+                        setLeaveTypeForm({ name: '', daysAllowed: 0, isPaid: true, description: '' });
+                      }}
+                    >
+                      Cancel Edit
+                    </Button>
+                  )}
+                  <Button size="sm" onClick={handleSaveLeaveType}>
+                    {editingLeaveType ? 'Update Type' : 'Add Type'}
+                  </Button>
+                </div>
+              </div>
+            </div>
+
+            <div className="divide-y max-h-60 overflow-y-auto">
+              {leaveTypes.map((lt) => (
+                <div key={lt.id} className="py-2.5 flex items-center justify-between">
+                  <div>
+                    <p className="font-medium text-sm text-gray-900">{lt.name}</p>
+                    <p className="text-xs text-gray-500">{lt.daysAllowed} days/year · {lt.isPaid ? 'Paid' : 'Unpaid'}</p>
+                  </div>
+                  <div className="flex gap-1">
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className="h-8 w-8 p-0"
+                      onClick={() => {
+                        setEditingLeaveType(lt);
+                        setLeaveTypeForm({
+                          name: lt.name,
+                          daysAllowed: lt.daysAllowed || 0,
+                          isPaid: lt.isPaid ?? true,
+                          description: lt.description || '',
+                        });
+                      }}
+                    >
+                      <Pencil className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className="h-8 w-8 p-0 text-red-600"
+                      onClick={() => handleDeleteLeaveType(lt)}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
         </DialogContent>
       </Dialog>
     </div>

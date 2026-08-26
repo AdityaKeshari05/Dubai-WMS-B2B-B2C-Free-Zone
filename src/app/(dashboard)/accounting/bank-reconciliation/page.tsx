@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { AlertCircle, ArrowRight, ShieldCheck } from 'lucide-react';
+import { AlertCircle, ArrowRight, Pencil, Plus, ShieldCheck, Trash2 } from 'lucide-react';
 import api from '@/lib/api';
 import { Account } from '@/types';
 import { PageHeader } from '@/components/shared/PageHeader';
@@ -13,6 +13,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { formatCurrency, formatDate } from '@/lib/utils';
 import { showApiError, showApiSuccess } from '@/lib/apiError';
 import toast from 'react-hot-toast';
@@ -24,6 +25,8 @@ export default function BankReconciliationPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [reconcilingLineId, setReconcilingLineId] = useState<string | null>(null);
+  const [editingLine, setEditingLine] = useState<any | null>(null);
+  const [showEditModal, setShowEditModal] = useState(false);
   const [form, setForm] = useState({
     accountId: '',
     statementDate: new Date().toISOString().slice(0, 10),
@@ -55,7 +58,34 @@ export default function BankReconciliationPage() {
     load();
   }, []);
 
-  const create = async () => {
+  const handleOpenCreate = () => {
+    setEditingLine(null);
+    setForm({
+      accountId: accounts[0]?.id || '',
+      statementDate: new Date().toISOString().slice(0, 10),
+      description: '',
+      debit: '',
+      credit: '',
+      reference: '',
+    });
+    setShowEditModal(true);
+  };
+
+  const handleOpenEdit = (line: any) => {
+    setEditingLine(line);
+    setForm({
+      accountId: line.accountId || '',
+      statementDate: line.statementDate ? new Date(line.statementDate).toISOString().slice(0, 10) : new Date().toISOString().slice(0, 10),
+      description: line.description || '',
+      debit: line.debit ? String(line.debit) : '',
+      credit: line.credit ? String(line.credit) : '',
+      reference: line.reference || '',
+    });
+    setShowEditModal(true);
+  };
+
+  const handleSave = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
     if (isSubmitting) return;
 
     if (!form.accountId) {
@@ -75,12 +105,22 @@ export default function BankReconciliationPage() {
 
     setIsSubmitting(true);
     try {
-      await api.post('/accounting/bank-statement-lines', {
+      const payload = {
         ...form,
         debit: debitNum,
         credit: creditNum,
-      });
-      showApiSuccess('Statement line added successfully');
+      };
+
+      if (editingLine) {
+        await api.put(`/accounting/bank-statement-lines/${editingLine.id}`, payload);
+        showApiSuccess('Statement line updated successfully');
+      } else {
+        await api.post('/accounting/bank-statement-lines', payload);
+        showApiSuccess('Statement line added successfully');
+      }
+
+      setShowEditModal(false);
+      setEditingLine(null);
       setForm({
         accountId: form.accountId,
         statementDate: new Date().toISOString().slice(0, 10),
@@ -91,9 +131,20 @@ export default function BankReconciliationPage() {
       });
       load();
     } catch (err: any) {
-      showApiError(err, 'Failed to add statement line');
+      showApiError(err, editingLine ? 'Failed to update statement line' : 'Failed to add statement line');
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  const handleDelete = async (line: any) => {
+    if (!window.confirm('Are you sure you want to delete this bank statement line?')) return;
+    try {
+      await api.delete(`/accounting/bank-statement-lines/${line.id}`);
+      showApiSuccess('Statement line deleted');
+      load();
+    } catch (err: any) {
+      showApiError(err, 'Failed to delete statement line');
     }
   };
 
@@ -119,6 +170,7 @@ export default function BankReconciliationPage() {
       <PageHeader
         title="Bank Reconciliation"
         description="Match bank statement lines against bank and cash General Ledger entries"
+        action={{ label: 'New Line', onClick: handleOpenCreate, icon: Plus }}
       />
 
       {bankAccounts.length === 0 && !isLoading && (
@@ -137,6 +189,7 @@ export default function BankReconciliationPage() {
         </div>
       )}
 
+      {/* QUICK ADD CARD */}
       <div className="grid gap-3 rounded-md border border-[#e5e2dc] bg-white p-4 md:grid-cols-6 shadow-xs">
         <div>
           <Label>Account *</Label>
@@ -196,7 +249,7 @@ export default function BankReconciliationPage() {
           />
         </div>
         <div className="flex items-end">
-          <Button onClick={create} disabled={isSubmitting || bankAccounts.length === 0} className="w-full">
+          <Button onClick={() => handleSave()} disabled={isSubmitting || bankAccounts.length === 0} className="w-full">
             {isSubmitting ? 'Adding...' : 'Add Line'}
           </Button>
         </div>
@@ -207,6 +260,7 @@ export default function BankReconciliationPage() {
           icon={ShieldCheck}
           title="No statement lines"
           description="Add bank statement lines above to match them with ledger entries and reconcile your accounts."
+          action={{ label: 'Add Statement Line', onClick: handleOpenCreate }}
         />
       ) : (
         <DataTable
@@ -267,9 +321,108 @@ export default function BankReconciliationPage() {
                   </Select>
                 ),
             },
+            {
+              key: 'actions',
+              header: 'Actions',
+              className: 'text-right',
+              render: (r: any) =>
+                !r.isReconciled ? (
+                  <div className="flex items-center justify-end gap-1" onClick={(e) => e.stopPropagation()}>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className="h-8 w-8 p-0 text-gray-500 hover:text-blue-600"
+                      title="Edit Statement Line"
+                      onClick={() => handleOpenEdit(r)}
+                    >
+                      <Pencil className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className="h-8 w-8 p-0 text-gray-500 hover:text-red-600"
+                      title="Delete Statement Line"
+                      onClick={() => handleDelete(r)}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
+                ) : null,
+            },
           ]}
         />
       )}
+
+      {/* EDIT MODAL */}
+      <Dialog open={showEditModal} onOpenChange={setShowEditModal}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>{editingLine ? 'Edit Bank Statement Line' : 'New Bank Statement Line'}</DialogTitle>
+          </DialogHeader>
+          <form onSubmit={handleSave} className="space-y-4 mt-2">
+            <div className="space-y-1.5">
+              <Label>Bank Account *</Label>
+              <Select value={form.accountId} onValueChange={(accountId) => setForm((f) => ({ ...f, accountId }))}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select account" />
+                </SelectTrigger>
+                <SelectContent>
+                  {bankAccounts.map((a) => (
+                    <SelectItem key={a.id} value={a.id}>
+                      {a.code} - {a.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1.5">
+              <Label>Statement Date *</Label>
+              <Input
+                type="date"
+                value={form.statementDate}
+                onChange={(e) => setForm((f) => ({ ...f, statementDate: e.target.value }))}
+                required
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label>Description</Label>
+              <Input
+                value={form.description}
+                placeholder="e.g. Wire Transfer, Customer Deposit"
+                onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label>Debit (Receipt)</Label>
+                <Input
+                  type="number"
+                  placeholder="0.00"
+                  value={form.debit}
+                  onChange={(e) => setForm((f) => ({ ...f, debit: e.target.value }))}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Credit (Payment)</Label>
+                <Input
+                  type="number"
+                  placeholder="0.00"
+                  value={form.credit}
+                  onChange={(e) => setForm((f) => ({ ...f, credit: e.target.value }))}
+                />
+              </div>
+            </div>
+            <div className="flex justify-end gap-2 pt-2">
+              <Button type="button" variant="outline" onClick={() => setShowEditModal(false)}>
+                Cancel
+              </Button>
+              <Button type="submit" disabled={isSubmitting}>
+                {isSubmitting ? 'Saving...' : editingLine ? 'Save Changes' : 'Add Statement Line'}
+              </Button>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

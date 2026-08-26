@@ -2,12 +2,14 @@
 
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
+import { Pencil, Trash2 } from 'lucide-react';
 import api from '@/lib/api';
 import { showApiError, showApiSuccess } from '@/lib/apiError';
 import { PageHeader } from '@/components/shared/PageHeader';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 
 function Grid({ rows }: { rows: any[] }) {
   if (!rows.length) return <p className="py-8 text-center text-sm text-gray-500">No records found.</p>;
@@ -37,11 +39,163 @@ export function ReconciliationsPage() {
 export function TransfersPage() {
   const [rows, setRows] = useState<any[]>([]), [warehouses, setWarehouses] = useState<any[]>([]), [products, setProducts] = useState<any[]>([]);
   const [form, setForm] = useState({ sourceWarehouseId: '', destinationWarehouseId: '', transitWarehouseId: '', productId: '', quantity: '1', transporter: '', vehicleNo: '' });
+  const [editingTransfer, setEditingTransfer] = useState<any | null>(null);
+  const [isEditOpen, setIsEditOpen] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
   const load = () => api.get('/inventory/transfer-orders').then(r => setRows(r.data?.data || [])).catch(e => showApiError(e, 'Could not load transfers'));
   useEffect(() => { load(); Promise.all([api.get('/inventory/warehouses'), api.get('/inventory/products?limit=200')]).then(([w, p]) => { setWarehouses(w.data?.data || []); setProducts(p.data?.data?.items || []); }); }, []);
-  const create = async () => { try { await api.post('/inventory/transfer-orders', { ...form, items: [{ productId: form.productId, quantity: Number(form.quantity) }] }); showApiSuccess('Transfer order created'); load(); } catch (e) { showApiError(e, 'Could not create transfer'); } };
-  const act = async (id: string, operation: string) => { try { await api.post(`/inventory/transfer-orders/${id}/${operation}`, operation === 'receive' ? { items: rows.find(r => r.id === id)?.items.map((i: any) => ({ id: i.id, quantity: Number(i.dispatchedQty) - Number(i.receivedQty) })) } : {}); showApiSuccess(`Transfer ${operation} completed`); load(); } catch (e) { showApiError(e, 'Transfer operation failed'); } };
-  return <div><PageHeader title="Transfer Orders" description="Same-plant transfers and cross-plant dispatch through goods in transit" /><Card className="mb-4"><CardContent className="grid gap-3 pt-6 md:grid-cols-3">{(['sourceWarehouseId', 'destinationWarehouseId', 'transitWarehouseId'] as const).map((key, index) => <select key={key} className="h-10 rounded-md border px-3" value={form[key]} onChange={e => setForm({ ...form, [key]: e.target.value })}><option value="">{['Source warehouse', 'Destination warehouse', 'Transit warehouse (cross-plant)'][index]}</option>{warehouses.map(w => <option key={w.id} value={w.id}>{w.name}</option>)}</select>)}<select className="h-10 rounded-md border px-3" value={form.productId} onChange={e => setForm({ ...form, productId: e.target.value })}><option value="">Product</option>{products.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}</select><Input type="number" min="0.000001" value={form.quantity} onChange={e => setForm({ ...form, quantity: e.target.value })} /><Input placeholder="Transporter" value={form.transporter} onChange={e => setForm({ ...form, transporter: e.target.value })} /><Button onClick={create} disabled={!form.sourceWarehouseId || !form.destinationWarehouseId || !form.productId}>Create transfer</Button></CardContent></Card><div className="space-y-3">{rows.map(r => <Card key={r.id}><CardContent className="flex flex-wrap items-center justify-between gap-3 pt-6"><div><p className="font-mono font-semibold">{r.transferNo}</p><p className="text-sm text-gray-500">{r.sourceWarehouse?.name} → {r.transitWarehouse?.name ? `${r.transitWarehouse.name} → ` : ''}{r.destinationWarehouse?.name} · {r.status}</p></div><div className="flex gap-2">{r.status === 'DRAFT' && <Button size="sm" onClick={() => act(r.id, 'submit')}>Submit</Button>}{r.status === 'SUBMITTED' && <Button size="sm" onClick={() => act(r.id, 'dispatch')}>Dispatch</Button>}{['IN_TRANSIT', 'PARTIALLY_RECEIVED'].includes(r.status) && <Button size="sm" onClick={() => act(r.id, 'receive')}>Receive remaining</Button>}</div></CardContent></Card>)}</div></div>;
+  
+  const create = async () => {
+    try {
+      await api.post('/inventory/transfer-orders', { ...form, items: [{ productId: form.productId, quantity: Number(form.quantity) }] });
+      showApiSuccess('Transfer order created');
+      setForm({ sourceWarehouseId: '', destinationWarehouseId: '', transitWarehouseId: '', productId: '', quantity: '1', transporter: '', vehicleNo: '' });
+      load();
+    } catch (e) {
+      showApiError(e, 'Could not create transfer');
+    }
+  };
+
+  const handleOpenEdit = (transfer: any) => {
+    setEditingTransfer(transfer);
+    const firstItem = transfer.items?.[0];
+    setForm({
+      sourceWarehouseId: transfer.sourceWarehouseId || '',
+      destinationWarehouseId: transfer.destinationWarehouseId || '',
+      transitWarehouseId: transfer.transitWarehouseId || '',
+      productId: firstItem?.productId || '',
+      quantity: String(firstItem?.quantity || '1'),
+      transporter: transfer.transporter || '',
+      vehicleNo: transfer.vehicleNo || '',
+    });
+    setIsEditOpen(true);
+  };
+
+  const handleUpdate = async () => {
+    if (!editingTransfer || isSubmitting) return;
+    setIsSubmitting(true);
+    try {
+      await api.put(`/inventory/transfer-orders/${editingTransfer.id}`, {
+        ...form,
+        items: [{ productId: form.productId, quantity: Number(form.quantity) }],
+      });
+      showApiSuccess('Transfer order updated');
+      setIsEditOpen(false);
+      setEditingTransfer(null);
+      load();
+    } catch (e) {
+      showApiError(e, 'Could not update transfer');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleDelete = async (id: string) => {
+    if (!window.confirm('Are you sure you want to delete this draft transfer order?')) return;
+    try {
+      await api.delete(`/inventory/transfer-orders/${id}`);
+      showApiSuccess('Transfer order deleted');
+      load();
+    } catch (e) {
+      showApiError(e, 'Could not delete transfer order');
+    }
+  };
+
+  const act = async (id: string, operation: string) => {
+    try {
+      await api.post(`/inventory/transfer-orders/${id}/${operation}`, operation === 'receive' ? { items: rows.find(r => r.id === id)?.items.map((i: any) => ({ id: i.id, quantity: Number(i.dispatchedQty) - Number(i.receivedQty) })) } : {});
+      showApiSuccess(`Transfer ${operation} completed`);
+      load();
+    } catch (e) {
+      showApiError(e, 'Transfer operation failed');
+    }
+  };
+
+  return (
+    <div>
+      <PageHeader title="Transfer Orders" description="Same-plant transfers and cross-plant dispatch through goods in transit" />
+      <Card className="mb-4">
+        <CardContent className="grid gap-3 pt-6 md:grid-cols-3">
+          {(['sourceWarehouseId', 'destinationWarehouseId', 'transitWarehouseId'] as const).map((key, index) => (
+            <select key={key} className="h-10 rounded-md border px-3" value={form[key]} onChange={e => setForm({ ...form, [key]: e.target.value })}>
+              <option value="">{['Source warehouse', 'Destination warehouse', 'Transit warehouse (cross-plant)'][index]}</option>
+              {warehouses.map(w => <option key={w.id} value={w.id}>{w.name}</option>)}
+            </select>
+          ))}
+          <select className="h-10 rounded-md border px-3" value={form.productId} onChange={e => setForm({ ...form, productId: e.target.value })}>
+            <option value="">Product</option>
+            {products.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+          </select>
+          <Input type="number" min="0.000001" placeholder="Quantity" value={form.quantity} onChange={e => setForm({ ...form, quantity: e.target.value })} />
+          <Input placeholder="Transporter" value={form.transporter} onChange={e => setForm({ ...form, transporter: e.target.value })} />
+          <Button onClick={create} disabled={!form.sourceWarehouseId || !form.destinationWarehouseId || !form.productId}>Create transfer</Button>
+        </CardContent>
+      </Card>
+      
+      <div className="space-y-3">
+        {rows.map(r => (
+          <Card key={r.id}>
+            <CardContent className="flex flex-wrap items-center justify-between gap-3 pt-6">
+              <div>
+                <p className="font-mono font-semibold">{r.transferNo}</p>
+                <p className="text-sm text-gray-500">{r.sourceWarehouse?.name} → {r.transitWarehouse?.name ? `${r.transitWarehouse.name} → ` : ''}{r.destinationWarehouse?.name} · {r.status}</p>
+              </div>
+              <div className="flex items-center gap-2">
+                {r.status === 'DRAFT' && (
+                  <>
+                    <Button size="sm" onClick={() => act(r.id, 'submit')}>Submit</Button>
+                    <Button size="sm" variant="ghost" className="h-8 w-8 p-0 text-gray-500 hover:text-blue-600" title="Edit Transfer" onClick={() => handleOpenEdit(r)}>
+                      <Pencil className="h-4 w-4" />
+                    </Button>
+                    <Button size="sm" variant="ghost" className="h-8 w-8 p-0 text-gray-500 hover:text-red-600" title="Delete Transfer" onClick={() => handleDelete(r.id)}>
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </>
+                )}
+                {r.status === 'SUBMITTED' && <Button size="sm" onClick={() => act(r.id, 'dispatch')}>Dispatch</Button>}
+                {['IN_TRANSIT', 'PARTIALLY_RECEIVED'].includes(r.status) && <Button size="sm" onClick={() => act(r.id, 'receive')}>Receive remaining</Button>}
+              </div>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+
+      <Dialog open={isEditOpen} onOpenChange={setIsEditOpen}>
+        <DialogContent className="max-w-xl">
+          <DialogHeader>
+            <DialogTitle>Edit Draft Transfer Order ({editingTransfer?.transferNo})</DialogTitle>
+          </DialogHeader>
+          <div className="grid gap-3 pt-4 md:grid-cols-2">
+            <select className="h-10 rounded-md border px-3" value={form.sourceWarehouseId} onChange={e => setForm({ ...form, sourceWarehouseId: e.target.value })}>
+              <option value="">Source warehouse</option>
+              {warehouses.map(w => <option key={w.id} value={w.id}>{w.name}</option>)}
+            </select>
+            <select className="h-10 rounded-md border px-3" value={form.destinationWarehouseId} onChange={e => setForm({ ...form, destinationWarehouseId: e.target.value })}>
+              <option value="">Destination warehouse</option>
+              {warehouses.map(w => <option key={w.id} value={w.id}>{w.name}</option>)}
+            </select>
+            <select className="h-10 rounded-md border px-3" value={form.transitWarehouseId} onChange={e => setForm({ ...form, transitWarehouseId: e.target.value })}>
+              <option value="">Transit warehouse (optional)</option>
+              {warehouses.map(w => <option key={w.id} value={w.id}>{w.name}</option>)}
+            </select>
+            <select className="h-10 rounded-md border px-3" value={form.productId} onChange={e => setForm({ ...form, productId: e.target.value })}>
+              <option value="">Product</option>
+              {products.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+            </select>
+            <Input type="number" min="0.000001" placeholder="Quantity" value={form.quantity} onChange={e => setForm({ ...form, quantity: e.target.value })} />
+            <Input placeholder="Transporter" value={form.transporter} onChange={e => setForm({ ...form, transporter: e.target.value })} />
+            <div className="md:col-span-2 flex justify-end gap-2 pt-2">
+              <Button variant="outline" onClick={() => setIsEditOpen(false)}>Cancel</Button>
+              <Button onClick={handleUpdate} disabled={isSubmitting || !form.sourceWarehouseId || !form.destinationWarehouseId || !form.productId}>
+                {isSubmitting ? 'Saving...' : 'Save Changes'}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
 }
 
 const reports = [['reorder', 'Reorder'], ['stock-ageing', 'Stock ageing'], ['batch-expiry', 'Batch expiry'], ['warehouse-bin-balance', 'Warehouse / bin balance'], ['stock-out-history', 'Stock-out history'], ['dead-stock', 'Dead stock'], ['transfers-in-transit', 'Transfers in transit'], ['reconciliation-variance', 'Reconciliation variance'], ['ledger-consistency', 'Ledger consistency']];

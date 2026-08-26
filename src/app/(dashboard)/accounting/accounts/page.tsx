@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Plus, BookOpen } from 'lucide-react';
+import { Plus, BookOpen, Pencil, Trash2 } from 'lucide-react';
 import { PageHeader } from '@/components/shared/PageHeader';
 import { DataTable } from '@/components/shared/DataTable';
 import { Button } from '@/components/ui/button';
@@ -43,6 +43,7 @@ const initialAccountForm = {
   isDefaultPayable: false,
   isDefaultTax: false,
   isDefaultRetainedEarnings: false,
+  isActive: true,
 };
 
 export default function AccountsPage() {
@@ -50,6 +51,7 @@ export default function AccountsPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [typeFilter, setTypeFilter] = useState('');
   const [showModal, setShowModal] = useState(false);
+  const [editingAccount, setEditingAccount] = useState<Account | null>(null);
   const [form, setForm] = useState(initialAccountForm);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -69,7 +71,37 @@ export default function AccountsPage() {
     fetchAccounts();
   }, [typeFilter]);
 
-  const handleCreate = async (e: React.FormEvent) => {
+  const handleOpenCreate = () => {
+    setEditingAccount(null);
+    setForm(initialAccountForm);
+    setShowModal(true);
+  };
+
+  const handleOpenEdit = (account: Account) => {
+    setEditingAccount(account);
+    setForm({
+      code: account.code || '',
+      name: account.name || '',
+      type: account.type || 'ASSET',
+      subType: account.subType || '',
+      parentId: account.parentId || '',
+      description: account.description || '',
+      currency: account.currency || 'USD',
+      isGroup: Boolean(account.isGroup),
+      freezeAccount: Boolean(account.freezeAccount),
+      frozenTillDate: account.frozenTillDate ? new Date(account.frozenTillDate).toISOString().slice(0, 10) : '',
+      isDefaultCash: Boolean(account.isDefaultCash),
+      isDefaultBank: Boolean(account.isDefaultBank),
+      isDefaultReceivable: Boolean(account.isDefaultReceivable),
+      isDefaultPayable: Boolean(account.isDefaultPayable),
+      isDefaultTax: Boolean(account.isDefaultTax),
+      isDefaultRetainedEarnings: Boolean(account.isDefaultRetainedEarnings),
+      isActive: account.isActive ?? true,
+    });
+    setShowModal(true);
+  };
+
+  const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     if (isSubmitting) return;
 
@@ -91,25 +123,46 @@ export default function AccountsPage() {
 
     setIsSubmitting(true);
     try {
-      await api.post('/accounting/accounts', {
+      const payload = {
         ...form,
         code: trimmedCode,
         name: trimmedName,
         parentId: form.parentId || null,
         frozenTillDate: form.freezeAccount && form.frozenTillDate ? form.frozenTillDate : null,
-      });
-      showApiSuccess(`Account "${trimmedCode} - ${trimmedName}" created successfully`);
+      };
+
+      if (editingAccount) {
+        await api.put(`/accounting/accounts/${editingAccount.id}`, payload);
+        showApiSuccess(`Account "${trimmedCode} - ${trimmedName}" updated successfully`);
+      } else {
+        await api.post('/accounting/accounts', payload);
+        showApiSuccess(`Account "${trimmedCode} - ${trimmedName}" created successfully`);
+      }
+
       setShowModal(false);
+      setEditingAccount(null);
       setForm(initialAccountForm);
       fetchAccounts();
     } catch (err: any) {
-      showApiError(err, 'Failed to create account');
+      showApiError(err, editingAccount ? 'Failed to update account' : 'Failed to create account');
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  const groupAccounts = accounts.filter((a) => a.isGroup);
+  const handleDelete = async (account: Account) => {
+    if (!window.confirm(`Are you sure you want to delete account "${account.code} - ${account.name}"?`)) return;
+    try {
+      await api.delete(`/accounting/accounts/${account.id}`);
+      showApiSuccess(`Account "${account.code} - ${account.name}" deleted`);
+      fetchAccounts();
+    } catch (err: any) {
+      showApiError(err, 'Failed to delete account. Accounts with transaction history should be marked inactive instead.');
+    }
+  };
+
+  // Group accounts available for selection (prevent self-nesting)
+  const groupAccounts = accounts.filter((a) => a.isGroup && (!editingAccount || a.id !== editingAccount.id));
 
   const columns = [
     { key: 'code', header: 'Code', render: (a: Account) => <span className="font-mono text-sm font-semibold">{a.code}</span> },
@@ -144,6 +197,33 @@ export default function AccountsPage() {
         </span>
       ),
     },
+    {
+      key: 'actions',
+      header: 'Actions',
+      className: 'text-right',
+      render: (a: Account) => (
+        <div className="flex items-center justify-end gap-1" onClick={(e) => e.stopPropagation()}>
+          <Button
+            size="sm"
+            variant="ghost"
+            className="h-8 w-8 p-0 text-gray-500 hover:text-blue-600"
+            title="Edit Account"
+            onClick={() => handleOpenEdit(a)}
+          >
+            <Pencil className="h-4 w-4" />
+          </Button>
+          <Button
+            size="sm"
+            variant="ghost"
+            className="h-8 w-8 p-0 text-gray-500 hover:text-red-600"
+            title="Delete Account"
+            onClick={() => handleDelete(a)}
+          >
+            <Trash2 className="h-4 w-4" />
+          </Button>
+        </div>
+      ),
+    },
   ];
 
   return (
@@ -151,7 +231,7 @@ export default function AccountsPage() {
       <PageHeader
         title="Chart of Accounts"
         description="Manage your accounting chart of accounts"
-        action={{ label: 'New Account', onClick: () => setShowModal(true), icon: Plus }}
+        action={{ label: 'New Account', onClick: handleOpenCreate, icon: Plus }}
       />
 
       <div className="flex gap-2 mb-4 flex-wrap">
@@ -170,7 +250,7 @@ export default function AccountsPage() {
           icon={BookOpen}
           title="No accounts found"
           description="Set up your chart of accounts to start tracking ledgers, journal entries, and finances."
-          action={{ label: 'Add Account', onClick: () => setShowModal(true) }}
+          action={{ label: 'Add Account', onClick: handleOpenCreate }}
         />
       ) : (
         <DataTable columns={columns} data={accounts} isLoading={isLoading} />
@@ -179,9 +259,9 @@ export default function AccountsPage() {
       <Dialog open={showModal} onOpenChange={setShowModal}>
         <DialogContent className="max-w-xl">
           <DialogHeader>
-            <DialogTitle>New Account</DialogTitle>
+            <DialogTitle>{editingAccount ? 'Edit Account' : 'New Account'}</DialogTitle>
           </DialogHeader>
-          <form onSubmit={handleCreate} className="grid grid-cols-2 gap-4 mt-2">
+          <form onSubmit={handleSave} className="grid grid-cols-2 gap-4 mt-2">
             <div className="space-y-1.5">
               <Label>Code *</Label>
               <Input
@@ -254,30 +334,49 @@ export default function AccountsPage() {
                 onChange={(e) => setForm((f) => ({ ...f, currency: e.target.value }))}
               />
             </div>
-            <label className="flex items-center gap-2 text-sm">
-              <input
-                type="checkbox"
-                checked={form.isGroup}
-                onChange={(e) => setForm((f) => ({ ...f, isGroup: e.target.checked }))}
-              />{' '}
-              Group Account
-            </label>
-            <label className="flex items-center gap-2 text-sm">
-              <input
-                type="checkbox"
-                checked={form.freezeAccount}
-                onChange={(e) => setForm((f) => ({ ...f, freezeAccount: e.target.checked }))}
-              />{' '}
-              Freeze Account
-            </label>
             <div className="space-y-1.5">
-              <Label>Frozen Till</Label>
-              <Input
-                type="date"
-                value={form.frozenTillDate}
-                onChange={(e) => setForm((f) => ({ ...f, frozenTillDate: e.target.value }))}
-              />
+              <Label>Status</Label>
+              <Select
+                value={form.isActive ? 'active' : 'inactive'}
+                onValueChange={(v) => setForm((f) => ({ ...f, isActive: v === 'active' }))}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="active">Active</SelectItem>
+                  <SelectItem value="inactive">Inactive</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
+            <div className="flex flex-col justify-end space-y-2">
+              <label className="flex items-center gap-2 text-sm">
+                <input
+                  type="checkbox"
+                  checked={form.isGroup}
+                  onChange={(e) => setForm((f) => ({ ...f, isGroup: e.target.checked }))}
+                />{' '}
+                Group Account
+              </label>
+              <label className="flex items-center gap-2 text-sm">
+                <input
+                  type="checkbox"
+                  checked={form.freezeAccount}
+                  onChange={(e) => setForm((f) => ({ ...f, freezeAccount: e.target.checked }))}
+                />{' '}
+                Freeze Account
+              </label>
+            </div>
+            {form.freezeAccount && (
+              <div className="col-span-2 space-y-1.5">
+                <Label>Frozen Till</Label>
+                <Input
+                  type="date"
+                  value={form.frozenTillDate}
+                  onChange={(e) => setForm((f) => ({ ...f, frozenTillDate: e.target.value }))}
+                />
+              </div>
+            )}
             <div className="col-span-2 grid grid-cols-2 gap-2 rounded-md border border-[#e5e2dc] p-3 text-sm">
               {[
                 ['isDefaultCash', 'Cash'],
@@ -310,7 +409,7 @@ export default function AccountsPage() {
                 Cancel
               </Button>
               <Button type="submit" disabled={isSubmitting}>
-                {isSubmitting ? 'Creating...' : 'Create Account'}
+                {isSubmitting ? 'Saving...' : editingAccount ? 'Save Changes' : 'Create Account'}
               </Button>
             </div>
           </form>

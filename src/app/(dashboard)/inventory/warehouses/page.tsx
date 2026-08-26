@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Plus, Building2 } from 'lucide-react';
+import { Plus, Building2, Pencil, Trash2 } from 'lucide-react';
 import { PageHeader } from '@/components/shared/PageHeader';
 import { DataTable } from '@/components/shared/DataTable';
 import { Button } from '@/components/ui/button';
@@ -9,6 +9,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { EmptyState } from '@/components/shared/EmptyState';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import api from '@/lib/api';
 import { Warehouse } from '@/types';
 import { showApiError, showApiSuccess } from '@/lib/apiError';
@@ -18,7 +19,15 @@ export default function WarehousesPage() {
   const [warehouses, setWarehouses] = useState<Warehouse[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
-  const [form, setForm] = useState({ name: '', code: '', address: '', city: '', country: '' });
+  const [editingWarehouse, setEditingWarehouse] = useState<Warehouse | null>(null);
+  const [form, setForm] = useState({
+    name: '',
+    code: '',
+    address: '',
+    city: '',
+    country: '',
+    isActive: true,
+  });
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const fetchWarehouses = async () => {
@@ -37,7 +46,26 @@ export default function WarehousesPage() {
     fetchWarehouses();
   }, []);
 
-  const handleCreate = async (e: React.FormEvent) => {
+  const handleOpenCreate = () => {
+    setEditingWarehouse(null);
+    setForm({ name: '', code: '', address: '', city: '', country: '', isActive: true });
+    setShowModal(true);
+  };
+
+  const handleOpenEdit = (w: Warehouse) => {
+    setEditingWarehouse(w);
+    setForm({
+      name: w.name || '',
+      code: w.code || '',
+      address: w.address || '',
+      city: w.city || '',
+      country: w.country || '',
+      isActive: w.isActive ?? true,
+    });
+    setShowModal(true);
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (isSubmitting) return;
 
@@ -55,19 +83,48 @@ export default function WarehousesPage() {
 
     setIsSubmitting(true);
     try {
-      await api.post('/inventory/warehouses', {
-        ...form,
+      const payload = {
         name: trimmedName,
         code: trimmedCode,
-      });
-      showApiSuccess(`Warehouse "${trimmedName}" created successfully`);
+        address: form.address.trim() || undefined,
+        city: form.city.trim() || undefined,
+        country: form.country.trim() || undefined,
+        isActive: form.isActive,
+      };
+
+      if (editingWarehouse) {
+        await api.put(`/inventory/warehouses/${editingWarehouse.id}`, payload);
+        showApiSuccess(`Warehouse "${trimmedName}" updated successfully`);
+      } else {
+        await api.post('/inventory/warehouses', payload);
+        showApiSuccess(`Warehouse "${trimmedName}" created successfully`);
+      }
+
       setShowModal(false);
-      setForm({ name: '', code: '', address: '', city: '', country: '' });
+      setEditingWarehouse(null);
+      setForm({ name: '', code: '', address: '', city: '', country: '', isActive: true });
       fetchWarehouses();
     } catch (err: any) {
-      showApiError(err, 'Failed to create warehouse');
+      showApiError(err, editingWarehouse ? 'Failed to update warehouse' : 'Failed to create warehouse');
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  const handleDelete = async (w: Warehouse) => {
+    const stockCount = w._count?.stockLevels || 0;
+    const confirmMessage = stockCount > 0
+      ? `Warehouse "${w.name}" has ${stockCount} active stock record(s). Are you sure you want to delete it?`
+      : `Are you sure you want to delete warehouse "${w.name}"?`;
+
+    if (!window.confirm(confirmMessage)) return;
+
+    try {
+      await api.delete(`/inventory/warehouses/${w.id}`);
+      showApiSuccess(`Warehouse "${w.name}" deleted successfully`);
+      fetchWarehouses();
+    } catch (err: any) {
+      showApiError(err, 'Failed to delete warehouse');
     }
   };
 
@@ -101,6 +158,33 @@ export default function WarehousesPage() {
         </span>
       ),
     },
+    {
+      key: 'actions',
+      header: 'Actions',
+      className: 'text-right',
+      render: (w: Warehouse) => (
+        <div className="flex items-center justify-end gap-1.5" onClick={(e) => e.stopPropagation()}>
+          <Button
+            size="sm"
+            variant="ghost"
+            className="h-8 w-8 p-0 text-gray-500 hover:text-blue-600"
+            title="Edit Warehouse"
+            onClick={() => handleOpenEdit(w)}
+          >
+            <Pencil className="h-4 w-4" />
+          </Button>
+          <Button
+            size="sm"
+            variant="ghost"
+            className="h-8 w-8 p-0 text-gray-500 hover:text-red-600"
+            title="Delete Warehouse"
+            onClick={() => handleDelete(w)}
+          >
+            <Trash2 className="h-4 w-4" />
+          </Button>
+        </div>
+      ),
+    },
   ];
 
   return (
@@ -108,14 +192,14 @@ export default function WarehousesPage() {
       <PageHeader
         title="Warehouses"
         description="Manage storage locations"
-        action={{ label: 'New Warehouse', onClick: () => setShowModal(true), icon: Plus }}
+        action={{ label: 'New Warehouse', onClick: handleOpenCreate, icon: Plus }}
       />
       {warehouses.length === 0 && !isLoading ? (
         <EmptyState
           icon={Building2}
           title="No warehouses"
           description="Add your first warehouse location"
-          action={{ label: 'Add Warehouse', onClick: () => setShowModal(true) }}
+          action={{ label: 'Add Warehouse', onClick: handleOpenCreate }}
         />
       ) : (
         <DataTable columns={columns} data={warehouses} isLoading={isLoading} />
@@ -123,9 +207,9 @@ export default function WarehousesPage() {
       <Dialog open={showModal} onOpenChange={setShowModal}>
         <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle>New Warehouse</DialogTitle>
+            <DialogTitle>{editingWarehouse ? 'Edit Warehouse' : 'New Warehouse'}</DialogTitle>
           </DialogHeader>
-          <form onSubmit={handleCreate} className="space-y-4 mt-2">
+          <form onSubmit={handleSubmit} className="space-y-4 mt-2">
             <div className="space-y-1.5">
               <Label>Name *</Label>
               <Input
@@ -170,12 +254,35 @@ export default function WarehousesPage() {
                 />
               </div>
             </div>
+            {editingWarehouse && (
+              <div className="space-y-1.5">
+                <Label>Status</Label>
+                <Select
+                  value={form.isActive ? 'true' : 'false'}
+                  onValueChange={(v) => setForm((f) => ({ ...f, isActive: v === 'true' }))}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="true">Active</SelectItem>
+                    <SelectItem value="false">Inactive</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
             <div className="flex justify-end gap-2">
               <Button type="button" variant="outline" onClick={() => setShowModal(false)}>
                 Cancel
               </Button>
               <Button type="submit" disabled={isSubmitting}>
-                {isSubmitting ? 'Creating...' : 'Create Warehouse'}
+                {isSubmitting
+                  ? editingWarehouse
+                    ? 'Saving...'
+                    : 'Creating...'
+                  : editingWarehouse
+                  ? 'Save Changes'
+                  : 'Create Warehouse'}
               </Button>
             </div>
           </form>
@@ -184,3 +291,4 @@ export default function WarehousesPage() {
     </div>
   );
 }
+

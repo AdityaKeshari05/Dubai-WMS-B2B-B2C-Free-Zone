@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { AlertCircle, ArrowUpRight, Clock } from 'lucide-react';
+import { AlertCircle, ArrowUpRight, Clock, Pencil, Plus, Trash2 } from 'lucide-react';
 import { PageHeader } from '@/components/shared/PageHeader';
 import { DataTable } from '@/components/shared/DataTable';
 import { StatusBadge } from '@/components/shared/StatusBadge';
@@ -27,6 +27,7 @@ export default function AttendancePage() {
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showModal, setShowModal] = useState(false);
+  const [editingRecord, setEditingRecord] = useState<Attendance | null>(null);
   const [form, setForm] = useState({
     employeeId: '',
     date: new Date().toISOString().split('T')[0],
@@ -55,7 +56,34 @@ export default function AttendancePage() {
     fetchAll();
   }, []);
 
-  const handleMark = async (e: React.FormEvent) => {
+  const handleOpenCreate = () => {
+    setEditingRecord(null);
+    setForm({
+      employeeId: employees[0]?.id || '',
+      date: new Date().toISOString().split('T')[0],
+      status: 'PRESENT',
+      checkIn: '',
+      checkOut: '',
+    });
+    setShowModal(true);
+  };
+
+  const handleOpenEdit = (a: Attendance) => {
+    setEditingRecord(a);
+    const dateStr = a.date ? new Date(a.date).toISOString().split('T')[0] : new Date().toISOString().split('T')[0];
+    const checkInTime = a.checkIn ? new Date(a.checkIn).toTimeString().slice(0, 5) : '';
+    const checkOutTime = a.checkOut ? new Date(a.checkOut).toTimeString().slice(0, 5) : '';
+    setForm({
+      employeeId: a.employeeId,
+      date: dateStr,
+      status: a.status || 'PRESENT',
+      checkIn: checkInTime,
+      checkOut: checkOutTime,
+    });
+    setShowModal(true);
+  };
+
+  const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     if (isSubmitting) return;
 
@@ -70,9 +98,19 @@ export default function AttendancePage() {
 
     setIsSubmitting(true);
     try {
-      await api.post('/hr/attendance', form);
-      showApiSuccess('Attendance record saved successfully');
+      if (editingRecord) {
+        await api.put(`/hr/attendance/${editingRecord.id}`, {
+          status: form.status,
+          checkIn: form.checkIn || null,
+          checkOut: form.checkOut || null,
+        });
+        showApiSuccess('Attendance record updated successfully');
+      } else {
+        await api.post('/hr/attendance', form);
+        showApiSuccess('Attendance record saved successfully');
+      }
       setShowModal(false);
+      setEditingRecord(null);
       setForm({
         employeeId: '',
         date: new Date().toISOString().split('T')[0],
@@ -82,9 +120,20 @@ export default function AttendancePage() {
       });
       fetchAll();
     } catch (err: any) {
-      showApiError(err, 'Failed to record attendance');
+      showApiError(err, editingRecord ? 'Failed to update attendance' : 'Failed to record attendance');
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  const handleDelete = async (a: Attendance) => {
+    if (!window.confirm('Are you sure you want to delete this attendance record?')) return;
+    try {
+      await api.delete(`/hr/attendance/${a.id}`);
+      showApiSuccess('Attendance record deleted');
+      fetchAll();
+    } catch (err: any) {
+      showApiError(err, 'Failed to delete attendance record');
     }
   };
 
@@ -113,6 +162,33 @@ export default function AttendancePage() {
         a.checkOut ? new Date(a.checkOut).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }) : '—',
     },
     { key: 'overtime', header: 'Overtime', render: (a: Attendance) => (a.overtime ? `${a.overtime}h` : '—') },
+    {
+      key: 'actions',
+      header: 'Actions',
+      className: 'text-right',
+      render: (a: Attendance) => (
+        <div className="flex items-center justify-end gap-1" onClick={(e) => e.stopPropagation()}>
+          <Button
+            size="sm"
+            variant="ghost"
+            className="h-8 w-8 p-0 text-gray-500 hover:text-blue-600"
+            title="Edit Attendance"
+            onClick={() => handleOpenEdit(a)}
+          >
+            <Pencil className="h-4 w-4" />
+          </Button>
+          <Button
+            size="sm"
+            variant="ghost"
+            className="h-8 w-8 p-0 text-gray-500 hover:text-red-600"
+            title="Delete Attendance"
+            onClick={() => handleDelete(a)}
+          >
+            <Trash2 className="h-4 w-4" />
+          </Button>
+        </div>
+      ),
+    },
   ];
 
   return (
@@ -120,14 +196,14 @@ export default function AttendancePage() {
       <PageHeader
         title="Attendance"
         description="Track employee daily check-ins, leaves, and attendance logs"
-        action={{ label: 'Mark Attendance', onClick: () => setShowModal(true), icon: Clock }}
+        action={{ label: 'Mark Attendance', onClick: handleOpenCreate, icon: Clock }}
       />
       {records.length === 0 && !isLoading ? (
         <EmptyState
           icon={Clock}
           title="No attendance records yet"
           description="Start logging daily attendance for active employees"
-          action={{ label: 'Mark Attendance', onClick: () => setShowModal(true) }}
+          action={{ label: 'Mark Attendance', onClick: handleOpenCreate }}
         />
       ) : (
         <DataTable columns={columns} data={records} isLoading={isLoading} />
@@ -135,7 +211,7 @@ export default function AttendancePage() {
       <Dialog open={showModal} onOpenChange={setShowModal}>
         <DialogContent className="max-w-lg">
           <DialogHeader>
-            <DialogTitle>Mark Attendance</DialogTitle>
+            <DialogTitle>{editingRecord ? 'Edit Attendance Record' : 'Mark Attendance'}</DialogTitle>
           </DialogHeader>
 
           {employees.length === 0 && !isLoading && (
@@ -153,10 +229,14 @@ export default function AttendancePage() {
             </div>
           )}
 
-          <form onSubmit={handleMark} className="space-y-4 mt-2">
+          <form onSubmit={handleSave} className="space-y-4 mt-2">
             <div className="space-y-1.5">
               <Label>Employee *</Label>
-              <Select value={form.employeeId} onValueChange={(v) => setForm((f) => ({ ...f, employeeId: v }))}>
+              <Select
+                value={form.employeeId}
+                disabled={Boolean(editingRecord)}
+                onValueChange={(v) => setForm((f) => ({ ...f, employeeId: v }))}
+              >
                 <SelectTrigger>
                   <SelectValue placeholder="Select employee" />
                 </SelectTrigger>
@@ -183,6 +263,7 @@ export default function AttendancePage() {
                 <Input
                   type="date"
                   value={form.date}
+                  disabled={Boolean(editingRecord)}
                   onChange={(e) => setForm((f) => ({ ...f, date: e.target.value }))}
                   required
                 />
@@ -226,7 +307,7 @@ export default function AttendancePage() {
                 Cancel
               </Button>
               <Button type="submit" disabled={isSubmitting || employees.length === 0}>
-                {isSubmitting ? 'Saving...' : 'Mark Attendance'}
+                {isSubmitting ? 'Saving...' : editingRecord ? 'Save Changes' : 'Mark Attendance'}
               </Button>
             </div>
           </form>

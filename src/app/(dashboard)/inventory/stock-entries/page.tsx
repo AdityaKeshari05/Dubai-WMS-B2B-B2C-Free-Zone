@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { AlertCircle, ArrowUpRight, Plus } from 'lucide-react';
+import { AlertCircle, ArrowUpRight, Plus, Pencil, Trash2 } from 'lucide-react';
 import api from '@/lib/api';
 import { Product, StockEntry, Warehouse } from '@/types';
 import { PageHeader } from '@/components/shared/PageHeader';
@@ -33,6 +33,7 @@ export default function StockEntriesPage() {
   const [products, setProducts] = useState<Product[]>([]);
   const [warehouses, setWarehouses] = useState<Warehouse[]>([]);
   const [open, setOpen] = useState(false);
+  const [editingEntry, setEditingEntry] = useState<StockEntry | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [form, setForm] = useState({
@@ -66,7 +67,42 @@ export default function StockEntriesPage() {
     load();
   }, []);
 
-  const create = async () => {
+  const handleOpenCreate = () => {
+    setEditingEntry(null);
+    setForm({
+      purpose: 'MATERIAL_RECEIPT',
+      postingDate: new Date().toISOString().slice(0, 10),
+      fromWarehouseId: '',
+      toWarehouseId: '',
+      remarks: '',
+    });
+    setRows([{ productId: '', warehouseId: '', quantity: 1, valuationRate: 0 }]);
+    setOpen(true);
+  };
+
+  const handleOpenEdit = (entry: StockEntry) => {
+    setEditingEntry(entry);
+    setForm({
+      purpose: entry.purpose || 'MATERIAL_RECEIPT',
+      postingDate: entry.postingDate ? entry.postingDate.slice(0, 10) : new Date().toISOString().slice(0, 10),
+      fromWarehouseId: entry.fromWarehouseId || '',
+      toWarehouseId: entry.toWarehouseId || '',
+      remarks: entry.remarks || '',
+    });
+    setRows(
+      entry.items && entry.items.length > 0
+        ? entry.items.map((i: any) => ({
+            productId: i.productId || '',
+            warehouseId: i.warehouseId || '',
+            quantity: Number(i.quantity || 1),
+            valuationRate: Number(i.valuationRate || 0),
+          }))
+        : [{ productId: '', warehouseId: '', quantity: 1, valuationRate: 0 }]
+    );
+    setOpen(true);
+  };
+
+  const handleSubmit = async () => {
     if (isSubmitting) return;
     const items = rows.filter((row) => row.productId && Number(row.quantity) > 0);
     if (!items.length) {
@@ -76,15 +112,32 @@ export default function StockEntriesPage() {
 
     setIsSubmitting(true);
     try {
-      await api.post('/inventory/stock-entries', { ...form, items });
-      showApiSuccess('Stock entry created successfully');
+      if (editingEntry) {
+        await api.put(`/inventory/stock-entries/${editingEntry.id}`, { ...form, items });
+        showApiSuccess('Stock entry updated successfully');
+      } else {
+        await api.post('/inventory/stock-entries', { ...form, items });
+        showApiSuccess('Stock entry created successfully');
+      }
       setOpen(false);
+      setEditingEntry(null);
       setRows([{ productId: '', warehouseId: '', quantity: 1, valuationRate: 0 }]);
       load();
     } catch (err: any) {
-      showApiError(err, 'Could not create stock entry');
+      showApiError(err, editingEntry ? 'Could not update stock entry' : 'Could not create stock entry');
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  const handleDeleteEntry = async (entry: StockEntry) => {
+    if (!window.confirm(`Are you sure you want to delete draft stock entry "${entry.entryNo}"?`)) return;
+    try {
+      await api.delete(`/inventory/stock-entries/${entry.id}`);
+      showApiSuccess('Draft stock entry deleted');
+      load();
+    } catch (err: any) {
+      showApiError(err, 'Failed to delete stock entry');
     }
   };
 
@@ -103,7 +156,7 @@ export default function StockEntriesPage() {
       <PageHeader
         title="Stock Entries"
         description="Submit auditable inventory receipts, issues, transfers, and opening balances"
-        action={{ label: 'New Stock Entry', onClick: () => setOpen(true), icon: Plus }}
+        action={{ label: 'New Stock Entry', onClick: handleOpenCreate, icon: Plus }}
       />
       <DataTable
         data={entries}
@@ -138,28 +191,43 @@ export default function StockEntriesPage() {
           { key: 'status', header: 'Status', render: (entry: StockEntry) => <StatusBadge status={entry.status} /> },
           {
             key: 'actions',
-            header: '',
+            header: 'Actions',
+            className: 'text-right',
             render: (entry: StockEntry) => (
-              <div className="flex gap-2 justify-end">
+              <div className="flex gap-1.5 justify-end" onClick={(e) => e.stopPropagation()}>
                 {entry.status === 'DRAFT' && (
-                  <Button
-                    size="sm"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      transition(entry, 'SUBMITTED');
-                    }}
-                  >
-                    Submit
-                  </Button>
+                  <>
+                    <Button
+                      size="sm"
+                      onClick={() => transition(entry, 'SUBMITTED')}
+                    >
+                      Submit
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className="h-8 w-8 p-0 text-gray-500 hover:text-blue-600"
+                      title="Edit Draft"
+                      onClick={() => handleOpenEdit(entry)}
+                    >
+                      <Pencil className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className="h-8 w-8 p-0 text-gray-500 hover:text-red-600"
+                      title="Delete Draft"
+                      onClick={() => handleDeleteEntry(entry)}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </>
                 )}
                 {entry.status === 'SUBMITTED' && (
                   <Button
                     size="sm"
                     variant="outline"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      transition(entry, 'CANCELLED');
-                    }}
+                    onClick={() => transition(entry, 'CANCELLED')}
                   >
                     Cancel
                   </Button>
@@ -173,7 +241,7 @@ export default function StockEntriesPage() {
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="max-w-5xl max-h-[85vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>New Stock Entry</DialogTitle>
+            <DialogTitle>{editingEntry ? `Edit Stock Entry (${editingEntry.entryNo})` : 'New Stock Entry'}</DialogTitle>
           </DialogHeader>
 
           {products.length === 0 && !isLoading && (
@@ -376,10 +444,10 @@ export default function StockEntriesPage() {
                   Cancel
                 </Button>
                 <Button
-                  onClick={create}
+                  onClick={handleSubmit}
                   disabled={isSubmitting || products.length === 0 || warehouses.length === 0}
                 >
-                  {isSubmitting ? 'Creating...' : 'Create Draft'}
+                  {isSubmitting ? 'Saving...' : editingEntry ? 'Save Changes' : 'Create Draft'}
                 </Button>
               </div>
             </div>

@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { AlertCircle, ArrowUpRight, BriefcaseBusiness, Plus } from 'lucide-react';
+import { AlertCircle, ArrowUpRight, BriefcaseBusiness, Pencil, Plus, Trash2 } from 'lucide-react';
 import api from '@/lib/api';
 import { Department, Position } from '@/types';
 import { PageHeader } from '@/components/shared/PageHeader';
@@ -24,6 +24,7 @@ export default function PositionsPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showModal, setShowModal] = useState(false);
+  const [editingPos, setEditingPos] = useState<Position | null>(null);
   const [form, setForm] = useState({ title: '', departmentId: '', description: '', minSalary: '', maxSalary: '' });
 
   const fetchAll = async () => {
@@ -43,7 +44,25 @@ export default function PositionsPage() {
     fetchAll();
   }, []);
 
-  const handleCreate = async (e: React.FormEvent) => {
+  const handleOpenCreate = () => {
+    setEditingPos(null);
+    setForm({ title: '', departmentId: departments[0]?.id || '', description: '', minSalary: '', maxSalary: '' });
+    setShowModal(true);
+  };
+
+  const handleOpenEdit = (p: Position) => {
+    setEditingPos(p);
+    setForm({
+      title: p.title || '',
+      departmentId: p.departmentId || '',
+      description: p.description || '',
+      minSalary: p.minSalary ? String(p.minSalary) : '',
+      maxSalary: p.maxSalary ? String(p.maxSalary) : '',
+    });
+    setShowModal(true);
+  };
+
+  const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     if (isSubmitting) return;
 
@@ -59,20 +78,39 @@ export default function PositionsPage() {
 
     setIsSubmitting(true);
     try {
-      await api.post('/hr/positions', {
+      const payload = {
         ...form,
         title: trimmedTitle,
         minSalary: form.minSalary ? Number(form.minSalary) : undefined,
         maxSalary: form.maxSalary ? Number(form.maxSalary) : undefined,
-      });
-      showApiSuccess(`Position "${trimmedTitle}" created successfully`);
+      };
+
+      if (editingPos) {
+        await api.put(`/hr/positions/${editingPos.id}`, payload);
+        showApiSuccess(`Position "${trimmedTitle}" updated successfully`);
+      } else {
+        await api.post('/hr/positions', payload);
+        showApiSuccess(`Position "${trimmedTitle}" created successfully`);
+      }
       setShowModal(false);
+      setEditingPos(null);
       setForm({ title: '', departmentId: '', description: '', minSalary: '', maxSalary: '' });
       fetchAll();
     } catch (err: any) {
-      showApiError(err, 'Failed to create position');
+      showApiError(err, editingPos ? 'Failed to update position' : 'Failed to create position');
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  const handleDelete = async (p: Position) => {
+    if (!window.confirm(`Are you sure you want to delete position "${p.title}"?`)) return;
+    try {
+      await api.delete(`/hr/positions/${p.id}`);
+      showApiSuccess('Position deleted');
+      fetchAll();
+    } catch (err: any) {
+      showApiError(err, 'Failed to delete position');
     }
   };
 
@@ -82,6 +120,33 @@ export default function PositionsPage() {
     { key: 'minSalary', header: 'Min Salary', render: (p: Position) => p.minSalary ? `₹ ${Number(p.minSalary).toLocaleString('en-IN')}` : '-' },
     { key: 'maxSalary', header: 'Max Salary', render: (p: Position) => p.maxSalary ? `₹ ${Number(p.maxSalary).toLocaleString('en-IN')}` : '-' },
     { key: 'employees', header: 'Employees', render: (p: any) => p._count?.employees || 0 },
+    {
+      key: 'actions',
+      header: 'Actions',
+      className: 'text-right',
+      render: (p: Position) => (
+        <div className="flex items-center justify-end gap-1" onClick={(e) => e.stopPropagation()}>
+          <Button
+            size="sm"
+            variant="ghost"
+            className="h-8 w-8 p-0 text-gray-500 hover:text-blue-600"
+            title="Edit Position"
+            onClick={() => handleOpenEdit(p)}
+          >
+            <Pencil className="h-4 w-4" />
+          </Button>
+          <Button
+            size="sm"
+            variant="ghost"
+            className="h-8 w-8 p-0 text-gray-500 hover:text-red-600"
+            title="Delete Position"
+            onClick={() => handleDelete(p)}
+          >
+            <Trash2 className="h-4 w-4" />
+          </Button>
+        </div>
+      ),
+    },
   ];
 
   return (
@@ -89,14 +154,14 @@ export default function PositionsPage() {
       <PageHeader
         title="Positions"
         description="Define job titles under departments before assigning employees"
-        action={{ label: 'New Position', icon: Plus, onClick: () => setShowModal(true) }}
+        action={{ label: 'New Position', icon: Plus, onClick: handleOpenCreate }}
       />
       {positions.length === 0 && !isLoading ? (
         <EmptyState
           icon={BriefcaseBusiness}
           title="No positions yet"
           description="Create departments first, then define positions under them"
-          action={{ label: 'Create Position', onClick: () => setShowModal(true) }}
+          action={{ label: 'Create Position', onClick: handleOpenCreate }}
         />
       ) : (
         <DataTable columns={columns} data={positions as any[]} isLoading={isLoading} />
@@ -105,7 +170,7 @@ export default function PositionsPage() {
       <Dialog open={showModal} onOpenChange={setShowModal}>
         <DialogContent className="max-w-lg">
           <DialogHeader>
-            <DialogTitle>New Position</DialogTitle>
+            <DialogTitle>{editingPos ? 'Edit Position' : 'New Position'}</DialogTitle>
           </DialogHeader>
 
           {departments.length === 0 && !isLoading && (
@@ -123,7 +188,7 @@ export default function PositionsPage() {
             </div>
           )}
 
-          <form onSubmit={handleCreate} className="space-y-4 mt-2">
+          <form onSubmit={handleSave} className="space-y-4 mt-2">
             <div className="space-y-1.5">
               <Label>Title *</Label>
               <Input
@@ -193,7 +258,7 @@ export default function PositionsPage() {
                 Cancel
               </Button>
               <Button type="submit" disabled={isSubmitting || departments.length === 0}>
-                {isSubmitting ? 'Creating...' : 'Create Position'}
+                {isSubmitting ? 'Saving...' : editingPos ? 'Save Changes' : 'Create Position'}
               </Button>
             </div>
           </form>

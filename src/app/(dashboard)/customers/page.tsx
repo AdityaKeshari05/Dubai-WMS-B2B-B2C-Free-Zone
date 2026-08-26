@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Plus, Building2 } from 'lucide-react';
+import { Plus, Building2, Pencil, Trash2, Eye } from 'lucide-react';
 import { PageHeader } from '@/components/shared/PageHeader';
 import { DataTable } from '@/components/shared/DataTable';
 import { Pagination } from '@/components/shared/Pagination';
@@ -26,6 +26,7 @@ export default function CustomersPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [search, setSearch] = useState('');
   const [showModal, setShowModal] = useState(false);
+  const [editingCustomer, setEditingCustomer] = useState<Customer | null>(null);
   const [form, setForm] = useState({
     name: '',
     email: '',
@@ -58,7 +59,43 @@ export default function CustomersPage() {
     fetchCustomers();
   }, [page, search]);
 
-  const handleCreate = async (e: React.FormEvent) => {
+  const handleOpenCreate = () => {
+    setEditingCustomer(null);
+    setForm({
+      name: '',
+      email: '',
+      phone: '',
+      address: '',
+      city: '',
+      country: '',
+      taxId: '',
+      currency: 'INR',
+      creditLimit: 0,
+      paymentTerms: 30,
+      notes: '',
+    });
+    setShowModal(true);
+  };
+
+  const handleOpenEdit = (c: Customer) => {
+    setEditingCustomer(c);
+    setForm({
+      name: c.name,
+      email: c.email || '',
+      phone: c.phone || '',
+      address: c.address || '',
+      city: c.city || '',
+      country: c.country || '',
+      taxId: c.taxId || '',
+      currency: c.currency || 'INR',
+      creditLimit: c.creditLimit || 0,
+      paymentTerms: c.paymentTerms ?? 30,
+      notes: c.notes || '',
+    });
+    setShowModal(true);
+  };
+
+  const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     if (isSubmitting) return;
 
@@ -67,43 +104,49 @@ export default function CustomersPage() {
       toast.error('Please enter customer name');
       return;
     }
-    if (form.creditLimit < 0) {
+    if (Number(form.creditLimit) < 0) {
       toast.error('Credit limit cannot be negative');
       return;
     }
-    if (form.paymentTerms < 0) {
+    if (Number(form.paymentTerms) < 0) {
       toast.error('Payment terms cannot be negative');
       return;
     }
 
     setIsSubmitting(true);
     try {
-      await api.post('/customers', {
+      const payload = {
         ...form,
         name: trimmedName,
         creditLimit: Number(form.creditLimit || 0),
         paymentTerms: Number(form.paymentTerms || 0),
-      });
-      showApiSuccess(`Customer "${trimmedName}" created successfully`);
+      };
+
+      if (editingCustomer) {
+        await api.put(`/customers/${editingCustomer.id}`, payload);
+        showApiSuccess(`Customer "${trimmedName}" updated successfully`);
+      } else {
+        await api.post('/customers', payload);
+        showApiSuccess(`Customer "${trimmedName}" created successfully`);
+      }
       setShowModal(false);
-      setForm({
-        name: '',
-        email: '',
-        phone: '',
-        address: '',
-        city: '',
-        country: '',
-        taxId: '',
-        currency: 'INR',
-        creditLimit: 0,
-        paymentTerms: 30,
-        notes: '',
-      });
+      setEditingCustomer(null);
       fetchCustomers();
     } catch (err: any) {
-      showApiError(err, 'Failed to create customer');
+      showApiError(err, editingCustomer ? 'Failed to update customer' : 'Failed to create customer');
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  const handleDelete = async (c: Customer) => {
+    if (!window.confirm(`Are you sure you want to deactivate customer "${c.name}"?`)) return;
+    try {
+      await api.delete(`/customers/${c.id}`);
+      showApiSuccess('Customer deactivated');
+      fetchCustomers();
+    } catch (err: any) {
+      showApiError(err, 'Failed to deactivate customer');
     }
   };
 
@@ -125,18 +168,38 @@ export default function CustomersPage() {
     },
     {
       key: 'actions',
-      header: '',
+      header: 'Actions',
+      className: 'text-right',
       render: (c: Customer) => (
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={(e) => {
-            e.stopPropagation();
-            router.push(`/customers/${c.id}`);
-          }}
-        >
-          View
-        </Button>
+        <div className="flex items-center justify-end gap-1" onClick={(e) => e.stopPropagation()}>
+          <Button
+            size="sm"
+            variant="ghost"
+            className="h-8 w-8 p-0 text-gray-500 hover:text-blue-600"
+            title="Edit Customer"
+            onClick={() => handleOpenEdit(c)}
+          >
+            <Pencil className="h-4 w-4" />
+          </Button>
+          <Button
+            size="sm"
+            variant="ghost"
+            className="h-8 w-8 p-0 text-gray-500 hover:text-indigo-600"
+            title="View Details"
+            onClick={() => router.push(`/customers/${c.id}`)}
+          >
+            <Eye className="h-4 w-4" />
+          </Button>
+          <Button
+            size="sm"
+            variant="ghost"
+            className="h-8 w-8 p-0 text-gray-500 hover:text-red-600"
+            title="Deactivate Customer"
+            onClick={() => handleDelete(c)}
+          >
+            <Trash2 className="h-4 w-4" />
+          </Button>
+        </div>
       ),
     },
   ];
@@ -146,7 +209,7 @@ export default function CustomersPage() {
       <PageHeader
         title="Customers"
         description="Manage your customer accounts"
-        action={{ label: 'New Customer', onClick: () => setShowModal(true), icon: Plus }}
+        action={{ label: 'New Customer', onClick: handleOpenCreate, icon: Plus }}
       />
 
       <div className="mb-4">
@@ -166,7 +229,7 @@ export default function CustomersPage() {
           icon={Building2}
           title="No customers yet"
           description="Add your first customer to get started"
-          action={{ label: 'Add Customer', onClick: () => setShowModal(true) }}
+          action={{ label: 'Add Customer', onClick: handleOpenCreate }}
         />
       ) : (
         <>
@@ -191,9 +254,9 @@ export default function CustomersPage() {
       <Dialog open={showModal} onOpenChange={setShowModal}>
         <DialogContent className="max-w-2xl">
           <DialogHeader>
-            <DialogTitle>New Customer</DialogTitle>
+            <DialogTitle>{editingCustomer ? 'Edit Customer' : 'New Customer'}</DialogTitle>
           </DialogHeader>
-          <form onSubmit={handleCreate} className="grid grid-cols-2 gap-4 mt-2">
+          <form onSubmit={handleSave} className="grid grid-cols-2 gap-4 mt-2">
             <div className="col-span-2 space-y-1.5">
               <Label>Name *</Label>
               <Input
@@ -277,12 +340,20 @@ export default function CustomersPage() {
                 onChange={(e) => setForm((f) => ({ ...f, paymentTerms: Number(e.target.value) }))}
               />
             </div>
+            <div className="col-span-2 space-y-1.5">
+              <Label>Notes</Label>
+              <Input
+                value={form.notes}
+                placeholder="Customer preferences or billing notes"
+                onChange={(e) => setForm((f) => ({ ...f, notes: e.target.value }))}
+              />
+            </div>
             <div className="col-span-2 flex justify-end gap-2 pt-2">
               <Button type="button" variant="outline" onClick={() => setShowModal(false)}>
                 Cancel
               </Button>
               <Button type="submit" disabled={isSubmitting}>
-                {isSubmitting ? 'Creating...' : 'Create Customer'}
+                {isSubmitting ? 'Saving...' : editingCustomer ? 'Save Changes' : 'Create Customer'}
               </Button>
             </div>
           </form>

@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import toast from 'react-hot-toast';
-import { CheckCircle2, Plus, XCircle } from 'lucide-react';
+import { CheckCircle2, Pencil, Plus, Trash2, XCircle } from 'lucide-react';
 import api from '@/lib/api';
 import { formatCurrency, formatDate } from '@/lib/utils';
 import { PageHeader } from '@/components/shared/PageHeader';
@@ -14,6 +14,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
 import { showApiError, showApiSuccess } from '@/lib/apiError';
 
@@ -47,10 +48,15 @@ export function LifecyclePage() {
   const [events, setEvents] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [editingEvent, setEditingEvent] = useState<any | null>(null);
+  const [showEditModal, setShowEditModal] = useState(false);
   const [form, setForm] = useState<any>({
     employeeId: '',
     type: 'PROMOTION',
     effectiveDate: new Date().toISOString().slice(0, 10),
+    newDepartmentId: '',
+    newPositionId: '',
+    newSalary: '',
     reason: '',
     notes: '',
   });
@@ -107,13 +113,16 @@ export function LifecyclePage() {
         ...form,
         newDepartmentId: form.newDepartmentId || undefined,
         newPositionId: form.newPositionId || undefined,
-        newSalary: form.newSalary || undefined,
+        newSalary: form.newSalary ? Number(form.newSalary) : undefined,
       });
       showApiSuccess('Lifecycle event drafted successfully');
       setForm({
         employeeId: '',
         type: 'PROMOTION',
         effectiveDate: new Date().toISOString().slice(0, 10),
+        newDepartmentId: '',
+        newPositionId: '',
+        newSalary: '',
         reason: '',
         notes: '',
       });
@@ -122,6 +131,57 @@ export function LifecyclePage() {
       showApiError(err, 'Could not draft lifecycle event');
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  const handleOpenEdit = (evt: any) => {
+    setEditingEvent(evt);
+    setForm({
+      employeeId: evt.employeeId,
+      type: evt.type,
+      effectiveDate: evt.effectiveDate ? new Date(evt.effectiveDate).toISOString().slice(0, 10) : new Date().toISOString().slice(0, 10),
+      newDepartmentId: evt.newDepartmentId || '',
+      newPositionId: evt.newPositionId || '',
+      newSalary: evt.newSalary !== undefined && evt.newSalary !== null ? String(evt.newSalary) : '',
+      reason: evt.reason || '',
+      notes: evt.notes || '',
+    });
+    setShowEditModal(true);
+  };
+
+  const handleSaveEdit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingEvent || isSubmitting) return;
+
+    setIsSubmitting(true);
+    try {
+      await api.put(`/hr/lifecycle-events/${editingEvent.id}`, {
+        effectiveDate: form.effectiveDate,
+        newDepartmentId: form.newDepartmentId || null,
+        newPositionId: form.newPositionId || null,
+        newSalary: form.newSalary ? Number(form.newSalary) : null,
+        reason: form.reason,
+        notes: form.notes,
+      });
+      showApiSuccess('Lifecycle event updated');
+      setShowEditModal(false);
+      setEditingEvent(null);
+      fetchAll();
+    } catch (err: any) {
+      showApiError(err, 'Failed to update lifecycle event');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleDelete = async (evt: any) => {
+    if (!window.confirm('Are you sure you want to delete this draft lifecycle event?')) return;
+    try {
+      await api.delete(`/hr/lifecycle-events/${evt.id}`);
+      showApiSuccess('Lifecycle event deleted');
+      fetchAll();
+    } catch (err: any) {
+      showApiError(err, 'Failed to delete lifecycle event');
     }
   };
 
@@ -334,16 +394,35 @@ export function LifecyclePage() {
                 },
                 {
                   key: 'actions',
-                  header: '',
+                  header: 'Actions',
+                  className: 'text-right',
                   render: (row: any) =>
                     row.status === 'DRAFT' ? (
-                      <div className="flex gap-2">
-                        <Button size="sm" onClick={() => transition(row, 'SUBMITTED')}>
-                          <CheckCircle2 className="mr-1 h-3.5 w-3.5" />
-                          Approve & Apply
+                      <div className="flex items-center justify-end gap-1" onClick={(e) => e.stopPropagation()}>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="h-8 w-8 p-0 text-gray-500 hover:text-blue-600"
+                          title="Edit Draft"
+                          onClick={() => handleOpenEdit(row)}
+                        >
+                          <Pencil className="h-4 w-4" />
                         </Button>
-                        <Button size="sm" variant="outline" onClick={() => transition(row, 'CANCELLED')}>
-                          <XCircle className="mr-1 h-3.5 w-3.5" />
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="h-8 w-8 p-0 text-gray-500 hover:text-red-600"
+                          title="Delete Draft"
+                          onClick={() => handleDelete(row)}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                        <Button size="sm" className="h-7 text-xs bg-green-600 hover:bg-green-700 text-white" onClick={() => transition(row, 'SUBMITTED')}>
+                          <CheckCircle2 className="mr-1 h-3 w-3" />
+                          Apply
+                        </Button>
+                        <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => transition(row, 'CANCELLED')}>
+                          <XCircle className="mr-1 h-3 w-3" />
                           Cancel
                         </Button>
                       </div>
@@ -354,6 +433,95 @@ export function LifecyclePage() {
           </CardContent>
         </Card>
       </div>
+
+      {/* EDIT LIFECYCLE EVENT MODAL */}
+      <Dialog open={showEditModal} onOpenChange={setShowEditModal}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Edit Draft Lifecycle Event</DialogTitle>
+          </DialogHeader>
+          <form onSubmit={handleSaveEdit} className="space-y-3 mt-2">
+            <Field label="Effective Date *">
+              <Input
+                type="date"
+                value={form.effectiveDate}
+                onChange={(event) => setForm((prev: any) => ({ ...prev, effectiveDate: event.target.value }))}
+                required
+              />
+            </Field>
+            {['TRANSFER', 'PROMOTION', 'ONBOARDING'].includes(form.type) && (
+              <Field label="New Department">
+                <Select
+                  value={form.newDepartmentId || ''}
+                  onValueChange={(newDepartmentId) => setForm((prev: any) => ({ ...prev, newDepartmentId }))}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select department" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {departments.map((department) => (
+                      <SelectItem key={department.id} value={department.id}>
+                        {department.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </Field>
+            )}
+            {['TRANSFER', 'PROMOTION', 'ONBOARDING'].includes(form.type) && (
+              <Field label="New Position">
+                <Select
+                  value={form.newPositionId || ''}
+                  onValueChange={(newPositionId) => setForm((prev: any) => ({ ...prev, newPositionId }))}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select position" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {positions.map((position) => (
+                      <SelectItem key={position.id} value={position.id}>
+                        {position.title}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </Field>
+            )}
+            {form.type === 'PROMOTION' && (
+              <Field label="New Salary">
+                <Input
+                  type="number"
+                  placeholder="e.g. 60000"
+                  value={form.newSalary || ''}
+                  onChange={(event) => setForm((prev: any) => ({ ...prev, newSalary: event.target.value }))}
+                />
+              </Field>
+            )}
+            <Field label="Reason">
+              <Textarea
+                value={form.reason}
+                onChange={(event) => setForm((prev: any) => ({ ...prev, reason: event.target.value }))}
+                rows={2}
+              />
+            </Field>
+            <Field label="Notes">
+              <Textarea
+                value={form.notes}
+                onChange={(event) => setForm((prev: any) => ({ ...prev, notes: event.target.value }))}
+                rows={2}
+              />
+            </Field>
+            <div className="flex justify-end gap-2 pt-2">
+              <Button type="button" variant="outline" onClick={() => setShowEditModal(false)}>
+                Cancel
+              </Button>
+              <Button type="submit" disabled={isSubmitting}>
+                {isSubmitting ? 'Saving...' : 'Save Changes'}
+              </Button>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Plus, Truck } from 'lucide-react';
+import { Pencil, Plus, Trash2, Truck } from 'lucide-react';
 import { PageHeader } from '@/components/shared/PageHeader';
 import { DataTable } from '@/components/shared/DataTable';
 import { Pagination } from '@/components/shared/Pagination';
@@ -24,6 +24,7 @@ export default function SuppliersPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [search, setSearch] = useState('');
   const [showModal, setShowModal] = useState(false);
+  const [editingSupplier, setEditingSupplier] = useState<Supplier | null>(null);
   const [form, setForm] = useState({
     name: '',
     email: '',
@@ -57,7 +58,45 @@ export default function SuppliersPage() {
     fetchSuppliers();
   }, [page, search]);
 
-  const handleCreate = async (e: React.FormEvent) => {
+  const handleOpenCreate = () => {
+    setEditingSupplier(null);
+    setForm({
+      name: '',
+      email: '',
+      phone: '',
+      address: '',
+      city: '',
+      country: '',
+      taxId: '',
+      currency: 'INR',
+      paymentTerms: 30,
+      bankAccount: '',
+      bankName: '',
+      notes: '',
+    });
+    setShowModal(true);
+  };
+
+  const handleOpenEdit = (s: Supplier) => {
+    setEditingSupplier(s);
+    setForm({
+      name: s.name,
+      email: s.email || '',
+      phone: s.phone || '',
+      address: s.address || '',
+      city: s.city || '',
+      country: s.country || '',
+      taxId: s.taxId || '',
+      currency: s.currency || 'INR',
+      paymentTerms: s.paymentTerms ?? 30,
+      bankAccount: s.bankAccount || '',
+      bankName: s.bankName || '',
+      notes: s.notes || '',
+    });
+    setShowModal(true);
+  };
+
+  const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     if (isSubmitting) return;
 
@@ -69,32 +108,37 @@ export default function SuppliersPage() {
 
     setIsSubmitting(true);
     try {
-      await api.post('/suppliers', {
+      const payload = {
         ...form,
         name: trimmedName,
         paymentTerms: Number(form.paymentTerms || 0),
-      });
-      showApiSuccess(`Supplier "${trimmedName}" created successfully`);
+      };
+
+      if (editingSupplier) {
+        await api.put(`/suppliers/${editingSupplier.id}`, payload);
+        showApiSuccess(`Supplier "${trimmedName}" updated successfully`);
+      } else {
+        await api.post('/suppliers', payload);
+        showApiSuccess(`Supplier "${trimmedName}" created successfully`);
+      }
       setShowModal(false);
-      setForm({
-        name: '',
-        email: '',
-        phone: '',
-        address: '',
-        city: '',
-        country: '',
-        taxId: '',
-        currency: 'INR',
-        paymentTerms: 30,
-        bankAccount: '',
-        bankName: '',
-        notes: '',
-      });
+      setEditingSupplier(null);
       fetchSuppliers();
     } catch (err: any) {
-      showApiError(err, 'Failed to create supplier');
+      showApiError(err, editingSupplier ? 'Failed to update supplier' : 'Failed to create supplier');
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  const handleDelete = async (s: Supplier) => {
+    if (!window.confirm(`Are you sure you want to delete supplier "${s.name}"?`)) return;
+    try {
+      await api.delete(`/suppliers/${s.id}`);
+      showApiSuccess('Supplier deleted');
+      fetchSuppliers();
+    } catch (err: any) {
+      showApiError(err, 'Failed to delete supplier');
     }
   };
 
@@ -114,6 +158,33 @@ export default function SuppliersPage() {
       header: 'Payment Terms',
       render: (s: Supplier) => `${s.paymentTerms} days`,
     },
+    {
+      key: 'actions',
+      header: 'Actions',
+      className: 'text-right',
+      render: (s: Supplier) => (
+        <div className="flex items-center justify-end gap-1" onClick={(e) => e.stopPropagation()}>
+          <Button
+            size="sm"
+            variant="ghost"
+            className="h-8 w-8 p-0 text-gray-500 hover:text-blue-600"
+            title="Edit Supplier"
+            onClick={() => handleOpenEdit(s)}
+          >
+            <Pencil className="h-4 w-4" />
+          </Button>
+          <Button
+            size="sm"
+            variant="ghost"
+            className="h-8 w-8 p-0 text-gray-500 hover:text-red-600"
+            title="Delete Supplier"
+            onClick={() => handleDelete(s)}
+          >
+            <Trash2 className="h-4 w-4" />
+          </Button>
+        </div>
+      ),
+    },
   ];
 
   return (
@@ -121,7 +192,7 @@ export default function SuppliersPage() {
       <PageHeader
         title="Suppliers"
         description="Manage your supplier accounts"
-        action={{ label: 'New Supplier', onClick: () => setShowModal(true), icon: Plus }}
+        action={{ label: 'New Supplier', onClick: handleOpenCreate, icon: Plus }}
       />
       <div className="mb-4">
         <Input
@@ -139,7 +210,7 @@ export default function SuppliersPage() {
           icon={Truck}
           title="No suppliers yet"
           description="Add your first supplier"
-          action={{ label: 'Add Supplier', onClick: () => setShowModal(true) }}
+          action={{ label: 'Add Supplier', onClick: handleOpenCreate }}
         />
       ) : (
         <>
@@ -159,9 +230,9 @@ export default function SuppliersPage() {
       <Dialog open={showModal} onOpenChange={setShowModal}>
         <DialogContent className="max-w-2xl">
           <DialogHeader>
-            <DialogTitle>New Supplier</DialogTitle>
+            <DialogTitle>{editingSupplier ? 'Edit Supplier' : 'New Supplier'}</DialogTitle>
           </DialogHeader>
-          <form onSubmit={handleCreate} className="grid grid-cols-2 gap-4 mt-2">
+          <form onSubmit={handleSave} className="grid grid-cols-2 gap-4 mt-2">
             <div className="col-span-2 space-y-1.5">
               <Label>Name *</Label>
               <Input
@@ -213,6 +284,21 @@ export default function SuppliersPage() {
               />
             </div>
             <div className="space-y-1.5">
+              <Label>Tax ID / GSTIN</Label>
+              <Input
+                value={form.taxId}
+                placeholder="GSTIN/PAN"
+                onChange={(e) => setForm((f) => ({ ...f, taxId: e.target.value }))}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label>Currency</Label>
+              <CurrencySelect
+                value={form.currency}
+                onChange={(currency) => setForm((f) => ({ ...f, currency }))}
+              />
+            </div>
+            <div className="space-y-1.5">
               <Label>Bank Account</Label>
               <Input
                 value={form.bankAccount}
@@ -229,13 +315,6 @@ export default function SuppliersPage() {
               />
             </div>
             <div className="space-y-1.5">
-              <Label>Currency</Label>
-              <CurrencySelect
-                value={form.currency}
-                onChange={(currency) => setForm((f) => ({ ...f, currency }))}
-              />
-            </div>
-            <div className="space-y-1.5">
               <Label>Payment Terms (days)</Label>
               <Input
                 type="number"
@@ -244,12 +323,20 @@ export default function SuppliersPage() {
                 onChange={(e) => setForm((f) => ({ ...f, paymentTerms: Number(e.target.value) }))}
               />
             </div>
+            <div className="space-y-1.5">
+              <Label>Notes</Label>
+              <Input
+                value={form.notes}
+                placeholder="Internal notes"
+                onChange={(e) => setForm((f) => ({ ...f, notes: e.target.value }))}
+              />
+            </div>
             <div className="col-span-2 flex justify-end gap-2 pt-2">
               <Button type="button" variant="outline" onClick={() => setShowModal(false)}>
                 Cancel
               </Button>
               <Button type="submit" disabled={isSubmitting}>
-                {isSubmitting ? 'Creating...' : 'Create Supplier'}
+                {isSubmitting ? 'Saving...' : editingSupplier ? 'Save Changes' : 'Create Supplier'}
               </Button>
             </div>
           </form>

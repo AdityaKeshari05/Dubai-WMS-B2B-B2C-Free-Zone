@@ -61,7 +61,7 @@ export interface Company {
 
 // Accounting
 export type AccountType = 'ASSET' | 'LIABILITY' | 'EQUITY' | 'REVENUE' | 'EXPENSE';
-export type EntryStatus = 'DRAFT' | 'POSTED' | 'CANCELLED';
+export type EntryStatus = 'DRAFT' | 'PENDING_APPROVAL' | 'POSTED' | 'CANCELLED';
 
 export interface Account {
   id: string;
@@ -74,6 +74,15 @@ export interface Account {
   children?: Account[];
   description?: string;
   isGroup?: boolean;
+  freezeAccount?: boolean;
+  frozenTillDate?: string;
+  isDefaultCash?: boolean;
+  isDefaultBank?: boolean;
+  isDefaultReceivable?: boolean;
+  isDefaultPayable?: boolean;
+  isDefaultTax?: boolean;
+  isDefaultRoundOff?: boolean;
+  isDefaultRetainedEarnings?: boolean;
   isActive: boolean;
   balance: number;
   currency: string;
@@ -245,6 +254,7 @@ export interface Warehouse {
   city?: string;
   country?: string;
   isActive: boolean;
+  _count?: { stockLevels?: number; movements?: number };
 }
 
 export interface StockLevel {
@@ -294,6 +304,7 @@ export interface Position {
   title: string;
   departmentId: string;
   department?: Department;
+  description?: string;
   minSalary?: number;
   maxSalary?: number;
 }

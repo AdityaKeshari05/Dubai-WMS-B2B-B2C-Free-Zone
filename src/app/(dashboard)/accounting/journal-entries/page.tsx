@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { Plus, FileText, AlertCircle, ArrowRight } from 'lucide-react';
+import { Plus, FileText, AlertCircle, ArrowRight, Pencil, Trash2 } from 'lucide-react';
 import { PageHeader } from '@/components/shared/PageHeader';
 import { DataTable } from '@/components/shared/DataTable';
 import { Pagination } from '@/components/shared/Pagination';
@@ -35,12 +35,14 @@ export default function JournalEntriesPage() {
   const [page, setPage] = useState(1);
   const [isLoading, setIsLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
+  const [editingEntry, setEditingEntry] = useState<JournalEntry | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [postingId, setPostingId] = useState<string | null>(null);
   const [form, setForm] = useState({
     date: new Date().toISOString().split('T')[0],
     description: '',
     reference: '',
+    entryType: 'STANDARD',
   });
   const [lines, setLines] = useState<JournalLineForm[]>([
     { debitAccountId: '', creditAccountId: '', debit: 0, credit: 0, description: '' },
@@ -72,7 +74,44 @@ export default function JournalEntriesPage() {
     fetchAll();
   }, [page]);
 
-  const handleCreate = async (e: React.FormEvent) => {
+  const handleOpenCreate = () => {
+    setEditingEntry(null);
+    setForm({
+      date: new Date().toISOString().split('T')[0],
+      description: '',
+      reference: '',
+      entryType: 'STANDARD',
+    });
+    setLines([{ debitAccountId: '', creditAccountId: '', debit: 0, credit: 0, description: '' }]);
+    setShowModal(true);
+  };
+
+  const handleOpenEdit = (entry: any) => {
+    setEditingEntry(entry);
+    setForm({
+      date: entry.date ? new Date(entry.date).toISOString().slice(0, 10) : new Date().toISOString().slice(0, 10),
+      description: entry.description || '',
+      reference: entry.reference || '',
+      entryType: entry.entryType || 'STANDARD',
+    });
+
+    if (entry.lines && entry.lines.length > 0) {
+      setLines(
+        entry.lines.map((l: any) => ({
+          debitAccountId: l.debitAccountId || '',
+          creditAccountId: l.creditAccountId || '',
+          debit: Number(l.debit || 0),
+          credit: Number(l.credit || 0),
+          description: l.description || l.remarks || '',
+        }))
+      );
+    } else {
+      setLines([{ debitAccountId: '', creditAccountId: '', debit: 0, credit: 0, description: '' }]);
+    }
+    setShowModal(true);
+  };
+
+  const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     if (isSubmitting) return;
 
@@ -136,14 +175,20 @@ export default function JournalEntriesPage() {
 
     setIsSubmitting(true);
     try {
-      await api.post('/accounting/journal-entries', { ...form, lines: cleanLines });
-      showApiSuccess('Journal entry created successfully');
+      if (editingEntry) {
+        await api.put(`/accounting/journal-entries/${editingEntry.id}`, { ...form, lines: cleanLines });
+        showApiSuccess('Journal entry updated successfully');
+      } else {
+        await api.post('/accounting/journal-entries', { ...form, lines: cleanLines });
+        showApiSuccess('Journal entry created successfully');
+      }
       setShowModal(false);
-      setForm({ date: new Date().toISOString().split('T')[0], description: '', reference: '' });
+      setEditingEntry(null);
+      setForm({ date: new Date().toISOString().split('T')[0], description: '', reference: '', entryType: 'STANDARD' });
       setLines([{ debitAccountId: '', creditAccountId: '', debit: 0, credit: 0, description: '' }]);
       fetchAll();
     } catch (err: any) {
-      showApiError(err, 'Failed to create journal entry');
+      showApiError(err, editingEntry ? 'Failed to update journal entry' : 'Failed to create journal entry');
     } finally {
       setIsSubmitting(false);
     }
@@ -163,6 +208,17 @@ export default function JournalEntriesPage() {
     }
   };
 
+  const handleDelete = async (entry: JournalEntry) => {
+    if (!window.confirm(`Are you sure you want to delete journal entry ${entry.entryNumber}?`)) return;
+    try {
+      await api.delete(`/accounting/journal-entries/${entry.id}`);
+      showApiSuccess(`Journal entry ${entry.entryNumber} deleted`);
+      fetchAll();
+    } catch (err: any) {
+      showApiError(err, 'Failed to delete journal entry');
+    }
+  };
+
   const columns = [
     {
       key: 'entryNumber',
@@ -176,20 +232,43 @@ export default function JournalEntriesPage() {
     { key: 'status', header: 'Status', render: (e: JournalEntry) => <StatusBadge status={e.status} /> },
     {
       key: 'actions',
-      header: '',
-      render: (e: JournalEntry) =>
-        e.status === 'DRAFT' ? (
-          <Button
-            size="sm"
-            disabled={postingId === e.id}
-            onClick={(ev) => {
-              ev.stopPropagation();
-              handlePost(e.id);
-            }}
-          >
-            {postingId === e.id ? 'Posting...' : 'Post'}
-          </Button>
-        ) : null,
+      header: 'Actions',
+      className: 'text-right',
+      render: (e: JournalEntry) => (
+        <div className="flex items-center justify-end gap-1.5" onClick={(ev) => ev.stopPropagation()}>
+          {e.status === 'DRAFT' && (
+            <Button
+              size="sm"
+              disabled={postingId === e.id}
+              onClick={() => handlePost(e.id)}
+            >
+              {postingId === e.id ? 'Posting...' : 'Post'}
+            </Button>
+          )}
+          {(e.status === 'DRAFT' || e.status === 'PENDING_APPROVAL') && (
+            <>
+              <Button
+                size="sm"
+                variant="ghost"
+                className="h-8 w-8 p-0 text-gray-500 hover:text-blue-600"
+                title="Edit Draft Entry"
+                onClick={() => handleOpenEdit(e)}
+              >
+                <Pencil className="h-4 w-4" />
+              </Button>
+              <Button
+                size="sm"
+                variant="ghost"
+                className="h-8 w-8 p-0 text-gray-500 hover:text-red-600"
+                title="Delete Draft Entry"
+                onClick={() => handleDelete(e)}
+              >
+                <Trash2 className="h-4 w-4" />
+              </Button>
+            </>
+          )}
+        </div>
+      ),
     },
   ];
 
@@ -198,14 +277,14 @@ export default function JournalEntriesPage() {
       <PageHeader
         title="Journal Entries"
         description="Manage accounting journal entries"
-        action={{ label: 'New Entry', onClick: () => setShowModal(true), icon: Plus }}
+        action={{ label: 'New Entry', onClick: handleOpenCreate, icon: Plus }}
       />
       {entries.length === 0 && !isLoading ? (
         <EmptyState
           icon={FileText}
           title="No journal entries"
           description="Start recording financial transactions and balancing debits and credits."
-          action={{ label: 'New Entry', onClick: () => setShowModal(true) }}
+          action={{ label: 'New Entry', onClick: handleOpenCreate }}
         />
       ) : (
         <>
@@ -225,7 +304,7 @@ export default function JournalEntriesPage() {
       <Dialog open={showModal} onOpenChange={setShowModal}>
         <DialogContent className="max-w-3xl">
           <DialogHeader>
-            <DialogTitle>New Journal Entry</DialogTitle>
+            <DialogTitle>{editingEntry ? `Edit Draft Journal Entry (${editingEntry.entryNumber})` : 'New Journal Entry'}</DialogTitle>
           </DialogHeader>
 
           {postingAccounts.length === 0 && (
@@ -244,7 +323,7 @@ export default function JournalEntriesPage() {
             </div>
           )}
 
-          <form onSubmit={handleCreate} className="space-y-4 max-h-[75vh] overflow-y-auto pr-2">
+          <form onSubmit={handleSave} className="space-y-4 max-h-[75vh] overflow-y-auto pr-2">
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-1.5">
                 <Label>Date *</Label>
@@ -422,7 +501,7 @@ export default function JournalEntriesPage() {
               )}
               {totalDebit > 0 && Math.abs(totalDebit - totalCredit) > 0.000001 && (
                 <p className="mt-2 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700 font-medium">
-                  Debit and credit totals must match before this entry can be created (Difference:{' '}
+                  Debit and credit totals must match before this entry can be saved (Difference:{' '}
                   {formatCurrency(Math.abs(totalDebit - totalCredit))}).
                 </p>
               )}
@@ -433,7 +512,7 @@ export default function JournalEntriesPage() {
                 Cancel
               </Button>
               <Button type="submit" disabled={isSubmitting || postingAccounts.length === 0}>
-                {isSubmitting ? 'Creating...' : 'Create Entry'}
+                {isSubmitting ? 'Saving...' : editingEntry ? 'Save Changes' : 'Create Entry'}
               </Button>
             </div>
           </form>

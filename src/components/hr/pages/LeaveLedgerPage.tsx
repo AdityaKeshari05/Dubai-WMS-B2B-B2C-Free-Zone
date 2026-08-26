@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import toast from 'react-hot-toast';
-import { Plus } from 'lucide-react';
+import { Pencil, Plus, Trash2 } from 'lucide-react';
 import api from '@/lib/api';
 import { formatDate } from '@/lib/utils';
 import { PageHeader } from '@/components/shared/PageHeader';
@@ -12,7 +12,9 @@ import { SelectEmptyState } from '@/components/shared/SelectEmptyState';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { showApiError, showApiSuccess } from '@/lib/apiError';
 
 type EmployeeOption = {
@@ -49,6 +51,8 @@ export function LeaveLedgerPage() {
   const [ledger, setLedger] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [editingAllocation, setEditingAllocation] = useState<any | null>(null);
+  const [showEditModal, setShowEditModal] = useState(false);
   const [form, setForm] = useState<any>({
     employeeId: '',
     leaveTypeId: '',
@@ -104,6 +108,51 @@ export function LeaveLedgerPage() {
       showApiError(err, 'Allocation failed');
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  const handleOpenEdit = (alloc: any) => {
+    setEditingAllocation(alloc);
+    setForm({
+      employeeId: alloc.employeeId,
+      leaveTypeId: alloc.leaveTypeId,
+      allocated: alloc.allocated,
+      fromDate: alloc.fromDate ? new Date(alloc.fromDate).toISOString().split('T')[0] : '',
+      toDate: alloc.toDate ? new Date(alloc.toDate).toISOString().split('T')[0] : '',
+    });
+    setShowEditModal(true);
+  };
+
+  const handleSaveEdit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingAllocation || isSubmitting) return;
+
+    setIsSubmitting(true);
+    try {
+      await api.put(`/hr/leave-allocations/${editingAllocation.id}`, {
+        allocated: Number(form.allocated),
+        fromDate: form.fromDate,
+        toDate: form.toDate,
+      });
+      showApiSuccess('Leave allocation updated');
+      setShowEditModal(false);
+      setEditingAllocation(null);
+      fetchAll();
+    } catch (err: any) {
+      showApiError(err, 'Failed to update leave allocation');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleDeleteAllocation = async (alloc: any) => {
+    if (!window.confirm('Are you sure you want to delete this leave allocation?')) return;
+    try {
+      await api.delete(`/hr/leave-allocations/${alloc.id}`);
+      showApiSuccess('Leave allocation deleted');
+      fetchAll();
+    } catch (err: any) {
+      showApiError(err, 'Failed to delete leave allocation');
     }
   };
 
@@ -195,6 +244,35 @@ export function LeaveLedgerPage() {
               header: 'Balance',
               render: (r: any) => <span className="font-semibold text-blue-700">{r.balance}</span>,
             },
+            {
+              key: 'actions',
+              header: 'Actions',
+              className: 'text-right',
+              render: (r: any) => (
+                <div className="flex items-center justify-end gap-1" onClick={(e) => e.stopPropagation()}>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="h-8 w-8 p-0 text-gray-500 hover:text-blue-600"
+                    title="Edit Allocation"
+                    onClick={() => handleOpenEdit(r)}
+                  >
+                    <Pencil className="h-4 w-4" />
+                  </Button>
+                  {Number(r.used || 0) === 0 && (
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className="h-8 w-8 p-0 text-gray-500 hover:text-red-600"
+                      title="Delete Allocation"
+                      onClick={() => handleDeleteAllocation(r)}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  )}
+                </div>
+              ),
+            },
           ]}
         />
         <DataTable
@@ -213,6 +291,53 @@ export function LeaveLedgerPage() {
           ]}
         />
       </div>
+
+      <Dialog open={showEditModal} onOpenChange={setShowEditModal}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Edit Leave Allocation</DialogTitle>
+          </DialogHeader>
+          <form onSubmit={handleSaveEdit} className="space-y-4 mt-2">
+            <div className="space-y-1.5">
+              <Label>Allocated Days *</Label>
+              <Input
+                type="number"
+                value={form.allocated}
+                onChange={(e) => setForm((f: any) => ({ ...f, allocated: e.target.value }))}
+                required
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label>From Date *</Label>
+                <Input
+                  type="date"
+                  value={form.fromDate}
+                  onChange={(e) => setForm((f: any) => ({ ...f, fromDate: e.target.value }))}
+                  required
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label>To Date *</Label>
+                <Input
+                  type="date"
+                  value={form.toDate}
+                  onChange={(e) => setForm((f: any) => ({ ...f, toDate: e.target.value }))}
+                  required
+                />
+              </div>
+            </div>
+            <div className="flex justify-end gap-2">
+              <Button type="button" variant="outline" onClick={() => setShowEditModal(false)}>
+                Cancel
+              </Button>
+              <Button type="submit" disabled={isSubmitting}>
+                {isSubmitting ? 'Saving...' : 'Save Changes'}
+              </Button>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

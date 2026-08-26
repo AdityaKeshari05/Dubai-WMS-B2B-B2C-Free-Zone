@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import toast from 'react-hot-toast';
-import { CalendarClock, Clock, Moon, PlayCircle, Plus, UserRoundCheck, Users } from 'lucide-react';
+import { CalendarClock, Clock, Moon, Pencil, PlayCircle, Plus, Trash2, UserRoundCheck, Users } from 'lucide-react';
 import api from '@/lib/api';
 import { formatDate, formatDateTime } from '@/lib/utils';
 import { PageHeader } from '@/components/shared/PageHeader';
@@ -14,6 +14,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { showApiError, showApiSuccess } from '@/lib/apiError';
 
 type EmployeeOption = {
@@ -41,18 +42,25 @@ export function ShiftsPage() {
   const [isSubmittingShift, setIsSubmittingShift] = useState(false);
   const [isSubmittingAssign, setIsSubmittingAssign] = useState(false);
   const [rosterDate, setRosterDate] = useState(today());
+  const [editingShift, setEditingShift] = useState<any | null>(null);
+  const [showShiftModal, setShowShiftModal] = useState(false);
+  const [editingAssignment, setEditingAssignment] = useState<any | null>(null);
+  const [showAssignModal, setShowAssignModal] = useState(false);
+
   const [shiftForm, setShiftForm] = useState<any>({
     name: '',
     startTime: '09:00',
     endTime: '18:00',
     graceMinutes: 10,
     isNightShift: false,
+    isActive: true,
   });
   const [assignForm, setAssignForm] = useState<any>({
     employeeId: '',
     shiftTypeId: '',
     startDate: today(),
     endDate: '',
+    status: 'ACTIVE',
   });
 
   const activeAssignments = assignments.filter((item) => item.status === 'ACTIVE');
@@ -90,7 +98,26 @@ export function ShiftsPage() {
     load();
   }, [rosterDate]);
 
-  const createShift = async () => {
+  const handleOpenCreateShift = () => {
+    setEditingShift(null);
+    setShiftForm({ name: '', startTime: '09:00', endTime: '18:00', graceMinutes: 10, isNightShift: false, isActive: true });
+    setShowShiftModal(true);
+  };
+
+  const handleOpenEditShift = (shift: any) => {
+    setEditingShift(shift);
+    setShiftForm({
+      name: shift.name,
+      startTime: shift.startTime,
+      endTime: shift.endTime,
+      graceMinutes: shift.graceMinutes ?? 10,
+      isNightShift: Boolean(shift.isNightShift),
+      isActive: Boolean(shift.isActive),
+    });
+    setShowShiftModal(true);
+  };
+
+  const saveShift = async () => {
     if (isSubmittingShift) return;
     const trimmedName = shiftForm.name.trim();
     if (!trimmedName) {
@@ -100,18 +127,53 @@ export function ShiftsPage() {
 
     setIsSubmittingShift(true);
     try {
-      await api.post('/hr/shift-types', { ...shiftForm, name: trimmedName });
-      showApiSuccess(`Shift type "${trimmedName}" created`);
-      setShiftForm({ name: '', startTime: '09:00', endTime: '18:00', graceMinutes: 10, isNightShift: false });
+      if (editingShift) {
+        await api.put(`/hr/shift-types/${editingShift.id}`, { ...shiftForm, name: trimmedName });
+        showApiSuccess(`Shift type "${trimmedName}" updated`);
+      } else {
+        await api.post('/hr/shift-types', { ...shiftForm, name: trimmedName });
+        showApiSuccess(`Shift type "${trimmedName}" created`);
+      }
+      setShowShiftModal(false);
+      setEditingShift(null);
       load();
     } catch (err: any) {
-      showApiError(err, 'Could not create shift');
+      showApiError(err, editingShift ? 'Could not update shift' : 'Could not create shift');
     } finally {
       setIsSubmittingShift(false);
     }
   };
 
-  const assignShift = async () => {
+  const deleteShift = async (shift: any) => {
+    if (!window.confirm(`Are you sure you want to delete shift "${shift.name}"?`)) return;
+    try {
+      await api.delete(`/hr/shift-types/${shift.id}`);
+      showApiSuccess('Shift type deleted');
+      load();
+    } catch (err: any) {
+      showApiError(err, 'Could not delete shift type');
+    }
+  };
+
+  const handleOpenCreateAssign = () => {
+    setEditingAssignment(null);
+    setAssignForm({ employeeId: employees[0]?.id || '', shiftTypeId: shifts[0]?.id || '', startDate: today(), endDate: '', status: 'ACTIVE' });
+    setShowAssignModal(true);
+  };
+
+  const handleOpenEditAssign = (assign: any) => {
+    setEditingAssignment(assign);
+    setAssignForm({
+      employeeId: assign.employeeId,
+      shiftTypeId: assign.shiftTypeId,
+      startDate: assign.startDate ? new Date(assign.startDate).toISOString().slice(0, 10) : today(),
+      endDate: assign.endDate ? new Date(assign.endDate).toISOString().slice(0, 10) : '',
+      status: assign.status || 'ACTIVE',
+    });
+    setShowAssignModal(true);
+  };
+
+  const saveAssign = async () => {
     if (isSubmittingAssign) return;
     if (!assignForm.employeeId) {
       toast.error('Please select an employee');
@@ -128,14 +190,36 @@ export function ShiftsPage() {
 
     setIsSubmittingAssign(true);
     try {
-      await api.post('/hr/shift-assignments', { ...assignForm, endDate: assignForm.endDate || undefined });
-      showApiSuccess('Shift assigned successfully');
-      setAssignForm({ employeeId: '', shiftTypeId: '', startDate: today(), endDate: '' });
+      if (editingAssignment) {
+        await api.put(`/hr/shift-assignments/${editingAssignment.id}`, {
+          shiftTypeId: assignForm.shiftTypeId,
+          startDate: assignForm.startDate,
+          endDate: assignForm.endDate || null,
+          status: assignForm.status,
+        });
+        showApiSuccess('Shift assignment updated');
+      } else {
+        await api.post('/hr/shift-assignments', { ...assignForm, endDate: assignForm.endDate || undefined });
+        showApiSuccess('Shift assigned successfully');
+      }
+      setShowAssignModal(false);
+      setEditingAssignment(null);
       load();
     } catch (err: any) {
-      showApiError(err, 'Could not assign shift');
+      showApiError(err, editingAssignment ? 'Could not update assignment' : 'Could not assign shift');
     } finally {
       setIsSubmittingAssign(false);
+    }
+  };
+
+  const deleteAssignment = async (assign: any) => {
+    if (!window.confirm('Are you sure you want to delete this shift assignment?')) return;
+    try {
+      await api.delete(`/hr/shift-assignments/${assign.id}`);
+      showApiSuccess('Shift assignment deleted');
+      load();
+    } catch (err: any) {
+      showApiError(err, 'Could not delete shift assignment');
     }
   };
 
@@ -182,7 +266,7 @@ export function ShiftsPage() {
       <div className="grid gap-4 xl:grid-cols-[420px_1fr]">
         <div className="space-y-4">
           <Card>
-            <CardHeader>
+            <CardHeader className="flex flex-row items-center justify-between">
               <CardTitle>Create Shift Type</CardTitle>
             </CardHeader>
             <CardContent className="grid gap-3">
@@ -228,9 +312,9 @@ export function ShiftsPage() {
                 />
                 <span>Night shift crosses midnight</span>
               </label>
-              <Button onClick={createShift} disabled={isSubmittingShift}>
+              <Button onClick={saveShift} disabled={isSubmittingShift}>
                 <Plus className="mr-2 h-4 w-4" />
-                {isSubmittingShift ? 'Creating...' : 'Create Shift'}
+                {isSubmittingShift ? 'Saving...' : 'Create Shift'}
               </Button>
             </CardContent>
           </Card>
@@ -308,7 +392,7 @@ export function ShiftsPage() {
                   />
                 </Field>
               </div>
-              <Button onClick={assignShift} disabled={isSubmittingAssign || employees.length === 0 || shifts.length === 0}>
+              <Button onClick={saveAssign} disabled={isSubmittingAssign || employees.length === 0 || shifts.length === 0}>
                 {isSubmittingAssign ? 'Assigning...' : 'Assign Shift'}
               </Button>
             </CardContent>
@@ -317,7 +401,7 @@ export function ShiftsPage() {
 
         <div className="space-y-4">
           <Card>
-            <CardHeader>
+            <CardHeader className="flex flex-row items-center justify-between">
               <CardTitle>Shift Types</CardTitle>
             </CardHeader>
             <CardContent>
@@ -342,6 +426,33 @@ export function ShiftsPage() {
                     key: 'isActive',
                     header: 'Status',
                     render: (row: any) => <StatusBadge status={row.isActive ? 'ACTIVE' : 'INACTIVE'} />,
+                  },
+                  {
+                    key: 'actions',
+                    header: 'Actions',
+                    className: 'text-right',
+                    render: (row: any) => (
+                      <div className="flex items-center justify-end gap-1" onClick={(e) => e.stopPropagation()}>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="h-8 w-8 p-0 text-gray-500 hover:text-blue-600"
+                          title="Edit Shift"
+                          onClick={() => handleOpenEditShift(row)}
+                        >
+                          <Pencil className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="h-8 w-8 p-0 text-gray-500 hover:text-red-600"
+                          title="Delete Shift"
+                          onClick={() => deleteShift(row)}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    ),
                   },
                 ]}
               />
@@ -372,13 +483,35 @@ export function ShiftsPage() {
                   { key: 'status', header: 'Status', render: (row: any) => <StatusBadge status={row.status} /> },
                   {
                     key: 'actions',
-                    header: '',
-                    render: (row: any) =>
-                      row.status === 'ACTIVE' ? (
-                        <Button size="sm" variant="outline" onClick={() => closeAssignment(row)}>
-                          Close
+                    header: 'Actions',
+                    className: 'text-right',
+                    render: (row: any) => (
+                      <div className="flex items-center justify-end gap-1" onClick={(e) => e.stopPropagation()}>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="h-8 w-8 p-0 text-gray-500 hover:text-blue-600"
+                          title="Edit Assignment"
+                          onClick={() => handleOpenEditAssign(row)}
+                        >
+                          <Pencil className="h-4 w-4" />
                         </Button>
-                      ) : null,
+                        {row.status === 'ACTIVE' && (
+                          <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => closeAssignment(row)}>
+                            Close
+                          </Button>
+                        )}
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="h-8 w-8 p-0 text-gray-500 hover:text-red-600"
+                          title="Delete Assignment"
+                          onClick={() => deleteAssignment(row)}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    ),
                   },
                 ]}
               />
@@ -430,6 +563,142 @@ export function ShiftsPage() {
           />
         </CardContent>
       </Card>
+
+      {/* EDIT SHIFT TYPE MODAL */}
+      <Dialog open={showShiftModal} onOpenChange={setShowShiftModal}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>{editingShift ? 'Edit Shift Type' : 'New Shift Type'}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 mt-2">
+            <Field label="Shift Name *">
+              <Input
+                value={shiftForm.name}
+                onChange={(event) => setShiftForm((f: any) => ({ ...f, name: event.target.value }))}
+                placeholder="Morning, Evening..."
+              />
+            </Field>
+            <div className="grid grid-cols-3 gap-3">
+              <Field label="Start">
+                <Input
+                  type="time"
+                  value={shiftForm.startTime}
+                  onChange={(event) => setShiftForm((f: any) => ({ ...f, startTime: event.target.value }))}
+                />
+              </Field>
+              <Field label="End">
+                <Input
+                  type="time"
+                  value={shiftForm.endTime}
+                  onChange={(event) => setShiftForm((f: any) => ({ ...f, endTime: event.target.value }))}
+                />
+              </Field>
+              <Field label="Grace (min)">
+                <Input
+                  type="number"
+                  min={0}
+                  value={shiftForm.graceMinutes}
+                  onChange={(event) =>
+                    setShiftForm((f: any) => ({ ...f, graceMinutes: Number(event.target.value) }))
+                  }
+                />
+              </Field>
+            </div>
+            <div className="flex items-center justify-between">
+              <label className="flex items-center gap-2 text-sm text-[#374151] cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={shiftForm.isNightShift}
+                  onChange={(event) => setShiftForm((f: any) => ({ ...f, isNightShift: event.target.checked }))}
+                />
+                <span>Night Shift</span>
+              </label>
+              <label className="flex items-center gap-2 text-sm text-[#374151] cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={shiftForm.isActive}
+                  onChange={(event) => setShiftForm((f: any) => ({ ...f, isActive: event.target.checked }))}
+                />
+                <span>Active</span>
+              </label>
+            </div>
+            <div className="flex justify-end gap-2 pt-2">
+              <Button variant="outline" onClick={() => setShowShiftModal(false)}>
+                Cancel
+              </Button>
+              <Button onClick={saveShift} disabled={isSubmittingShift}>
+                {isSubmittingShift ? 'Saving...' : 'Save Changes'}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* EDIT SHIFT ASSIGNMENT MODAL */}
+      <Dialog open={showAssignModal} onOpenChange={setShowAssignModal}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Edit Shift Assignment</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 mt-2">
+            <Field label="Shift Type *">
+              <Select
+                value={assignForm.shiftTypeId}
+                onValueChange={(shiftTypeId) => setAssignForm((f: any) => ({ ...f, shiftTypeId }))}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select shift" />
+                </SelectTrigger>
+                <SelectContent>
+                  {shifts.map((shift) => (
+                    <SelectItem key={shift.id} value={shift.id}>
+                      {shift.name} ({shift.startTime}-{shift.endTime})
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </Field>
+            <div className="grid grid-cols-2 gap-3">
+              <Field label="Start Date *">
+                <Input
+                  type="date"
+                  value={assignForm.startDate}
+                  onChange={(event) => setAssignForm((f: any) => ({ ...f, startDate: event.target.value }))}
+                />
+              </Field>
+              <Field label="End Date">
+                <Input
+                  type="date"
+                  value={assignForm.endDate}
+                  onChange={(event) => setAssignForm((f: any) => ({ ...f, endDate: event.target.value }))}
+                />
+              </Field>
+            </div>
+            <Field label="Status">
+              <Select
+                value={assignForm.status}
+                onValueChange={(status) => setAssignForm((f: any) => ({ ...f, status }))}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="ACTIVE">ACTIVE</SelectItem>
+                  <SelectItem value="INACTIVE">INACTIVE</SelectItem>
+                </SelectContent>
+              </Select>
+            </Field>
+            <div className="flex justify-end gap-2 pt-2">
+              <Button variant="outline" onClick={() => setShowAssignModal(false)}>
+                Cancel
+              </Button>
+              <Button onClick={saveAssign} disabled={isSubmittingAssign}>
+                {isSubmittingAssign ? 'Saving...' : 'Save Changes'}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

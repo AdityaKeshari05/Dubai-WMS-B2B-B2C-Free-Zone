@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import toast from 'react-hot-toast';
-import { Plus } from 'lucide-react';
+import { Pencil, Plus, Trash2 } from 'lucide-react';
 import api from '@/lib/api';
 import { formatCurrency } from '@/lib/utils';
 import { PageHeader } from '@/components/shared/PageHeader';
@@ -15,6 +15,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
 import { showApiError, showApiSuccess } from '@/lib/apiError';
 
@@ -39,6 +40,12 @@ export function SalaryStructuresPage() {
   const [isSubmittingComponent, setIsSubmittingComponent] = useState(false);
   const [isSubmittingStructure, setIsSubmittingStructure] = useState(false);
   const [isSubmittingAssign, setIsSubmittingAssign] = useState(false);
+
+  // Edit modals state
+  const [editingComponent, setEditingComponent] = useState<any | null>(null);
+  const [showComponentModal, setShowComponentModal] = useState(false);
+  const [editingStructure, setEditingStructure] = useState<any | null>(null);
+  const [showStructureModal, setShowStructureModal] = useState(false);
 
   const [componentForm, setComponentForm] = useState<any>({
     name: '',
@@ -107,18 +114,53 @@ export function SalaryStructuresPage() {
 
     setIsSubmittingComponent(true);
     try {
-      await api.post('/hr/salary-components', {
-        ...componentForm,
-        name: trimmedName,
-        defaultAmount: componentForm.defaultAmount === '' ? undefined : Number(componentForm.defaultAmount),
-      });
-      showApiSuccess(`Salary component "${trimmedName}" created`);
+      if (editingComponent) {
+        await api.put(`/hr/salary-components/${editingComponent.id}`, {
+          ...componentForm,
+          name: trimmedName,
+          defaultAmount: componentForm.defaultAmount === '' ? undefined : Number(componentForm.defaultAmount),
+        });
+        showApiSuccess(`Salary component "${trimmedName}" updated`);
+        setShowComponentModal(false);
+        setEditingComponent(null);
+      } else {
+        await api.post('/hr/salary-components', {
+          ...componentForm,
+          name: trimmedName,
+          defaultAmount: componentForm.defaultAmount === '' ? undefined : Number(componentForm.defaultAmount),
+        });
+        showApiSuccess(`Salary component "${trimmedName}" created`);
+      }
       setComponentForm({ name: '', type: 'EARNING', defaultAmount: '', formula: '', isTaxable: false, description: '' });
       fetchAll();
     } catch (err: any) {
-      showApiError(err, 'Could not create component');
+      showApiError(err, editingComponent ? 'Could not update component' : 'Could not create component');
     } finally {
       setIsSubmittingComponent(false);
+    }
+  };
+
+  const handleOpenEditComponent = (c: any) => {
+    setEditingComponent(c);
+    setComponentForm({
+      name: c.name,
+      type: c.type,
+      defaultAmount: c.defaultAmount !== undefined && c.defaultAmount !== null ? String(c.defaultAmount) : '',
+      formula: c.formula || '',
+      isTaxable: Boolean(c.isTaxable),
+      description: c.description || '',
+    });
+    setShowComponentModal(true);
+  };
+
+  const handleDeleteComponent = async (c: any) => {
+    if (!window.confirm(`Are you sure you want to delete salary component "${c.name}"?`)) return;
+    try {
+      await api.delete(`/hr/salary-components/${c.id}`);
+      showApiSuccess('Salary component deleted');
+      fetchAll();
+    } catch (err: any) {
+      showApiError(err, 'Failed to delete component');
     }
   };
 
@@ -137,7 +179,7 @@ export function SalaryStructuresPage() {
 
     setIsSubmittingStructure(true);
     try {
-      await api.post('/hr/salary-structures', {
+      const payload = {
         ...structureForm,
         name: trimmedName,
         components: rows.map((row) => ({
@@ -145,15 +187,54 @@ export function SalaryStructuresPage() {
           amount: row.amount === '' ? 0 : Number(row.amount),
           formula: row.formula || undefined,
         })),
-      });
-      showApiSuccess(`Salary structure "${trimmedName}" created`);
+      };
+
+      if (editingStructure) {
+        await api.put(`/hr/salary-structures/${editingStructure.id}`, payload);
+        showApiSuccess(`Salary structure "${trimmedName}" updated`);
+        setShowStructureModal(false);
+        setEditingStructure(null);
+      } else {
+        await api.post('/hr/salary-structures', payload);
+        showApiSuccess(`Salary structure "${trimmedName}" created`);
+      }
       setStructureForm({ name: '', description: '', currency: 'INR' });
       setStructureRows([{ salaryComponentId: '', amount: '', formula: '' }]);
       fetchAll();
     } catch (err: any) {
-      showApiError(err, 'Could not create structure');
+      showApiError(err, editingStructure ? 'Could not update structure' : 'Could not create structure');
     } finally {
       setIsSubmittingStructure(false);
+    }
+  };
+
+  const handleOpenEditStructure = (s: any) => {
+    setEditingStructure(s);
+    setStructureForm({
+      name: s.name,
+      description: s.description || '',
+      currency: s.currency || 'INR',
+    });
+    setStructureRows(
+      s.components && s.components.length
+        ? s.components.map((c: any) => ({
+            salaryComponentId: c.salaryComponentId,
+            amount: c.amount !== undefined ? String(c.amount) : '',
+            formula: c.formula || '',
+          }))
+        : [{ salaryComponentId: '', amount: '', formula: '' }]
+    );
+    setShowStructureModal(true);
+  };
+
+  const handleDeleteStructure = async (s: any) => {
+    if (!window.confirm(`Are you sure you want to delete salary structure "${s.name}"?`)) return;
+    try {
+      await api.delete(`/hr/salary-structures/${s.id}`);
+      showApiSuccess('Salary structure deleted');
+      fetchAll();
+    } catch (err: any) {
+      showApiError(err, 'Failed to delete salary structure');
     }
   };
 
@@ -355,7 +436,7 @@ export function SalaryStructuresPage() {
                               prev.map((item, i) => (i === index ? { ...item, amount: event.target.value } : item))
                             )
                           }
-                          placeholder="0 means base/default for earnings"
+                          placeholder="0 means base/default"
                         />
                       </td>
                       <td className="px-3 py-2">
@@ -505,6 +586,33 @@ export function SalaryStructuresPage() {
             },
             { key: 'formula', header: 'Formula', render: (row: any) => row.formula || '-' },
             { key: 'isTaxable', header: 'Taxable', render: (row: any) => (row.isTaxable ? 'Yes' : 'No') },
+            {
+              key: 'actions',
+              header: 'Actions',
+              className: 'text-right',
+              render: (row: any) => (
+                <div className="flex items-center justify-end gap-1" onClick={(e) => e.stopPropagation()}>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="h-8 w-8 p-0 text-gray-500 hover:text-blue-600"
+                    title="Edit Component"
+                    onClick={() => handleOpenEditComponent(row)}
+                  >
+                    <Pencil className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="h-8 w-8 p-0 text-gray-500 hover:text-red-600"
+                    title="Delete Component"
+                    onClick={() => handleDeleteComponent(row)}
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </div>
+              ),
+            },
           ]}
         />
         <DataTable
@@ -515,9 +623,236 @@ export function SalaryStructuresPage() {
             { key: 'currency', header: 'Currency' },
             { key: 'components', header: 'Components', render: (row: any) => row.components?.length || 0 },
             { key: 'assignments', header: 'Assignments', render: (row: any) => row._count?.assignments || 0 },
+            {
+              key: 'actions',
+              header: 'Actions',
+              className: 'text-right',
+              render: (row: any) => (
+                <div className="flex items-center justify-end gap-1" onClick={(e) => e.stopPropagation()}>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="h-8 w-8 p-0 text-gray-500 hover:text-blue-600"
+                    title="Edit Structure"
+                    onClick={() => handleOpenEditStructure(row)}
+                  >
+                    <Pencil className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="h-8 w-8 p-0 text-gray-500 hover:text-red-600"
+                    title="Delete Structure"
+                    onClick={() => handleDeleteStructure(row)}
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </div>
+              ),
+            },
           ]}
         />
       </div>
+
+      {/* EDIT COMPONENT MODAL */}
+      <Dialog open={showComponentModal} onOpenChange={setShowComponentModal}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Edit Salary Component</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3 mt-2">
+            <Field label="Component Name *">
+              <Input
+                value={componentForm.name}
+                onChange={(event) => setComponentForm((prev: any) => ({ ...prev, name: event.target.value }))}
+              />
+            </Field>
+            <div className="grid grid-cols-2 gap-3">
+              <Field label="Type">
+                <Select
+                  value={componentForm.type}
+                  onValueChange={(type) => setComponentForm((prev: any) => ({ ...prev, type }))}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {componentTypes.map((type) => (
+                      <SelectItem key={type} value={type}>
+                        {type}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </Field>
+              <Field label="Default Amount">
+                <Input
+                  type="number"
+                  placeholder="0"
+                  value={componentForm.defaultAmount}
+                  onChange={(event) =>
+                    setComponentForm((prev: any) => ({ ...prev, defaultAmount: event.target.value }))
+                  }
+                />
+              </Field>
+            </div>
+            <Field label="Formula">
+              <Input
+                value={componentForm.formula}
+                onChange={(event) => setComponentForm((prev: any) => ({ ...prev, formula: event.target.value }))}
+              />
+            </Field>
+            <label className="flex items-center gap-2 text-sm text-[#374151] cursor-pointer">
+              <input
+                type="checkbox"
+                checked={componentForm.isTaxable}
+                onChange={(event) => setComponentForm((prev: any) => ({ ...prev, isTaxable: event.target.checked }))}
+              />
+              <span>Taxable component</span>
+            </label>
+            <Field label="Description">
+              <Textarea
+                rows={2}
+                value={componentForm.description}
+                onChange={(event) =>
+                  setComponentForm((prev: any) => ({ ...prev, description: event.target.value }))
+                }
+              />
+            </Field>
+            <div className="flex justify-end gap-2 pt-2">
+              <Button variant="outline" onClick={() => setShowComponentModal(false)}>
+                Cancel
+              </Button>
+              <Button onClick={createComponent} disabled={isSubmittingComponent}>
+                {isSubmittingComponent ? 'Saving...' : 'Save Changes'}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* EDIT STRUCTURE MODAL */}
+      <Dialog open={showStructureModal} onOpenChange={setShowStructureModal}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Edit Salary Structure</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3 mt-2">
+            <div className="grid gap-3 md:grid-cols-2">
+              <Field label="Structure Name *">
+                <Input
+                  value={structureForm.name}
+                  onChange={(event) => setStructureForm((prev: any) => ({ ...prev, name: event.target.value }))}
+                />
+              </Field>
+              <Field label="Currency">
+                <CurrencySelect
+                  value={structureForm.currency}
+                  onChange={(currency) => setStructureForm((prev: any) => ({ ...prev, currency }))}
+                />
+              </Field>
+            </div>
+            <Field label="Description">
+              <Input
+                value={structureForm.description}
+                onChange={(event) =>
+                  setStructureForm((prev: any) => ({ ...prev, description: event.target.value }))
+                }
+              />
+            </Field>
+            <div className="rounded-md border border-[#e5e2dc] max-h-60 overflow-y-auto">
+              <table className="w-full text-sm">
+                <thead className="bg-[#f8faf9] text-xs uppercase text-[#6b7280]">
+                  <tr>
+                    <th className="px-3 py-2 text-left">Component</th>
+                    <th className="px-3 py-2 text-right">Amount</th>
+                    <th className="px-3 py-2 text-left">Formula Override</th>
+                    <th />
+                  </tr>
+                </thead>
+                <tbody>
+                  {structureRows.map((row, index) => (
+                    <tr key={index} className="border-t border-[#ece8e1]">
+                      <td className="px-3 py-2">
+                        <Select
+                          value={row.salaryComponentId}
+                          onValueChange={(salaryComponentId) =>
+                            setStructureRows((prev) =>
+                              prev.map((item, i) => (i === index ? { ...item, salaryComponentId } : item))
+                            )
+                          }
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select component" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {components.map((component) => (
+                              <SelectItem key={component.id} value={component.id}>
+                                {component.name} ({component.type})
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </td>
+                      <td className="px-3 py-2">
+                        <Input
+                          className="text-right"
+                          type="number"
+                          value={row.amount}
+                          onChange={(event) =>
+                            setStructureRows((prev) =>
+                              prev.map((item, i) => (i === index ? { ...item, amount: event.target.value } : item))
+                            )
+                          }
+                        />
+                      </td>
+                      <td className="px-3 py-2">
+                        <Input
+                          value={row.formula}
+                          onChange={(event) =>
+                            setStructureRows((prev) =>
+                              prev.map((item, i) => (i === index ? { ...item, formula: event.target.value } : item))
+                            )
+                          }
+                        />
+                      </td>
+                      <td className="px-3 py-2 text-right">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => setStructureRows((prev) => prev.filter((_, i) => i !== index))}
+                        >
+                          Remove
+                        </Button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            <div className="flex justify-between items-center pt-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() =>
+                  setStructureRows((prev) => [...prev, { salaryComponentId: '', amount: '', formula: '' }])
+                }
+              >
+                <Plus className="mr-1 h-3.5 w-3.5" />
+                Add Row
+              </Button>
+              <div className="flex gap-2">
+                <Button variant="outline" onClick={() => setShowStructureModal(false)}>
+                  Cancel
+                </Button>
+                <Button onClick={createStructure} disabled={isSubmittingStructure}>
+                  {isSubmittingStructure ? 'Saving...' : 'Save Changes'}
+                </Button>
+              </div>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

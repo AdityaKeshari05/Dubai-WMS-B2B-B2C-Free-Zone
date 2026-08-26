@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Plus, Package } from 'lucide-react';
+import { Plus, Package, Pencil, Trash2, Power, RotateCcw } from 'lucide-react';
 import { PageHeader } from '@/components/shared/PageHeader';
 import { DataTable } from '@/components/shared/DataTable';
 import { Pagination } from '@/components/shared/Pagination';
@@ -19,6 +19,29 @@ import { formatCurrency } from '@/lib/utils';
 import { showApiError, showApiSuccess } from '@/lib/apiError';
 import toast from 'react-hot-toast';
 
+const defaultFormState = {
+  sku: '',
+  name: '',
+  description: '',
+  categoryId: '',
+  unitId: '',
+  type: 'PRODUCT',
+  costPrice: 0,
+  salePrice: 0,
+  taxRate: 0,
+  minStockLevel: 0,
+  valuationMethod: 'MOVING_AVERAGE',
+  maintainStock: true,
+  allowNegativeStock: false,
+  hasBatchNo: false,
+  hasSerialNo: false,
+  reorderLevel: 0,
+  reorderQty: 0,
+  brand: '',
+  manufacturer: '',
+  isActive: true,
+};
+
 export default function ProductsPage() {
   const [products, setProducts] = useState<Product[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
@@ -28,28 +51,9 @@ export default function ProductsPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [showModal, setShowModal] = useState(false);
+  const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [form, setForm] = useState({
-    sku: '',
-    name: '',
-    description: '',
-    categoryId: '',
-    unitId: '',
-    type: 'PRODUCT',
-    costPrice: 0,
-    salePrice: 0,
-    taxRate: 0,
-    minStockLevel: 0,
-    valuationMethod: 'MOVING_AVERAGE',
-    maintainStock: true,
-    allowNegativeStock: false,
-    hasBatchNo: false,
-    hasSerialNo: false,
-    reorderLevel: 0,
-    reorderQty: 0,
-    brand: '',
-    manufacturer: '',
-  });
+  const [form, setForm] = useState(defaultFormState);
   const limit = 20;
 
   const fetchAll = async () => {
@@ -83,7 +87,40 @@ export default function ProductsPage() {
     fetchAll();
   }, [page, search]);
 
-  const handleCreate = async (e: React.FormEvent) => {
+  const handleOpenCreate = () => {
+    setEditingProduct(null);
+    setForm(defaultFormState);
+    setShowModal(true);
+  };
+
+  const handleOpenEdit = (p: Product) => {
+    setEditingProduct(p);
+    setForm({
+      sku: p.sku || '',
+      name: p.name || '',
+      description: p.description || '',
+      categoryId: p.categoryId || '',
+      unitId: p.unitId || '',
+      type: p.type || 'PRODUCT',
+      costPrice: Number(p.costPrice || 0),
+      salePrice: Number(p.salePrice || 0),
+      taxRate: Number(p.taxRate || 0),
+      minStockLevel: Number(p.minStockLevel || 0),
+      valuationMethod: p.valuationMethod || 'MOVING_AVERAGE',
+      maintainStock: p.maintainStock ?? true,
+      allowNegativeStock: p.allowNegativeStock ?? false,
+      hasBatchNo: p.hasBatchNo ?? false,
+      hasSerialNo: p.hasSerialNo ?? false,
+      reorderLevel: Number(p.reorderLevel || 0),
+      reorderQty: Number(p.reorderQty || 0),
+      brand: p.brand || '',
+      manufacturer: p.manufacturer || '',
+      isActive: p.isActive ?? true,
+    });
+    setShowModal(true);
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (isSubmitting) return;
 
@@ -101,7 +138,7 @@ export default function ProductsPage() {
 
     setIsSubmitting(true);
     try {
-      await api.post('/inventory/products', {
+      const payload = {
         ...form,
         sku: trimmedSku,
         name: trimmedName,
@@ -113,35 +150,42 @@ export default function ProductsPage() {
         minStockLevel: Number(form.minStockLevel || 0),
         reorderLevel: Number(form.reorderLevel || 0),
         reorderQty: Number(form.reorderQty || 0),
-      });
-      showApiSuccess(`Product "${trimmedName}" created successfully`);
+      };
+
+      if (editingProduct) {
+        await api.put(`/inventory/products/${editingProduct.id}`, payload);
+        showApiSuccess(`Product "${trimmedName}" updated successfully`);
+      } else {
+        await api.post('/inventory/products', payload);
+        showApiSuccess(`Product "${trimmedName}" created successfully`);
+      }
+
       setShowModal(false);
-      setForm({
-        sku: '',
-        name: '',
-        description: '',
-        categoryId: '',
-        unitId: '',
-        type: 'PRODUCT',
-        costPrice: 0,
-        salePrice: 0,
-        taxRate: 0,
-        minStockLevel: 0,
-        valuationMethod: 'MOVING_AVERAGE',
-        maintainStock: true,
-        allowNegativeStock: false,
-        hasBatchNo: false,
-        hasSerialNo: false,
-        reorderLevel: 0,
-        reorderQty: 0,
-        brand: '',
-        manufacturer: '',
-      });
+      setEditingProduct(null);
+      setForm(defaultFormState);
       fetchAll();
     } catch (err: any) {
-      showApiError(err, 'Failed to create product');
+      showApiError(err, editingProduct ? 'Failed to update product' : 'Failed to create product');
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  const handleToggleActive = async (p: Product) => {
+    const action = p.isActive ? 'deactivate' : 'activate';
+    if (!window.confirm(`Are you sure you want to ${action} product "${p.name}"?`)) return;
+
+    try {
+      if (p.isActive) {
+        await api.delete(`/inventory/products/${p.id}`);
+        showApiSuccess(`Product "${p.name}" deactivated`);
+      } else {
+        await api.put(`/inventory/products/${p.id}`, { isActive: true });
+        showApiSuccess(`Product "${p.name}" activated`);
+      }
+      fetchAll();
+    } catch (err: any) {
+      showApiError(err, `Failed to ${action} product`);
     }
   };
 
@@ -200,6 +244,37 @@ export default function ProductsPage() {
         </span>
       ),
     },
+    {
+      key: 'actions',
+      header: 'Actions',
+      className: 'text-right',
+      render: (p: Product) => (
+        <div className="flex items-center justify-end gap-1.5" onClick={(e) => e.stopPropagation()}>
+          <Button
+            size="sm"
+            variant="ghost"
+            className="h-8 w-8 p-0 text-gray-500 hover:text-blue-600"
+            title="Edit Product"
+            onClick={() => handleOpenEdit(p)}
+          >
+            <Pencil className="h-4 w-4" />
+          </Button>
+          <Button
+            size="sm"
+            variant="ghost"
+            className={`h-8 w-8 p-0 ${
+              p.isActive
+                ? 'text-gray-500 hover:text-red-600'
+                : 'text-gray-500 hover:text-green-600'
+            }`}
+            title={p.isActive ? 'Deactivate Product' : 'Activate Product'}
+            onClick={() => handleToggleActive(p)}
+          >
+            {p.isActive ? <Power className="h-4 w-4" /> : <RotateCcw className="h-4 w-4" />}
+          </Button>
+        </div>
+      ),
+    },
   ];
 
   return (
@@ -207,7 +282,7 @@ export default function ProductsPage() {
       <PageHeader
         title="Products"
         description="Manage your products and services"
-        action={{ label: 'New Product', onClick: () => setShowModal(true), icon: Plus }}
+        action={{ label: 'New Product', onClick: handleOpenCreate, icon: Plus }}
       />
       <div className="mb-4">
         <Input
@@ -225,7 +300,7 @@ export default function ProductsPage() {
           icon={Package}
           title="No products yet"
           description="Add your first product or service"
-          action={{ label: 'Add Product', onClick: () => setShowModal(true) }}
+          action={{ label: 'Add Product', onClick: handleOpenCreate }}
         />
       ) : (
         <>
@@ -245,9 +320,9 @@ export default function ProductsPage() {
       <Dialog open={showModal} onOpenChange={setShowModal}>
         <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>New Product</DialogTitle>
+            <DialogTitle>{editingProduct ? 'Edit Product' : 'New Product'}</DialogTitle>
           </DialogHeader>
-          <form onSubmit={handleCreate} className="grid grid-cols-2 gap-4 mt-2">
+          <form onSubmit={handleSubmit} className="grid grid-cols-2 gap-4 mt-2">
             <div className="space-y-1.5">
               <Label>SKU *</Label>
               <Input
@@ -278,36 +353,33 @@ export default function ProductsPage() {
             <div className="space-y-1.5">
               <Label>Category</Label>
               <Select
-                value={form.categoryId}
-                onValueChange={(v) => setForm((f) => ({ ...f, categoryId: v }))}
+                value={form.categoryId || '__none__'}
+                onValueChange={(v) => setForm((f) => ({ ...f, categoryId: v === '__none__' ? '' : v }))}
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Select category" />
                 </SelectTrigger>
                 <SelectContent>
-                  {categories.length === 0 ? (
-                    <SelectEmptyState
-                      message="No categories found"
-                      linkHref="/inventory/categories"
-                      linkText="Create Category"
-                    />
-                  ) : (
-                    categories.map((c) => (
-                      <SelectItem key={c.id} value={c.id}>
-                        {c.name}
-                      </SelectItem>
-                    ))
-                  )}
+                  <SelectItem value="__none__">Uncategorized</SelectItem>
+                  {categories.map((c) => (
+                    <SelectItem key={c.id} value={c.id}>
+                      {c.name}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>
             <div className="space-y-1.5">
               <Label>Unit</Label>
-              <Select value={form.unitId} onValueChange={(v) => setForm((f) => ({ ...f, unitId: v }))}>
+              <Select
+                value={form.unitId || '__none__'}
+                onValueChange={(v) => setForm((f) => ({ ...f, unitId: v === '__none__' ? '' : v }))}
+              >
                 <SelectTrigger>
                   <SelectValue placeholder="Select unit" />
                 </SelectTrigger>
                 <SelectContent>
+                  <SelectItem value="__none__">None</SelectItem>
                   {units.map((u) => (
                     <SelectItem key={u.id} value={u.id}>
                       {u.name} ({u.symbol})
@@ -418,6 +490,23 @@ export default function ProductsPage() {
                 onChange={(e) => setForm((f) => ({ ...f, manufacturer: e.target.value }))}
               />
             </div>
+            {editingProduct && (
+              <div className="space-y-1.5">
+                <Label>Status</Label>
+                <Select
+                  value={form.isActive ? 'true' : 'false'}
+                  onValueChange={(v) => setForm((f) => ({ ...f, isActive: v === 'true' }))}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="true">Active</SelectItem>
+                    <SelectItem value="false">Inactive</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
             <label className="flex items-center gap-2 text-sm text-[#374151] cursor-pointer">
               <input
                 type="checkbox"
@@ -459,7 +548,13 @@ export default function ProductsPage() {
                 Cancel
               </Button>
               <Button type="submit" disabled={isSubmitting}>
-                {isSubmitting ? 'Creating...' : 'Create Product'}
+                {isSubmitting
+                  ? editingProduct
+                    ? 'Saving...'
+                    : 'Creating...'
+                  : editingProduct
+                  ? 'Save Changes'
+                  : 'Create Product'}
               </Button>
             </div>
           </form>
@@ -468,3 +563,4 @@ export default function ProductsPage() {
     </div>
   );
 }
+

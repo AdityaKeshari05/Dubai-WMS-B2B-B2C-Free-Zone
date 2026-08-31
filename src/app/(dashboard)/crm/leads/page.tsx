@@ -112,9 +112,12 @@ export default function LeadsPage() {
         firstName: trimmedFirst,
         lastName: trimmedLast,
         value: numValue,
-        allowDuplicate,
       };
-      if (editingId) await api.put(`/crm/leads/${editingId}`, payload); else await api.post('/crm/leads', payload);
+      if (editingId) {
+        await api.put(`/crm/leads/${editingId}`, payload);
+      } else {
+        await api.post('/crm/leads', { ...payload, allowDuplicate });
+      }
       showApiSuccess(`Lead ${editingId ? 'updated' : 'created'} successfully`);
       setShowModal(false);
       setForm({

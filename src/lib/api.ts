@@ -1,8 +1,13 @@
 import axios from 'axios';
 import { extractSubdomain } from './subdomain';
 
+const configuredApiUrl = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api/v1').replace(/\/$/, '');
+// Orus exposes its canonical API below /api/v1. Normalize the older /api
+// deployment value so newer platform routes (including Audit Trail) resolve.
+const apiBaseUrl = configuredApiUrl.endsWith('/api') ? `${configuredApiUrl}/v1` : configuredApiUrl;
+
 const api = axios.create({
-  baseURL: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api/v1',
+  baseURL: apiBaseUrl,
   headers: { 'Content-Type': 'application/json' },
   withCredentials: true,
 });

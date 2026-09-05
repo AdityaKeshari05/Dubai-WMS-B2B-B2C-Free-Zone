@@ -1,5 +1,5 @@
-import { AuditLogPage } from '@/components/invoicing/AdvancedInvoicingPages';
+import { redirect } from 'next/navigation';
 
 export default function Page() {
-  return <AuditLogPage />;
+  redirect('/audit-trail?module=invoicing');
 }

@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { useEffect, useMemo, useState } from 'react';
-import { ArrowLeft, Ban, CreditCard, Download, FileText, MessageSquare, PencilLine, Save, ScrollText } from 'lucide-react';
+import { ArrowLeft, Ban, CreditCard, Download, FileText, PencilLine, Save, ScrollText } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -222,7 +222,6 @@ export default function SalesInvoiceDetailPage() {
 
   const payments = invoice.payments || [];
   const allocations = (invoice as any).paymentAllocations || [];
-  const auditLogs = (invoice as any).auditLogs || [];
 
   return (
     <div className={isCancelled(invoice.status) ? 'opacity-75' : ''}>
@@ -379,21 +378,6 @@ export default function SalesInvoiceDetailPage() {
               <SummaryLine label="Paid" value={formatCurrency(Number(invoice.amountPaid || 0), invoice.currency)} />
               <SummaryLine label="Outstanding" value={formatCurrency(outstanding, invoice.currency)} strong danger={outstanding > 0} />
             </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader><CardTitle>Audit Timeline</CardTitle></CardHeader>
-          <CardContent className="space-y-3 text-sm">
-            {auditLogs.length ? auditLogs.map((log: any) => (
-              <TimelineItem key={log.id} icon={ScrollText} label={log.action} value={`${log.message || ''} ${log.actorEmail ? `by ${log.actorEmail}` : ''}`.trim() || formatDate(log.createdAt)} />
-            )) : (
-              <>
-                <TimelineItem icon={FileText} label="Created" value={formatDate(invoice.createdAt)} />
-                {invoice.status !== 'DRAFT' && <TimelineItem icon={PencilLine} label="Submitted" value="Posted to ledger" />}
-                {payments.length > 0 && <TimelineItem icon={CreditCard} label="Payments" value={`${payments.length} linked payment${payments.length > 1 ? 's' : ''}`} />}
-                <TimelineItem icon={MessageSquare} label="Comments" value="No audit events yet" />
-              </>
-            )}
           </CardContent>
         </Card>
         </aside>

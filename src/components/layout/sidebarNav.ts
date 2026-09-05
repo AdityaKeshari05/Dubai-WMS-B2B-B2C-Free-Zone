@@ -21,6 +21,7 @@ export interface NavItem {
 
 export const navItems: NavItem[] = [
   { label: 'Dashboard', href: '/dashboard', icon: LayoutDashboard, permission: 'dashboard:dashboard:read' },
+  { label: 'Audit Trail', href: '/audit-trail', icon: History, permission: 'access:audit:read' },
   {
     label: 'Accounting', icon: Landmark,
     children: [
@@ -55,7 +56,6 @@ export const navItems: NavItem[] = [
 	      { label: 'Item-wise Sales', href: '/inventory/reports/item-wise-sales', icon: ChartColumnIncreasing, permission: 'inventory:stock-balance:read' },
 	      { label: 'Gross Profit', href: '/inventory/reports/gross-profit', icon: CircleDollarSign, permission: 'inventory:stock-balance:read' },
 	      { label: 'Slow Moving Stock', href: '/inventory/reports/slow-moving-stock', icon: ArchiveX, permission: 'inventory:stock-balance:read' },
-	      { label: 'Inventory Audit Trail', href: '/audit-trail?module=inventory', icon: History, permission: 'access:audit:read' },
     ],
   },
   {
@@ -90,7 +90,6 @@ export const navItems: NavItem[] = [
       { label: 'Assignment Rules', href: '/crm/assignment-rules', icon: Route, permission: 'crm:assignment-rules:read' },
       { label: 'CRM Reports', href: '/crm/reports', icon: BarChart3, permission: 'crm:reports:read' },
       { label: 'CRM Configuration', href: '/crm/settings', icon: Settings },
-      { label: 'CRM Audit Trail', href: '/audit-trail?module=crm', icon: History, permission: 'access:audit:read' },
     ],
   },
   {
@@ -102,7 +101,6 @@ export const navItems: NavItem[] = [
       { label: 'Fulfilment', href: '/sales/fulfilment', icon: PackageCheck },
       { label: 'Sales Reports', href: '/sales/reports', icon: BarChart3 },
       { label: 'Sales Configuration', href: '/sales/settings', icon: Settings },
-      { label: 'Sales Audit Trail', href: '/audit-trail?module=sales', icon: History, permission: 'access:audit:read' },
     ],
   },
   {
@@ -117,7 +115,6 @@ export const navItems: NavItem[] = [
       { label: 'Ledger', href: '/invoicing/ledger', icon: BookOpen },
       { label: 'Print Formats', href: '/invoicing/print-formats', icon: Printer },
       { label: 'Recurring Invoices', href: '/invoicing/subscriptions', icon: Repeat },
-      { label: 'Audit Log', href: '/invoicing/audit-log', icon: ClipboardCheck },
       { label: 'Aging Report', href: '/invoicing/reports/aging', icon: Hourglass },
       { label: 'Outstanding', href: '/invoicing/reports/outstanding', icon: CircleDollarSign },
       { label: 'Revenue by Customer', href: '/invoicing/reports/revenue-by-customer', icon: Users },
@@ -147,6 +144,22 @@ export const navItems: NavItem[] = [
       { label: 'Buying Settings', href: '/procurement/settings', icon: Settings, permission: 'procurement:settings:read' },
     ],
   },
+  {
+    label: 'Manufacturing', icon: Settings,
+    children: [
+      { label: 'Production Dashboard', href: '/manufacturing/dashboard', icon: LayoutDashboard, permission: 'manufacturing:shopfloor:read' },
+      { label: 'Bills of Materials', href: '/manufacturing/boms', icon: Network, permission: 'manufacturing:boms:read' },
+      { label: 'Routings', href: '/manufacturing/routings', icon: Route, permission: 'manufacturing:routings:read' },
+      { label: 'Work Centers', href: '/manufacturing/work-centers', icon: Building2, permission: 'manufacturing:work-centers:read' },
+      { label: 'Machines', href: '/manufacturing/machines', icon: Settings, permission: 'manufacturing:machines:read' },
+      { label: 'Operations', href: '/manufacturing/operations', icon: ListChecks, permission: 'manufacturing:operations:read' },
+      { label: 'Downtime Reasons', href: '/manufacturing/downtime-reasons', icon: Clock, permission: 'manufacturing:downtime-reasons:read' },
+      { label: 'Work Orders', href: '/manufacturing/work-orders', icon: ClipboardList, permission: 'manufacturing:work-orders:read' },
+      { label: 'Job Cards', href: '/manufacturing/job-cards', icon: ClipboardCheck, permission: 'manufacturing:job-cards:read' },
+      { label: 'Shop Floor', href: '/manufacturing/shopfloor', icon: Activity, permission: 'manufacturing:shopfloor:read' },
+      { label: 'Manufacturing Reports', href: '/manufacturing/reports', icon: ChartColumnIncreasing, permission: 'manufacturing:reports:read' },
+    ],
+  },
   { label: 'Projects', href: '/projects', icon: FolderOpen, permission: 'projects:projects:read' },
   { label: 'Suppliers', href: '/suppliers', icon: Truck, permission: 'suppliers:suppliers:read' },
   {
@@ -154,7 +167,6 @@ export const navItems: NavItem[] = [
     children: [
       { label: 'General Settings', href: '/settings', icon: SlidersHorizontal },
       { label: 'Access Control', href: '/settings/access', icon: KeyRound, permission: 'access:users:read' },
-      { label: 'Organization Audit Trail', href: '/audit-trail', icon: History, permission: 'access:audit:read' },
     ],
   },
 ];

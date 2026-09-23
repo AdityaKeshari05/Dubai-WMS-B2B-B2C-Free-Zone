@@ -79,11 +79,9 @@ const permissions = [
 
 export default function LandingPage() {
   const [activeSlide, setActiveSlide] = useState(0);
-  const [mounted, setMounted] = useState(false);
   const { user } = useAuth();
 
   useEffect(() => {
-    setMounted(true);
     const timer = window.setInterval(() => setActiveSlide((current) => (current + 1) % slides.length), 4200);
     return () => window.clearInterval(timer);
   }, []);
@@ -108,9 +106,7 @@ export default function LandingPage() {
             <a href="#workflow" className="hover:text-[#1674c4] transition-colors">Workflow</a>
           </div>
           <div className="flex items-center gap-3">
-            {!mounted ? (
-              <div className="h-9 w-24 rounded-md bg-gray-100 animate-pulse"></div>
-            ) : user ? (
+            {user ? (
               <Link
                 href="/dashboard"
                 className="rounded-md bg-[#2490ef] px-4 py-2 text-sm font-medium text-white shadow-sm shadow-[#2490ef]/20 hover:bg-[#1674c4] transition-colors"

@@ -24,7 +24,3 @@ export function getInitials(firstName: string, lastName: string) {
 export function truncate(str: string, length = 50) {
   return str.length > length ? `${str.slice(0, length)}...` : str;
 }
-
-export function formatNumber(num: number) {
-  return new Intl.NumberFormat('en-US').format(num);
-}

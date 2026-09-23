@@ -583,6 +583,7 @@ export interface Customer {
   paymentTerms: number;
   notes?: string;
   isActive: boolean;
+  type?: 'b2b' | 'b2c';
   createdAt: string;
   _count?: { salesOrders: number; invoices: number };
 }
@@ -850,4 +851,378 @@ export interface DashboardStats {
   recentInvoices: SalesInvoice[];
   recentLeads: Lead[];
   monthlyRevenue: { month: string; revenue: number }[];
+}
+
+// ============================================================
+// WMS (B2B / B2C Fulfillment) — builds on the existing Product,
+// Warehouse, Customer and StockLevel types above rather than
+// redefining them. See src/lib/wms/README for the mock-to-API plan.
+// ============================================================
+
+export interface WarehouseLocation {
+  id: string;
+  code: string;
+  warehouseId: string;
+  zone: string;
+  type: 'bin' | 'staging' | 'damaged' | 'dock' | 'returns';
+}
+
+export type BatchStatus = 'active' | 'near_expiry' | 'expired' | 'quarantine';
+
+export interface Batch {
+  id: string;
+  batchNumber: string;
+  productId: string;
+  mfgDate: string;
+  expiryDate: string;
+  status: BatchStatus;
+}
+
+export interface WmsInventoryItem {
+  id: string;
+  productId: string;
+  warehouseId: string;
+  locationId: string;
+  batchId?: string;
+  physicalQty: number;
+  reservedQty: number;
+  damagedQty: number;
+  updatedAt: string;
+}
+
+export interface CustomerSkuMapping {
+  id: string;
+  customerId: string;
+  productId: string;
+  customerSku: string;
+}
+
+export interface CustomerPricing {
+  id: string;
+  customerId: string;
+  productId: string;
+  price: number;
+}
+
+export type B2BOrderStatus =
+  | 'draft' | 'confirmed' | 'allocated' | 'partially_fulfilled' | 'backordered'
+  | 'picking' | 'packed' | 'dispatched' | 'delivered' | 'cancelled';
+
+export interface B2BOrderItem {
+  id: string;
+  productId: string;
+  product?: Product;
+  customerSku?: string;
+  quantity: number;
+  unitPrice: number;
+  discount: number;
+  allocatedQty: number;
+  backorderQty: number;
+  pickedQty: number;
+  packedQty: number;
+  dispatchedQty: number;
+}
+
+export interface B2BOrder {
+  id: string;
+  orderNumber: string;
+  customerId: string;
+  customer?: Customer;
+  customerPO: string;
+  orderDate: string;
+  expectedDelivery: string;
+  priority: 'low' | 'normal' | 'high' | 'urgent';
+  deliveryAddress: string;
+  warehouseId: string;
+  status: B2BOrderStatus;
+  items: B2BOrderItem[];
+  currency: string;
+  createdAt: string;
+  updatedAt: string;
+  deliveryScheduledAt?: string;
+  pod?: { deliveredDate: string; receivedBy: string; notes?: string };
+}
+
+export type B2CChannel = 'website' | 'amazon' | 'noon' | 'marketplace' | 'manual';
+export type B2CPaymentMethod = 'prepaid' | 'cod';
+export type CodCollectionStatus = 'pending' | 'collected' | 'failed';
+
+export type B2CFulfillmentStatus =
+  | 'new' | 'allocated' | 'picking' | 'packing' | 'packed'
+  | 'shipped' | 'delivered' | 'rto' | 'returned' | 'cancelled';
+
+export interface B2COrderItem {
+  id: string;
+  productId: string;
+  product?: Product;
+  quantity: number;
+  unitPrice: number;
+  allocatedQty: number;
+  backorderQty: number;
+  pickedQty: number;
+  packedQty: number;
+}
+
+export interface B2COrder {
+  id: string;
+  orderNumber: string;
+  channel: B2CChannel;
+  customerName: string;
+  customerPhone: string;
+  customerAddress: string;
+  warehouseId: string;
+  items: B2COrderItem[];
+  amount: number;
+  currency: string;
+  paymentMethod: B2CPaymentMethod;
+  codAmount?: number;
+  codStatus?: CodCollectionStatus;
+  fulfillmentStatus: B2CFulfillmentStatus;
+  trackingNumber?: string;
+  carrier?: string;
+  waveId?: string;
+  orderDate: string;
+  createdAt: string;
+  updatedAt: string;
+  rtoReason?: string;
+}
+
+export type AllocationStrategy = 'FIFO' | 'FEFO';
+
+export interface Allocation {
+  id: string;
+  orderId: string;
+  orderType: 'b2b' | 'b2c';
+  productId: string;
+  requestedQty: number;
+  allocatedQty: number;
+  backorderQty: number;
+  strategy: AllocationStrategy;
+  batchAllocations: { batchId?: string; locationId: string; qty: number }[];
+  createdAt: string;
+}
+
+export type PickingTaskStatus = 'pending' | 'assigned' | 'in_progress' | 'picked' | 'exception' | 'completed';
+export type PickExceptionType = 'shortage' | 'damaged' | 'wrong_location' | 'barcode_mismatch';
+
+export interface PickingItem {
+  id: string;
+  productId: string;
+  product?: Product;
+  locationId: string;
+  batchId?: string;
+  expectedQty: number;
+  pickedQty: number;
+  status: 'pending' | 'picked' | 'short' | 'damaged' | 'wrong_location';
+  exception?: { type: PickExceptionType; notes: string; createdAt: string };
+}
+
+export type PickingTaskType = 'single' | 'batch' | 'wave';
+
+export interface PickingTask {
+  id: string;
+  taskNumber: string;
+  orderId: string;
+  orderType: 'b2b' | 'b2c';
+  orderNumber: string;
+  type: PickingTaskType;
+  warehouseId: string;
+  zone?: string;
+  picker?: string;
+  priority: 'low' | 'normal' | 'high' | 'urgent';
+  status: PickingTaskStatus;
+  dueTime?: string;
+  waveId?: string;
+  items: PickingItem[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+export type WaveStatus = 'planning' | 'released' | 'picking' | 'completed';
+
+export interface Wave {
+  id: string;
+  waveNumber: string;
+  name: string;
+  warehouseId: string;
+  zone?: string;
+  carrier?: string;
+  priority: 'low' | 'normal' | 'high' | 'urgent';
+  cutoffTime: string;
+  orderIds: string[];
+  status: WaveStatus;
+  createdAt: string;
+}
+
+export type BoxType = 'small_box' | 'medium_box' | 'large_box' | 'carton' | 'custom';
+
+export interface PackageVerification {
+  skuVerified: boolean;
+  quantityVerified: boolean;
+  packageSelected: boolean;
+  labelGenerated: boolean;
+}
+
+export interface ShippingLabel {
+  trackingNumber: string;
+  carrier: string;
+  generatedAt: string;
+}
+
+export type PackageStatus = 'pending' | 'verifying' | 'packed' | 'ready_to_ship';
+
+export interface PackageUnit {
+  id: string;
+  packageNumber: string;
+  orderId: string;
+  orderType: 'b2b' | 'b2c';
+  boxType: BoxType;
+  weightKg: number;
+  dimensions: { l: number; w: number; h: number };
+  items: { productId: string; qty: number }[];
+  status: PackageStatus;
+  verification: PackageVerification;
+  shippingLabel?: ShippingLabel;
+  palletId?: string;
+  stationId?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface PackingStation {
+  id: string;
+  stationNumber: string;
+  operator?: string;
+  currentPackageId?: string;
+}
+
+export interface Pallet {
+  id: string;
+  palletNumber: string;
+  orderId: string;
+  cartonIds: string[];
+  createdAt: string;
+}
+
+export type ShipmentStatus =
+  | 'label_created' | 'picked_up' | 'in_transit' | 'out_for_delivery'
+  | 'delivered' | 'failed' | 'rto';
+
+export interface Shipment {
+  id: string;
+  shipmentNumber: string;
+  orderId: string;
+  orderType: 'b2b' | 'b2c';
+  packageIds: string[];
+  carrier: string;
+  trackingNumber: string;
+  status: ShipmentStatus;
+  dispatchedAt?: string;
+  deliveredAt?: string;
+  createdAt: string;
+}
+
+export type ReturnStatus = 'requested' | 'approved' | 'received' | 'inspected' | 'restocked' | 'damaged';
+
+export interface ReturnItem {
+  productId: string;
+  quantity: number;
+  reason: string;
+  condition: 'good' | 'damaged';
+}
+
+export interface ReturnRequest {
+  id: string;
+  returnNumber: string;
+  orderId: string;
+  orderType: 'b2b' | 'b2c';
+  customerName: string;
+  items: ReturnItem[];
+  status: ReturnStatus;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export type WmsMovementType = 'transfer' | 'adjustment' | 'pick' | 'return' | 'damage' | 'reconciliation' | 'receipt';
+
+export interface WmsInventoryMovement {
+  id: string;
+  type: WmsMovementType;
+  productId: string;
+  fromLocationId?: string;
+  toLocationId?: string;
+  quantity: number;
+  batchId?: string;
+  reason?: string;
+  referenceId?: string;
+  referenceLabel?: string;
+  createdAt: string;
+  createdBy: string;
+}
+
+export interface WmsStockAdjustment {
+  id: string;
+  productId: string;
+  warehouseId: string;
+  locationId: string;
+  batchId?: string;
+  type: 'increase' | 'decrease';
+  quantity: number;
+  reason: string;
+  notes?: string;
+  authorizedBy: string;
+  createdAt: string;
+  createdBy: string;
+}
+
+export type CycleCountStatus = 'draft' | 'in_progress' | 'completed' | 'reconciled';
+export type CycleCountLineStatus = 'pending' | 'match' | 'shortage' | 'excess';
+
+export interface CycleCountLine {
+  id: string;
+  productId: string;
+  locationId: string;
+  batchId?: string;
+  expectedQty: number;
+  countedQty: number | null;
+  status: CycleCountLineStatus;
+}
+
+export type StockCountType = 'cycle' | 'physical';
+
+export interface CycleCount {
+  id: string;
+  countNumber: string;
+  countType: StockCountType;
+  warehouseId: string;
+  zone?: string;
+  assignedUser: string;
+  countDate: string;
+  status: CycleCountStatus;
+  lines: CycleCountLine[];
+  createdAt: string;
+}
+
+export type ASNStatus = 'draft' | 'issued' | 'in_transit' | 'received';
+
+export interface ASN {
+  id: string;
+  asnNumber: string;
+  orderId: string;
+  customerId: string;
+  items: { productId: string; quantity: number }[];
+  expectedDispatch: string;
+  expectedDelivery: string;
+  status: ASNStatus;
+  createdAt: string;
+}
+
+export interface WmsActivityLog {
+  id: string;
+  entityType: string;
+  entityId: string;
+  action: string;
+  description: string;
+  actor: string;
+  timestamp: string;
 }

@@ -56,6 +56,11 @@ export const navItems: NavItem[] = [
 	      { label: 'Item-wise Sales', href: '/inventory/reports/item-wise-sales', icon: ChartColumnIncreasing, permission: 'inventory:stock-balance:read' },
 	      { label: 'Gross Profit', href: '/inventory/reports/gross-profit', icon: CircleDollarSign, permission: 'inventory:stock-balance:read' },
 	      { label: 'Slow Moving Stock', href: '/inventory/reports/slow-moving-stock', icon: ArchiveX, permission: 'inventory:stock-balance:read' },
+	      { label: 'WMS Stock', href: '/inventory/wms-stock', icon: Boxes },
+	      { label: 'WMS Transfers', href: '/inventory/wms-transfers', icon: ArrowLeftRight },
+	      { label: 'WMS Adjustments', href: '/inventory/wms-adjustments', icon: SlidersHorizontal },
+	      { label: 'WMS Cycle Counts', href: '/inventory/wms-counts', icon: ClipboardCheck },
+	      { label: 'WMS History', href: '/inventory/wms-history', icon: History },
     ],
   },
   {
@@ -101,6 +106,38 @@ export const navItems: NavItem[] = [
       { label: 'Fulfilment', href: '/sales/fulfilment', icon: PackageCheck },
       { label: 'Sales Reports', href: '/sales/reports', icon: BarChart3 },
       { label: 'Sales Configuration', href: '/sales/settings', icon: Settings },
+    ],
+  },
+  {
+    label: 'WMS', icon: Warehouse,
+    children: [
+      {
+        label: 'B2B Orders', icon: Building2,
+        children: [
+          { label: '6.1 Sales Order Management', href: '/wms/b2b', icon: Building2 },
+          { label: '6.2 Customer-Specific SKU', href: '/wms/b2b/customers', icon: Users },
+          { label: '6.3 Customer Pricing', href: '/wms/b2b/pricing', icon: Tags },
+          { label: '6.4 Order Allocation', href: '/wms/b2b/allocation', icon: Boxes },
+          { label: '6.5 Partial Fulfillment', href: '/wms/b2b/partial-fulfillment', icon: Layers },
+          { label: '6.6 Backorders', href: '/wms/b2b/backorders', icon: Clock },
+          { label: '6.7 ASN for Customers', href: '/wms/b2b/asn', icon: FileCheck2 },
+          { label: '6.8 B2B Picking', href: '/wms/b2b/picking', icon: ClipboardList },
+          { label: '6.9 Pallet & Carton Handling', href: '/wms/b2b/packing', icon: Archive },
+          { label: '6.10 Delivery Scheduling', href: '/wms/b2b/scheduling', icon: CalendarDays },
+          { label: '6.11 Proof of Delivery', href: '/wms/b2b/pod', icon: ClipboardSignature },
+        ],
+      },
+      {
+        label: 'B2C Fulfillment', icon: ShoppingBag,
+        children: [
+          { label: 'Orders', href: '/wms/b2c', icon: ShoppingBag },
+          { label: 'Waves', href: '/wms/b2c/waves', icon: Layers },
+          { label: 'Returns', href: '/wms/b2c/returns', icon: PackageCheck },
+        ],
+      },
+      { label: 'Picking', href: '/wms/fulfillment/picking', icon: ClipboardList },
+      { label: 'Packing', href: '/wms/fulfillment/packing', icon: Archive },
+      { label: 'Dispatch', href: '/wms/fulfillment/dispatch', icon: Truck },
     ],
   },
   {

@@ -1,2 +1,4 @@
-import { InventoryConfigurationPage } from '@/components/inventory/InventoryCompletionPages';
-export default InventoryConfigurationPage;
+import WarehouseLocationConfig from '@/components/inventory/WarehouseLocationConfig';
+export default function InventorySettingsPage() {
+  return <WarehouseLocationConfig />;
+}

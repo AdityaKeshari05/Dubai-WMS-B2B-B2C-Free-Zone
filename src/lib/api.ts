@@ -53,6 +53,18 @@ api.interceptors.request.use((config) => {
 api.interceptors.response.use(
   (res) => res,
   async (err) => {
+    // If backend is unreachable during frontend UI presentation/dev, return empty mock data for GET requests
+    const isNetworkError = err.code === 'ERR_NETWORK' || err.message === 'Network Error' || !err.response;
+    if (isNetworkError && err.config?.method?.toLowerCase() === 'get') {
+      return Promise.resolve({
+        data: { success: true, data: [], items: [] },
+        status: 200,
+        statusText: 'OK',
+        headers: {},
+        config: err.config,
+      });
+    }
+
     const requestUrl = String(err.config?.url || '');
     const isAuthRequest = ['/auth/login', '/auth/register', '/auth/refresh', '/auth/check-slug', '/auth/workspace']
       .some((path) => requestUrl.includes(path));

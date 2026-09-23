@@ -16,7 +16,7 @@ const CARRIERS = ['Any Carrier', 'Aramex', 'DHL Express', 'Emirates Post', 'Fetc
 export function CreateWaveModal({ open, onOpenChange }: { open: boolean; onOpenChange: (open: boolean) => void }) {
   const router = useRouter();
   const { warehouses } = useWmsLookups();
-  const eligibleOrders = useWmsDbSelector((s) => s.b2cOrders.filter((o) => o.fulfillmentStatus === 'allocated' && !o.waveId));
+  const eligibleOrders = useWmsDbSelector((s) => s.b2cOrders.filter((o) => ['allocated', 'picking'].includes(o.fulfillmentStatus) && !o.waveId));
 
   const [name, setName] = useState('');
   const [warehouseId, setWarehouseId] = useState('');
@@ -55,7 +55,7 @@ export function CreateWaveModal({ open, onOpenChange }: { open: boolean; onOpenC
       });
       toast.success(`${wave.waveNumber} created with ${selected.length} order(s)`);
       onOpenChange(false);
-      router.push(`/wms/b2c/waves/${wave.id}`);
+      router.push(`/b2c/waves/${wave.id}`);
     } finally {
       setSubmitting(false);
     }
@@ -63,11 +63,11 @@ export function CreateWaveModal({ open, onOpenChange }: { open: boolean; onOpenC
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-lg">
+      <DialogContent className="w-[calc(100vw-2rem)] max-w-2xl">
         <DialogHeader><DialogTitle>Create Wave</DialogTitle></DialogHeader>
-        <div className="grid grid-cols-2 gap-3">
-          <div className="space-y-1"><Label>Wave Name</Label><Input value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Morning Wave 1" /></div>
-          <div className="space-y-1">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <div className="space-y-1.5"><Label>Wave Name</Label><Input value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Morning Wave 1" /></div>
+          <div className="space-y-1.5">
             <Label>Warehouse</Label>
             <Select value={warehouseId} onValueChange={(v) => { setWarehouseId(v); setSelected([]); setCustomerFilter('all'); }}>
               <SelectTrigger><SelectValue placeholder="Select" /></SelectTrigger>
@@ -75,8 +75,8 @@ export function CreateWaveModal({ open, onOpenChange }: { open: boolean; onOpenC
             </Select>
           </div>
         </div>
-        <div className="grid grid-cols-3 gap-3">
-          <div className="space-y-1">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="space-y-1.5">
             <Label>Priority</Label>
             <Select value={priority} onValueChange={(v) => setPriority(v as typeof priority)}>
               <SelectTrigger><SelectValue /></SelectTrigger>
@@ -86,17 +86,17 @@ export function CreateWaveModal({ open, onOpenChange }: { open: boolean; onOpenC
               </SelectContent>
             </Select>
           </div>
-          <div className="space-y-1">
+          <div className="space-y-1.5">
             <Label>Carrier</Label>
             <Select value={carrier} onValueChange={setCarrier}>
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>{CARRIERS.map((c) => <SelectItem key={c} value={c}>{c}</SelectItem>)}</SelectContent>
             </Select>
           </div>
-          <div className="space-y-1"><Label>Cutoff Time</Label><Input type="datetime-local" value={cutoffTime} onChange={(e) => setCutoffTime(e.target.value)} /></div>
+          <div className="space-y-1.5"><Label>Cutoff Time</Label><Input type="datetime-local" value={cutoffTime} onChange={(e) => setCutoffTime(e.target.value)} /></div>
         </div>
 
-        <div className="space-y-1">
+        <div className="space-y-2">
           <div className="flex items-center justify-between">
             <Label>Filter by Customer</Label>
           </div>
@@ -109,7 +109,7 @@ export function CreateWaveModal({ open, onOpenChange }: { open: boolean; onOpenC
           </Select>
         </div>
 
-        <div className="space-y-1">
+        <div className="space-y-2">
           <div className="flex items-center justify-between">
             <Label>Eligible Orders ({selected.length} selected)</Label>
             {visibleOrders.length > 0 ? <Button size="sm" variant="ghost" onClick={selectAllVisible}>Select all matching</Button> : null}
@@ -121,7 +121,7 @@ export function CreateWaveModal({ open, onOpenChange }: { open: boolean; onOpenC
           ) : (
             <div className="max-h-48 overflow-y-auto rounded-md border border-[#e5e2dc]">
               {visibleOrders.map((o) => (
-                <label key={o.id} className="flex cursor-pointer items-center gap-2 border-b border-gray-100 px-3 py-2 text-sm last:border-b-0 hover:bg-gray-50">
+                <label key={o.id} className="flex cursor-pointer items-center gap-3 border-b border-gray-100 px-4 py-3 text-sm leading-5 last:border-b-0 hover:bg-gray-50">
                   <input type="checkbox" checked={selected.includes(o.id)} onChange={() => toggle(o.id)} />
                   <span className="font-medium text-gray-800">{o.orderNumber}</span>
                   <span className="text-xs text-gray-500">{o.customerName}</span>
@@ -130,7 +130,7 @@ export function CreateWaveModal({ open, onOpenChange }: { open: boolean; onOpenC
             </div>
           )}
         </div>
-        <DialogFooter>
+        <DialogFooter className="gap-2">
           <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
           <Button onClick={handleSubmit} disabled={submitting}>Create Wave</Button>
         </DialogFooter>

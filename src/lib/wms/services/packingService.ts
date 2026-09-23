@@ -82,8 +82,8 @@ export const packingService = {
     const pkg = state.packages.find((p) => p.id === packageId);
     if (!pkg) throw new Error('Package not found');
     const v = pkg.verification;
-    if (!v.skuVerified || !v.quantityVerified || !v.packageSelected || !v.labelGenerated) {
-      throw new Error('Complete SKU, quantity, package and label verification before marking packed.');
+    if (!v.skuVerified || !v.quantityVerified || !v.packageSelected) {
+      throw new Error('Complete SKU, quantity and package verification before marking packed.');
     }
 
     const now = new Date().toISOString();

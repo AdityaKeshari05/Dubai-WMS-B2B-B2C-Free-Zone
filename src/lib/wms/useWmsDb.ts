@@ -1,15 +1,7 @@
 'use client';
 
-import { useEffect, useSyncExternalStore } from 'react';
+import { useSyncExternalStore } from 'react';
 import { wmsDb, type WmsDatabase } from './db';
-
-/** Hydrates the mock store from localStorage once on mount. Call this from
- * the top of the WMS layout, mirroring how the rest of the app boots. */
-export function useWmsDbHydration() {
-  useEffect(() => {
-    wmsDb.hydrateFromStorage();
-  }, []);
-}
 
 export function useWmsDb(): WmsDatabase {
   return useSyncExternalStore(wmsDb.subscribe, wmsDb.getSnapshot, wmsDb.getSnapshot);

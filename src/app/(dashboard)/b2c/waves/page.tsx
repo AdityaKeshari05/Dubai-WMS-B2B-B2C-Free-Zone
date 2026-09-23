@@ -8,7 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { useWmsDbSelector } from '@/lib/wms/useWmsDb';
 import { useWmsLookups } from '@/lib/wms/useLookups';
 import { formatDateTime } from '@/lib/utils';
-import { CreateWaveModal } from '@/components/wms/b2c/CreateWaveModal';
+import { CreateWaveModal } from '@/components/b2c/CreateWaveModal';
 
 const WAVE_VARIANT = { planning: 'secondary', released: 'info', picking: 'purple', completed: 'success' } as const;
 
@@ -20,11 +20,12 @@ export default function WavesPage() {
   const [open, setOpen] = useState(false);
 
   return (
-    <div>
+    <div className="space-y-5">
       <PageHeader title="Wave Picking" description="Group B2C orders into waves for batch fulfillment" action={{ label: 'Create Wave', onClick: () => setOpen(true), icon: Plus }} />
       <DataTable
+        comfortable
         data={[...waves].reverse()}
-        onRowClick={(w) => router.push(`/wms/b2c/waves/${w.id}`)}
+        onRowClick={(w) => router.push(`/b2c/waves/${w.id}`)}
         emptyMessage="No waves yet"
         columns={[
           { key: 'waveNumber', header: 'Wave #', render: (w) => <span className="font-medium text-[#2490ef]">{w.waveNumber}</span> },
@@ -37,7 +38,7 @@ export default function WavesPage() {
           { key: 'status', header: 'Status', render: (w) => <Badge variant={WAVE_VARIANT[w.status]}>{w.status}</Badge> },
         ]}
       />
-      {waves.length === 0 ? <p className="mt-2 flex items-center gap-1.5 text-xs text-gray-400"><Layers className="h-3.5 w-3.5" />Create a wave from allocated B2C orders to start batch picking.</p> : null}
+      {waves.length === 0 ? <p className="flex items-center gap-2 text-sm leading-5 text-gray-500"><Layers className="h-4 w-4 shrink-0" />Create a wave from allocated B2C orders to start batch picking.</p> : null}
       <CreateWaveModal open={open} onOpenChange={setOpen} />
     </div>
   );

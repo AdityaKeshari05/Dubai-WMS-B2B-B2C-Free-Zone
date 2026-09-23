@@ -38,13 +38,13 @@ export const batchPickingService = {
   },
 
   distributePick(group: BatchPickGroup, totalPicked: number) {
-    let remaining = totalPicked;
-    for (const ti of group.taskItems) {
-      if (remaining <= 0) break;
-      if (ti.pickedQty > 0) continue;
-      const take = Math.min(ti.expectedQty, remaining);
-      pickingService.confirmPickItem(ti.taskId, ti.itemId, take);
-      remaining -= take;
+    if (!Number.isInteger(totalPicked) || totalPicked !== group.totalExpectedQty - group.totalPickedQty) {
+      throw new Error(`Confirm the remaining batch quantity (${group.totalExpectedQty - group.totalPickedQty}) to keep every order line reconciled.`);
     }
+    for (const ti of group.taskItems) {
+      if (ti.pickedQty > 0) throw new Error('This product group has already been confirmed.');
+      pickingService.confirmPickItem(ti.taskId, ti.itemId, ti.expectedQty);
+    }
+    for (const taskId of new Set(group.taskItems.map((item) => item.taskId))) pickingService.completeTask(taskId);
   },
 };

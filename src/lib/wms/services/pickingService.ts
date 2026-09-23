@@ -120,6 +120,12 @@ export const pickingService = {
     const task = state.pickingTasks.find((t) => t.id === taskId);
     const item = task?.items.find((i) => i.id === itemId);
     if (!task || !item) throw new Error('Pick item not found');
+    if (item.status === 'picked' || item.status === 'short' || item.status === 'damaged' || item.status === 'wrong_location') {
+      throw new Error('This pick line has already been confirmed.');
+    }
+    if (!Number.isInteger(pickedQty) || pickedQty <= 0 || pickedQty > item.expectedQty) {
+      throw new Error(`Pick quantity must be between 1 and ${item.expectedQty}.`);
+    }
 
     inventoryService.consumeForPick({
       productId: item.productId,
@@ -153,6 +159,9 @@ export const pickingService = {
       if (order) {
         const orderItem = order.items.find((oi) => oi.productId === item.productId);
         if (orderItem) orderItem.pickedQty += pickedQty;
+        if (t.orderType === 'b2c' && order.items.every((oi) => oi.pickedQty >= oi.allocatedQty && oi.allocatedQty > 0)) {
+          (order as B2COrder).fulfillmentStatus = 'packing';
+        }
         order.updatedAt = new Date().toISOString();
       }
     });

@@ -37,7 +37,7 @@ export default function DispatchDetailPage() {
   }
 
   const orderNumber = b2bOrder?.orderNumber ?? b2cOrder?.orderNumber ?? '-';
-  const orderHref = shipment.orderType === 'b2b' ? `/wms/b2b/${shipment.orderId}` : `/wms/b2c/${shipment.orderId}`;
+  const orderHref = shipment.orderType === 'b2b' ? `/wms/b2b/${shipment.orderId}` : `/b2c/${shipment.orderId}`;
   const customerName = b2bOrder ? customerMap.get(b2bOrder.customerId)?.name ?? '-' : b2cOrder?.customerName ?? '-';
   const address = b2bOrder?.deliveryAddress ?? b2cOrder?.customerAddress ?? '-';
   const trackingScanned = scannedTracking === shipment.trackingNumber;

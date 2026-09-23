@@ -28,20 +28,20 @@ export function RTOModal({ open, onOpenChange, shipmentId }: { open: boolean; on
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-sm">
+      <DialogContent className="w-[calc(100vw-2rem)] max-w-md">
         <DialogHeader><DialogTitle>Mark Return to Origin</DialogTitle></DialogHeader>
-        <div className="space-y-1">
+        <div className="space-y-1.5">
           <Label>Reason</Label>
           <Select value={reason} onValueChange={setReason}>
             <SelectTrigger><SelectValue /></SelectTrigger>
             <SelectContent>{REASONS.map((r) => <SelectItem key={r} value={r}>{r}</SelectItem>)}</SelectContent>
           </Select>
         </div>
-        <div className="space-y-1">
+        <div className="space-y-1.5">
           <Label>Notes</Label>
           <Textarea value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Optional notes" />
         </div>
-        <DialogFooter>
+        <DialogFooter className="gap-2">
           <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
           <Button variant="destructive" onClick={handleSubmit} disabled={submitting}>Mark RTO</Button>
         </DialogFooter>

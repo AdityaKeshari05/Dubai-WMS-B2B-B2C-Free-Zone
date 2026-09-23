@@ -15,9 +15,10 @@ interface DataTableProps<T> {
   keyField?: string;
   emptyMessage?: string;
   onRowClick?: (item: T) => void;
+  comfortable?: boolean;
 }
 
-export function DataTable<T extends Record<string, any>>({ columns, data, isLoading, keyField = 'id', emptyMessage = 'No records found', onRowClick }: DataTableProps<T>) {
+export function DataTable<T extends Record<string, any>>({ columns, data, isLoading, keyField = 'id', emptyMessage = 'No records found', onRowClick, comfortable = false }: DataTableProps<T>) {
   if (isLoading) {
     return (
       <div className="space-y-2">
@@ -34,7 +35,7 @@ export function DataTable<T extends Record<string, any>>({ columns, data, isLoad
         <thead className="border-b border-[#e5e2dc] bg-[#f8faf9]">
           <tr>
             {columns.map((col) => (
-              <th key={col.key} className={`px-3 py-2.5 text-left text-xs font-semibold uppercase text-[#6b7280] ${col.className || ''}`}>
+              <th key={col.key} className={`${comfortable ? 'px-4 py-3' : 'px-3 py-2.5'} text-left text-xs font-semibold uppercase text-[#6b7280] ${col.className || ''}`}>
                 {col.header}
               </th>
             ))}
@@ -43,7 +44,7 @@ export function DataTable<T extends Record<string, any>>({ columns, data, isLoad
         <tbody className="divide-y divide-[#f0ede8] bg-white">
           {data.length === 0 ? (
             <tr>
-              <td colSpan={columns.length} className="px-4 py-12 text-center text-sm text-[#8a929d]">
+                <td colSpan={columns.length} className="px-4 py-12 text-center text-sm text-[#8a929d]">
                 {emptyMessage}
               </td>
             </tr>
@@ -55,7 +56,7 @@ export function DataTable<T extends Record<string, any>>({ columns, data, isLoad
                 onClick={() => onRowClick?.(item)}
               >
                 {columns.map((col) => (
-                  <td key={col.key} className={`px-3 py-2.5 text-[#374151] ${col.className || ''}`}>
+                  <td key={col.key} className={`${comfortable ? 'px-4 py-3 leading-5' : 'px-3 py-2.5'} text-[#374151] ${col.className || ''}`}>
                     {col.render ? col.render(item) : item[col.key]}
                   </td>
                 ))}

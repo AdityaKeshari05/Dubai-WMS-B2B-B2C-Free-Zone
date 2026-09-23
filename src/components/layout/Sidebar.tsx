@@ -14,8 +14,8 @@ interface SidebarProps {
 }
 
 // Some sidebar entries are flat siblings whose hrefs are nevertheless nested
-// path prefixes of one another (e.g. "B2C Orders" -> /wms/b2c and "Waves" ->
-// /wms/b2c/waves). Matching each item against the pathname independently
+// path prefixes of one another (e.g. "B2C Orders" -> /b2c and "Waves" ->
+// /b2c/waves). Matching each item against the pathname independently
 // would light up every ancestor prefix at once, so instead we find the
 // single longest href match among ALL items up front and compare against
 // that - only the most specific match wins.

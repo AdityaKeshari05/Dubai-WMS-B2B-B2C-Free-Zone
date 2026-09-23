@@ -30,6 +30,7 @@ export function CreateB2COrderModal({ open, onOpenChange }: { open: boolean; onO
   const [customerAddress, setCustomerAddress] = useState('');
   const [channel, setChannel] = useState<B2CChannel>('website');
   const [paymentMethod, setPaymentMethod] = useState<'prepaid' | 'cod'>('prepaid');
+  const [priority, setPriority] = useState<'low' | 'normal' | 'high' | 'urgent'>('normal');
   const [warehouseId, setWarehouseId] = useState('');
   const [lines, setLines] = useState<DraftLine[]>([{ productId: '', quantity: 1, unitPrice: 0 }]);
   const [submitting, setSubmitting] = useState(false);
@@ -57,6 +58,10 @@ export function CreateB2COrderModal({ open, onOpenChange }: { open: boolean; onO
 
   async function handleSubmit() {
     const validLines = lines.filter((l) => l.productId && l.quantity > 0);
+    if (lines.some((line) => line.productId && (!Number.isInteger(line.quantity) || line.quantity < 1 || line.unitPrice < 0))) {
+      toast.error('Each product needs a positive whole quantity and a non-negative unit price.');
+      return;
+    }
     if (!customerName || !warehouseId || validLines.length === 0) {
       toast.error('Enter customer details and at least one product line.');
       return;
@@ -70,13 +75,14 @@ export function CreateB2COrderModal({ open, onOpenChange }: { open: boolean; onO
         customerAddress,
         warehouseId,
         paymentMethod,
+        priority,
         orderDate: new Date().toISOString().slice(0, 10),
         currency: 'USD',
         items: validLines,
       });
       toast.success(`${order.orderNumber} has been created`);
       onOpenChange(false);
-      router.push(`/wms/b2c/${order.id}`);
+      router.push(`/b2c/${order.id}`);
     } finally {
       setSubmitting(false);
     }
@@ -84,26 +90,26 @@ export function CreateB2COrderModal({ open, onOpenChange }: { open: boolean; onO
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl">
+      <DialogContent className="w-[calc(100vw-2rem)] max-w-3xl">
         <DialogHeader><DialogTitle>Create B2C Order</DialogTitle></DialogHeader>
 
-        <div className="space-y-1">
+        <div className="space-y-1.5">
           <Label>Quick-fill Customer (optional)</Label>
           <Select value={customerId} onValueChange={applyCustomer}>
             <SelectTrigger><SelectValue placeholder="Custom / new customer" /></SelectTrigger>
             <SelectContent>{customers.map((c) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}</SelectContent>
           </Select>
         </div>
-        <div className="grid grid-cols-2 gap-3">
-          <div className="space-y-1"><Label>Customer Name</Label><Input value={customerName} onChange={(e) => setCustomerName(e.target.value)} placeholder="Full name" /></div>
-          <div className="space-y-1"><Label>Phone</Label><Input value={customerPhone} onChange={(e) => setCustomerPhone(e.target.value)} placeholder="Phone number" /></div>
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <div className="space-y-1.5"><Label>Customer Name</Label><Input value={customerName} onChange={(e) => setCustomerName(e.target.value)} placeholder="Full name" /></div>
+          <div className="space-y-1.5"><Label>Phone</Label><Input value={customerPhone} onChange={(e) => setCustomerPhone(e.target.value)} placeholder="Phone number" /></div>
         </div>
-        <div className="space-y-1">
+        <div className="space-y-1.5">
           <Label>Delivery Address</Label>
           <Textarea value={customerAddress} onChange={(e) => setCustomerAddress(e.target.value)} placeholder="Full address" />
         </div>
-        <div className="grid grid-cols-3 gap-3">
-          <div className="space-y-1">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          <div className="space-y-1.5">
             <Label>Channel</Label>
             <Select value={channel} onValueChange={(v) => setChannel(v as B2CChannel)}>
               <SelectTrigger><SelectValue /></SelectTrigger>
@@ -116,7 +122,7 @@ export function CreateB2COrderModal({ open, onOpenChange }: { open: boolean; onO
               </SelectContent>
             </Select>
           </div>
-          <div className="space-y-1">
+          <div className="space-y-1.5">
             <Label>Payment</Label>
             <Select value={paymentMethod} onValueChange={(v) => setPaymentMethod(v as 'prepaid' | 'cod')}>
               <SelectTrigger><SelectValue /></SelectTrigger>
@@ -126,7 +132,14 @@ export function CreateB2COrderModal({ open, onOpenChange }: { open: boolean; onO
               </SelectContent>
             </Select>
           </div>
-          <div className="space-y-1">
+          <div className="space-y-1.5">
+            <Label>Priority</Label>
+            <Select value={priority} onValueChange={(v) => setPriority(v as typeof priority)}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent><SelectItem value="low">Low</SelectItem><SelectItem value="normal">Normal</SelectItem><SelectItem value="high">High</SelectItem><SelectItem value="urgent">Urgent</SelectItem></SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-1.5">
             <Label>Fulfilling Warehouse</Label>
             <Select value={warehouseId} onValueChange={setWarehouseId}>
               <SelectTrigger><SelectValue placeholder="Select warehouse" /></SelectTrigger>
@@ -135,28 +148,28 @@ export function CreateB2COrderModal({ open, onOpenChange }: { open: boolean; onO
           </div>
         </div>
 
-        <div className="mb-1 flex items-center justify-between">
+        <div className="flex flex-wrap items-center justify-between gap-3">
           <Label>Line Items</Label>
           <Button size="sm" variant="outline" onClick={addLine}><Plus className="mr-1 h-3.5 w-3.5" />Add Line</Button>
         </div>
-        <div className="overflow-hidden rounded-md border border-[#e5e2dc]">
-          <table className="w-full text-sm">
+        <div className="overflow-x-auto rounded-md border border-[#e5e2dc]">
+          <table className="min-w-[600px] text-sm sm:min-w-full">
             <thead className="bg-[#f8faf9] text-xs text-gray-500">
-              <tr><th className="px-3 py-2 text-left">Product</th><th className="px-3 py-2 text-right">Qty</th><th className="px-3 py-2 text-right">Unit Price</th><th className="px-3 py-2 text-right">Total</th><th></th></tr>
+              <tr><th className="px-4 py-3 text-left">Product</th><th className="px-3 py-3 text-right">Qty</th><th className="px-3 py-3 text-right">Unit Price</th><th className="px-3 py-3 text-right">Total</th><th className="px-3 py-3"></th></tr>
             </thead>
             <tbody>
               {lines.map((line, idx) => (
                 <tr key={idx} className="border-t border-gray-100">
-                  <td className="px-3 py-2">
+                  <td className="px-4 py-3">
                     <Select value={line.productId} onValueChange={(v) => { const p = products.find((x) => x.id === v); updateLine(idx, { productId: v, unitPrice: p?.salePrice ?? 0 }); }}>
                       <SelectTrigger className="min-w-44"><SelectValue placeholder="Select" /></SelectTrigger>
                       <SelectContent>{products.map((p) => <SelectItem key={p.id} value={p.id}>{p.sku} — {p.name}</SelectItem>)}</SelectContent>
                     </Select>
                   </td>
-                  <td className="px-3 py-2"><Input type="number" min={1} value={line.quantity} onChange={(e) => updateLine(idx, { quantity: Number(e.target.value) })} className="w-16 text-right" /></td>
-                  <td className="px-3 py-2"><Input type="number" min={0} value={line.unitPrice} onChange={(e) => updateLine(idx, { unitPrice: Number(e.target.value) })} className="w-24 text-right" /></td>
-                  <td className="px-3 py-2 text-right font-medium text-gray-900">{formatCurrency(line.quantity * line.unitPrice)}</td>
-                  <td className="px-2 py-2"><button onClick={() => removeLine(idx)} className="text-gray-400 hover:text-red-600"><Trash2 className="h-4 w-4" /></button></td>
+                  <td className="px-3 py-3"><Input type="number" min={1} value={line.quantity} onChange={(e) => updateLine(idx, { quantity: Number(e.target.value) })} className="w-16 text-right" /></td>
+                  <td className="px-3 py-3"><Input type="number" min={0} value={line.unitPrice} onChange={(e) => updateLine(idx, { unitPrice: Number(e.target.value) })} className="w-24 text-right" /></td>
+                  <td className="px-3 py-3 text-right font-medium text-gray-900">{formatCurrency(line.quantity * line.unitPrice)}</td>
+                  <td className="px-3 py-3"><button onClick={() => removeLine(idx)} className="rounded p-1 text-gray-400 hover:bg-red-50 hover:text-red-600"><Trash2 className="h-4 w-4" /></button></td>
                 </tr>
               ))}
             </tbody>
@@ -164,7 +177,7 @@ export function CreateB2COrderModal({ open, onOpenChange }: { open: boolean; onO
         </div>
         <div className="text-right text-sm font-semibold text-gray-900">Order Total: {formatCurrency(total)}</div>
 
-        <DialogFooter>
+        <DialogFooter className="gap-2">
           <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
           <Button onClick={handleSubmit} disabled={submitting}>Create Order</Button>
         </DialogFooter>

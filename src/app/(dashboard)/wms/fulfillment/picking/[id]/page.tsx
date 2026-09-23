@@ -41,7 +41,7 @@ export default function PickingTaskDetailPage() {
     return <div><PageHeader title="Task Not Found" /></div>;
   }
 
-  const orderHref = task.orderType === 'b2b' ? `/wms/b2b/${task.orderId}` : `/wms/b2c/${task.orderId}`;
+  const orderHref = task.orderType === 'b2b' ? `/wms/b2b/${task.orderId}` : `/b2c/${task.orderId}`;
   const allResolved = task.items.every((i) => i.status !== 'pending');
 
   function handleAssign() {

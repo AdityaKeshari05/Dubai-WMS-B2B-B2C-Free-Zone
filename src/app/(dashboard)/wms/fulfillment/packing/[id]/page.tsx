@@ -29,7 +29,7 @@ export default function PackageDetailPage() {
     return <div><PageHeader title="Package Not Found" /></div>;
   }
 
-  const orderHref = pkg.orderType === 'b2b' ? `/wms/b2b/${pkg.orderId}` : `/wms/b2c/${pkg.orderId}`;
+  const orderHref = pkg.orderType === 'b2b' ? `/wms/b2b/${pkg.orderId}` : `/b2c/${pkg.orderId}`;
   const v = pkg.verification;
   const readyToMarkPacked = v.skuVerified && v.quantityVerified && v.packageSelected && v.labelGenerated && pkg.status !== 'packed';
 

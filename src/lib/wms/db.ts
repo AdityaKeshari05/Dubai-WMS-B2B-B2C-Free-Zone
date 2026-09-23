@@ -96,40 +96,13 @@ function freshDatabase(): WmsDatabase {
   };
 }
 
-// v5: bumped to include packing stations in the seed
-const STORAGE_KEY = 'orus-wms-mock-db-v5';
 type Listener = () => void;
 
 class WmsDatabaseStore {
   private data: WmsDatabase = freshDatabase();
   private listeners = new Set<Listener>();
-  private hydrated = false;
 
   getSnapshot = (): WmsDatabase => this.data;
-
-  hydrateFromStorage() {
-    if (this.hydrated || typeof window === 'undefined') return;
-    this.hydrated = true;
-    try {
-      const raw = window.localStorage.getItem(STORAGE_KEY);
-      if (raw) {
-        const parsed = JSON.parse(raw) as Partial<WmsDatabase>;
-        this.data = { ...freshDatabase(), ...parsed };
-        this.emit();
-      }
-    } catch {
-      // ignore corrupt storage
-    }
-  }
-
-  private persist() {
-    if (typeof window === 'undefined') return;
-    try {
-      window.localStorage.setItem(STORAGE_KEY, JSON.stringify(this.data));
-    } catch {
-      // storage full/unavailable - continue in-memory only
-    }
-  }
 
   private emit() {
     this.listeners.forEach((l) => l());
@@ -147,13 +120,11 @@ class WmsDatabaseStore {
     const draft = structuredClone(this.data);
     fn(draft);
     this.data = draft;
-    this.persist();
     this.emit();
   }
 
   resetDemoData() {
     this.data = freshDatabase();
-    this.persist();
     this.emit();
   }
 }

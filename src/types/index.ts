@@ -966,6 +966,7 @@ export interface B2COrderItem {
 export interface B2COrder {
   id: string;
   orderNumber: string;
+  sourceOrderNumber?: string;
   channel: B2CChannel;
   customerName: string;
   customerPhone: string;
@@ -975,6 +976,7 @@ export interface B2COrder {
   amount: number;
   currency: string;
   paymentMethod: B2CPaymentMethod;
+  paymentStatus?: 'pending' | 'paid' | 'failed' | 'refunded';
   codAmount?: number;
   codStatus?: CodCollectionStatus;
   fulfillmentStatus: B2CFulfillmentStatus;
@@ -985,6 +987,7 @@ export interface B2COrder {
   createdAt: string;
   updatedAt: string;
   rtoReason?: string;
+  priority?: 'low' | 'normal' | 'high' | 'urgent';
 }
 
 export type AllocationStrategy = 'FIFO' | 'FEFO';
@@ -1119,6 +1122,9 @@ export interface Shipment {
   status: ShipmentStatus;
   dispatchedAt?: string;
   deliveredAt?: string;
+  rtoReason?: string;
+  rtoDate?: string;
+  rtoStatus?: 'initiated' | 'in_transit' | 'received' | 'inspected' | 'completed';
   createdAt: string;
 }
 
@@ -1126,6 +1132,7 @@ export type ReturnStatus = 'requested' | 'approved' | 'received' | 'inspected' |
 
 export interface ReturnItem {
   productId: string;
+  orderItemId?: string;
   quantity: number;
   reason: string;
   condition: 'good' | 'damaged';

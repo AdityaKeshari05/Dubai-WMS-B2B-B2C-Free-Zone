@@ -34,6 +34,12 @@ export const waveService = {
       for (const orderId of params.orderIds) {
         const order = draft.b2cOrders.find((o) => o.id === orderId);
         if (order) order.waveId = wave.id;
+        for (const task of draft.pickingTasks) {
+          if (task.orderType === 'b2c' && task.orderId === orderId && task.status !== 'completed') {
+            task.waveId = wave.id;
+            task.type = 'wave';
+          }
+        }
       }
     });
     logWmsActivity('wave', wave.id, 'create', `Wave ${wave.waveNumber} created with ${params.orderIds.length} order(s)`);
@@ -44,6 +50,9 @@ export const waveService = {
     wmsDb.mutate((draft) => {
       const wave = draft.waves.find((w) => w.id === waveId);
       if (wave) wave.status = 'released';
+      for (const task of draft.pickingTasks) {
+        if (task.waveId === waveId && task.status !== 'completed') task.type = 'batch';
+      }
     });
     logWmsActivity('wave', waveId, 'release', 'Wave released for picking');
   },

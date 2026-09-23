@@ -20,7 +20,7 @@ const NEXT_ACTION: Partial<Record<ReturnStatus, { label: string; next: ReturnSta
 };
 
 export default function ReturnsPage() {
-  const returns = useWmsDbSelector((s) => s.returns);
+  const returns = useWmsDbSelector((s) => s.returns.filter((r) => r.orderType === 'b2c'));
   const { products, warehouses } = useWmsLookups();
   const productMap = new Map(products.map((p) => [p.id, p]));
 
@@ -32,9 +32,10 @@ export default function ReturnsPage() {
   }
 
   return (
-    <div>
+    <div className="space-y-5">
       <PageHeader title="Customer Returns" description="Return requests, inspection and restocking" />
       <DataTable
+        comfortable
         data={[...returns].reverse()}
         emptyMessage="No returns yet"
         columns={[
@@ -51,7 +52,7 @@ export default function ReturnsPage() {
               if (action) return <Button size="sm" variant="outline" onClick={() => advance(r.id, action.next)}>{action.label}</Button>;
               if (r.status === 'inspected') {
                 return (
-                  <div className="flex gap-1.5">
+                  <div className="flex flex-wrap gap-2">
                     <Button size="sm" onClick={() => advance(r.id, 'restocked')}>Restock</Button>
                     <Button size="sm" variant="destructive" onClick={() => advance(r.id, 'damaged')}>Mark Damaged</Button>
                   </div>
@@ -62,7 +63,7 @@ export default function ReturnsPage() {
           },
         ]}
       />
-      {returns.length === 0 ? <p className="mt-2 flex items-center gap-1.5 text-xs text-gray-400"><Undo2 className="h-3.5 w-3.5" />Returns created from an order&apos;s detail page will show here.</p> : null}
+      {returns.length === 0 ? <p className="flex items-center gap-2 text-sm leading-5 text-gray-500"><Undo2 className="h-4 w-4 shrink-0" />Returns created from an order&apos;s detail page will show here.</p> : null}
     </div>
   );
 }

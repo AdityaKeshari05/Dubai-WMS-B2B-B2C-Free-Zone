@@ -19,8 +19,8 @@ import { AllocateOrderModal } from '@/components/wms/fulfillment/AllocateOrderMo
 import { CreatePickingTaskModal } from '@/components/wms/fulfillment/CreatePickingTaskModal';
 import { CreatePackageModal } from '@/components/wms/fulfillment/CreatePackageModal';
 import { CreateShipmentModal } from '@/components/wms/fulfillment/CreateShipmentModal';
-import { RTOModal } from '@/components/wms/b2c/RTOModal';
-import { CreateReturnModal } from '@/components/wms/b2c/CreateReturnModal';
+import { RTOModal } from '@/components/b2c/RTOModal';
+import { CreateReturnModal } from '@/components/b2c/CreateReturnModal';
 
 type ModalKind = 'allocate' | 'pick' | 'package' | 'shipment' | 'rto' | 'return' | null;
 
@@ -50,8 +50,8 @@ export default function B2COrderDetailPage() {
   const canCreatePickTask = order.items.some((i) => i.allocatedQty - i.pickedQty > 0);
   const canPack = order.items.some((i) => i.pickedQty > i.packedQty);
   const canShip = packages.some((p) => p.status === 'packed') && !activeShipment;
-  const canRTO = activeShipment && activeShipment.status !== 'delivered';
-  const canReturn = order.fulfillmentStatus === 'delivered' || order.fulfillmentStatus === 'rto';
+  const canRTO = order.fulfillmentStatus === 'shipped' && activeShipment && activeShipment.status !== 'delivered';
+  const canReturn = order.fulfillmentStatus === 'delivered';
 
   function handleCod(status: 'collected' | 'failed') {
     shipmentService.updateCodCollection(order!.id, status);
@@ -59,15 +59,15 @@ export default function B2COrderDetailPage() {
   }
 
   return (
-    <div>
-      <Link href="/wms/b2c" className="mb-3 inline-flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-800">
+    <div className="space-y-5">
+      <Link href="/b2c" className="inline-flex items-center gap-2 text-sm leading-5 text-gray-500 hover:text-gray-800">
         <ArrowLeft className="h-3.5 w-3.5" /> Back to B2C Orders
       </Link>
-      <PageHeader title={order.orderNumber} description={`${order.customerName} · ${order.channel} · ${order.customerAddress}`}>
+      <PageHeader title={order.orderNumber} description={`${order.customerName} · ${order.channel}${order.sourceOrderNumber ? ` · Source order ${order.sourceOrderNumber}` : ''} · ${order.customerAddress}`}>
         <Badge variant={B2C_ORDER_STATUS.variant(order.fulfillmentStatus)}>{B2C_ORDER_STATUS.label(order.fulfillmentStatus)}</Badge>
       </PageHeader>
 
-      <div className="mb-4 flex flex-wrap gap-2">
+      <div className="flex flex-wrap gap-2.5">
         {needsAllocation ? <Button size="sm" variant="outline" onClick={() => setModal('allocate')}><Boxes className="mr-1.5 h-3.5 w-3.5" />Allocate</Button> : null}
         {canCreatePickTask ? <Button size="sm" variant="outline" onClick={() => setModal('pick')}><ClipboardList className="mr-1.5 h-3.5 w-3.5" />Create Picking Task</Button> : null}
         {canPack ? <Button size="sm" variant="outline" onClick={() => setModal('package')}><PackagePlus className="mr-1.5 h-3.5 w-3.5" />Create Package</Button> : null}
@@ -83,7 +83,7 @@ export default function B2COrderDetailPage() {
       </div>
 
       <Tabs value={tab} onValueChange={setTab}>
-        <TabsList>
+        <TabsList className="h-auto max-w-full flex-wrap justify-start gap-1 p-1">
           <TabsTrigger value="overview">Overview</TabsTrigger>
           <TabsTrigger value="fulfillment">Fulfillment ({pickingTasks.length + packages.length + shipments.length})</TabsTrigger>
           <TabsTrigger value="returns">Returns ({returns.length})</TabsTrigger>
@@ -92,31 +92,32 @@ export default function B2COrderDetailPage() {
 
         <TabsContent value="overview">
           <div className="space-y-4">
-            <div className="grid grid-cols-3 gap-3">
-              <Card><CardContent className="pt-4"><h3 className="mb-1 text-xs font-semibold uppercase text-gray-500">Customer</h3><p className="text-sm text-gray-900">{order.customerName}</p><p className="text-xs text-gray-500">{order.customerPhone}</p></CardContent></Card>
-              <Card><CardContent className="pt-4">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
+              <Card><CardContent className="space-y-2 p-5"><h3 className="text-xs font-semibold uppercase leading-5 text-gray-500">Customer</h3><p className="text-sm leading-5 text-gray-900">{order.customerName}</p><p className="text-sm leading-5 text-gray-500">{order.customerPhone}</p></CardContent></Card>
+              <Card><CardContent className="space-y-2 p-5">
                 <h3 className="mb-1 text-xs font-semibold uppercase text-gray-500">Payment</h3>
                 <p className="text-sm text-gray-900">{order.paymentMethod === 'cod' ? `COD — ${formatCurrency(order.codAmount ?? 0, order.currency)}` : 'Prepaid'}</p>
+                <p className="mt-1 text-xs text-gray-500">Payment status: {order.paymentStatus ?? (order.paymentMethod === 'cod' ? 'pending' : 'paid')}</p>
                 {order.paymentMethod === 'cod' ? <Badge variant={order.codStatus === 'collected' ? 'success' : order.codStatus === 'failed' ? 'destructive' : 'warning'}>{order.codStatus}</Badge> : null}
               </CardContent></Card>
-              <Card><CardContent className="pt-4"><h3 className="mb-1 text-xs font-semibold uppercase text-gray-500">Tracking</h3><p className="font-mono text-sm text-gray-900">{order.trackingNumber ?? 'Not yet generated'}</p><p className="text-xs text-gray-500">{order.carrier ?? '-'}</p></CardContent></Card>
+              <Card><CardContent className="space-y-2 p-5"><h3 className="text-xs font-semibold uppercase leading-5 text-gray-500">Tracking</h3><p className="break-all font-mono text-sm leading-5 text-gray-900">{order.trackingNumber ?? 'Not yet generated'}</p><p className="text-sm leading-5 text-gray-500">{order.carrier ?? '-'}</p></CardContent></Card>
             </div>
 
-            <div className="overflow-hidden rounded-md border border-[#e5e2dc] bg-white">
-              <table className="w-full text-sm">
-                <thead className="bg-[#f8faf9] text-xs text-gray-500">
-                  <tr><th className="px-3 py-2 text-left">Product</th><th className="px-3 py-2 text-right">Qty</th><th className="px-3 py-2 text-right">Allocated</th><th className="px-3 py-2 text-right">Picked</th><th className="px-3 py-2 text-right">Packed</th><th className="px-3 py-2 text-right">Unit Price</th><th className="px-3 py-2 text-right">Total</th></tr>
+            <div className="overflow-x-auto rounded-md border border-[#e5e2dc] bg-white shadow-[0_1px_2px_rgba(16,24,40,0.04)]">
+              <table className="min-w-[760px] text-sm lg:min-w-full">
+                <thead className="bg-[#f8faf9] text-xs leading-5 text-[#7c8591]">
+                  <tr><th className="px-4 py-3 text-left">Product</th><th className="px-4 py-3 text-right">Qty</th><th className="px-4 py-3 text-right">Allocated</th><th className="px-4 py-3 text-right">Picked</th><th className="px-4 py-3 text-right">Packed</th><th className="px-4 py-3 text-right">Unit Price</th><th className="px-4 py-3 text-right">Total</th></tr>
                 </thead>
                 <tbody>
                   {order.items.map((item) => (
                     <tr key={item.id} className="border-t border-gray-100">
-                      <td className="px-3 py-2 font-medium text-gray-900">{productMap.get(item.productId)?.name}</td>
-                      <td className="px-3 py-2 text-right">{item.quantity}</td>
-                      <td className="px-3 py-2 text-right">{item.allocatedQty}</td>
-                      <td className="px-3 py-2 text-right">{item.pickedQty}</td>
-                      <td className="px-3 py-2 text-right">{item.packedQty}</td>
-                      <td className="px-3 py-2 text-right">{formatCurrency(item.unitPrice, order.currency)}</td>
-                      <td className="px-3 py-2 text-right font-medium text-gray-900">{formatCurrency(item.quantity * item.unitPrice, order.currency)}</td>
+                      <td className="px-4 py-3 leading-5 font-medium text-gray-900">{productMap.get(item.productId)?.name}</td>
+                      <td className="px-4 py-3 text-right leading-5">{item.quantity}</td>
+                      <td className="px-4 py-3 text-right leading-5">{item.allocatedQty}</td>
+                      <td className="px-4 py-3 text-right leading-5">{item.pickedQty}</td>
+                      <td className="px-4 py-3 text-right leading-5">{item.packedQty}</td>
+                      <td className="px-4 py-3 text-right leading-5">{formatCurrency(item.unitPrice, order.currency)}</td>
+                      <td className="px-4 py-3 text-right leading-5 font-medium text-gray-900">{formatCurrency(item.quantity * item.unitPrice, order.currency)}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -155,21 +156,21 @@ export default function B2COrderDetailPage() {
         </TabsContent>
 
         <TabsContent value="returns">
-          <div className="space-y-2">
+          <div className="space-y-3">
             {returns.length === 0 ? <p className="text-sm text-gray-500">No returns for this order.</p> : returns.map((r) => (
-              <Card key={r.id}><CardContent className="pt-3">
-                <div className="mb-1 flex items-center justify-between text-sm"><span className="font-medium text-gray-900">{r.returnNumber}</span><Badge variant="warning">{r.status}</Badge></div>
-                <p className="text-xs text-gray-500">{r.items.map((i) => `${productMap.get(i.productId)?.name} × ${i.quantity}`).join(', ')}</p>
+              <Card key={r.id}><CardContent className="space-y-2 p-5">
+                <div className="flex flex-wrap items-center justify-between gap-2 text-sm"><span className="font-medium text-gray-900">{r.returnNumber}</span><Badge variant="warning">{r.status}</Badge></div>
+                <p className="text-sm leading-5 text-gray-500">{r.items.map((i) => `${productMap.get(i.productId)?.name} × ${i.quantity}`).join(', ')}</p>
               </CardContent></Card>
             ))}
           </div>
         </TabsContent>
 
         <TabsContent value="timeline">
-          <div className="space-y-2">
+          <div className="space-y-3">
             {logs.length === 0 ? <p className="text-sm text-gray-500">No activity recorded yet.</p> : null}
             {logs.map((l) => (
-              <div key={l.id} className="rounded-md border border-[#e5e2dc] bg-white px-3 py-2.5 text-sm">
+              <div key={l.id} className="rounded-md border border-[#e5e2dc] bg-white px-4 py-3 text-sm leading-5">
                 <div className="flex items-center justify-between"><span className="font-medium text-gray-900">{l.description}</span><span className="text-xs text-gray-400">{formatDateTime(l.timestamp)}</span></div>
                 <span className="text-xs text-gray-500">{l.actor}</span>
               </div>
@@ -192,7 +193,7 @@ function FulfillmentGroup({ title, empty, children }: { title: string; empty: bo
   return (
     <div>
       <h3 className="mb-2 text-xs font-semibold uppercase text-gray-500">{title}</h3>
-      {empty ? <p className="text-sm text-gray-400">None yet.</p> : <div className="space-y-2">{children}</div>}
+      {empty ? <p className="text-sm text-gray-400">None yet.</p> : <div className="space-y-3">{children}</div>}
     </div>
   );
 }

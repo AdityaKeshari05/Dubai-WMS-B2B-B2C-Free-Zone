@@ -8,6 +8,9 @@ import type { OrderType } from './allocationService';
 export const shipmentService = {
   createShipment(orderId: string, orderType: OrderType, params: { packageIds: string[]; carrier: string }): Shipment {
     const state = wmsDb.getSnapshot();
+    if (state.shipments.some((s) => s.orderId === orderId && s.orderType === orderType)) throw new Error('A shipment already exists for this order.');
+    const linkedPackages = state.packages.filter((p) => params.packageIds.includes(p.id) && p.orderId === orderId && p.orderType === orderType);
+    if (!linkedPackages.length || linkedPackages.some((p) => p.status !== 'packed' || !p.shippingLabel)) throw new Error('Generate a label for a packed package before creating a shipment.');
     const trackingNumber =
       state.packages.find((p) => params.packageIds.includes(p.id))?.shippingLabel?.trackingNumber ??
       `AE${Math.floor(100000000 + Math.random() * 899999999)}`;
@@ -85,10 +88,17 @@ export const shipmentService = {
   },
 
   markRTO(shipmentId: string, reason: string) {
+    const current = wmsDb.getSnapshot().shipments.find((s) => s.id === shipmentId);
+    if (!current || current.orderType !== 'b2c') throw new Error('B2C shipment not found.');
+    const order = wmsDb.getSnapshot().b2cOrders.find((o) => o.id === current.orderId);
+    if (!order || order.fulfillmentStatus !== 'shipped') throw new Error('RTO can only be started for a shipped order.');
     wmsDb.mutate((draft) => {
       const shipment = draft.shipments.find((s) => s.id === shipmentId);
       if (!shipment) return;
       shipment.status = 'rto';
+      shipment.rtoReason = reason;
+      shipment.rtoDate = new Date().toISOString();
+      shipment.rtoStatus = 'initiated';
       const order = draft.b2cOrders.find((o) => o.id === shipment.orderId);
       if (order) {
         order.fulfillmentStatus = 'rto';
@@ -97,6 +107,18 @@ export const shipmentService = {
       }
     });
     logWmsActivity('shipment', shipmentId, 'rto', `Marked RTO: ${reason}`);
+  },
+
+  advanceRTO(shipmentId: string, status: NonNullable<Shipment['rtoStatus']>) {
+    const shipment = wmsDb.getSnapshot().shipments.find((s) => s.id === shipmentId && s.orderType === 'b2c');
+    if (!shipment || shipment.status !== 'rto' || !shipment.rtoStatus) throw new Error('RTO has not been initiated for this shipment.');
+    const stages: NonNullable<Shipment['rtoStatus']>[] = ['initiated', 'in_transit', 'received', 'inspected', 'completed'];
+    if (stages.indexOf(status) !== stages.indexOf(shipment.rtoStatus) + 1) throw new Error('Move the RTO one stage forward at a time.');
+    wmsDb.mutate((draft) => {
+      const target = draft.shipments.find((s) => s.id === shipmentId);
+      if (target) target.rtoStatus = status;
+    });
+    logWmsActivity('shipment', shipmentId, 'rto_status', `RTO moved to ${status}`);
   },
 
   recordPOD(orderId: string, orderType: OrderType, pod: { deliveredDate: string; receivedBy: string; notes?: string }) {
@@ -129,6 +151,7 @@ export const shipmentService = {
       const order = draft.b2cOrders.find((o) => o.id === orderId);
       if (order) {
         order.codStatus = status;
+        order.paymentStatus = status === 'collected' ? 'paid' : 'failed';
         order.updatedAt = new Date().toISOString();
       }
     });

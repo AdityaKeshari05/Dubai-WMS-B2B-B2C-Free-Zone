@@ -863,6 +863,28 @@ export const navItems: NavItem[] = [
   },
 
   {
+    label: 'Free Zone',
+    icon: ShieldCheck,
+    children: [
+      { label: 'FZ Dashboard', href: '/free-zone/dashboard', icon: LayoutDashboard },
+      { label: 'Warehouse Configuration', href: '/free-zone/warehouse-config', icon: Warehouse },
+      { label: 'Bonded / Customs Stock', href: '/free-zone/bonded-stock', icon: LockKeyhole },
+      { label: 'Customs Inventory Tracking', href: '/free-zone/inventory-tracking', icon: ScanLine },
+      { label: 'Customs Reference Management', href: '/free-zone/customs-references', icon: FileCheck2 },
+      { label: 'Duty Status Tracking', href: '/free-zone/duty-status', icon: Percent },
+      { label: 'FZ Inbound', href: '/free-zone/inbound', icon: PackageCheck },
+      { label: 'FZ Outbound', href: '/free-zone/outbound', icon: Truck },
+      { label: 'FZ → FZ Transfer', href: '/free-zone/fz-transfer', icon: ArrowLeftRight },
+      { label: 'FZ → Mainland', href: '/free-zone/mainland-workflow', icon: Route },
+      { label: 'Re-Export', href: '/free-zone/re-export', icon: Globe },
+      { label: 'Document Repository', href: '/free-zone/documents', icon: FileText },
+      { label: 'Customs Reconciliation', href: '/free-zone/reconciliation', icon: RefreshCw },
+      { label: 'FZ Audit Trail', href: '/free-zone/audit-trail', icon: History },
+      { label: 'Duty/Tax Classification', href: '/free-zone/duty-classification', icon: BadgeDollarSign },
+    ],
+  },
+
+  {
     label: 'Projects',
     href: '/projects',
     icon: FolderOpen,

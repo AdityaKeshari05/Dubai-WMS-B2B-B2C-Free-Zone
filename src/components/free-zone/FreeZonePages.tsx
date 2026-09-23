@@ -37,8 +37,8 @@ function Sel({ placeholder, options, value, onChange, name, required }: { placeh
   );
 }
 
-function Inp({ placeholder, type = 'text', value, onChange, name, required, min }: { placeholder: string; type?: string; value?: string | number; onChange?: (value: string) => void; name?: string; required?: boolean; min?: number }) {
-  return <Input name={name} required={required} min={min} type={type} placeholder={placeholder} value={value} onChange={e => onChange?.(e.target.value)} />;
+function Inp({ placeholder, type = 'text', value, onChange, name, required, min, step }: { placeholder: string; type?: string; value?: string | number; onChange?: (value: string) => void; name?: string; required?: boolean; min?: number; step?: number | 'any' }) {
+  return <Input name={name} required={required} min={min} step={step ?? (type === 'number' ? 'any' : undefined)} type={type} placeholder={placeholder} value={value} onChange={e => onChange?.(e.target.value)} />;
 }
 
 function EmptyRow() {
@@ -240,7 +240,7 @@ export function WarehouseConfigPage() {
             <Field label="Free Zone / Zone"><Sel placeholder="Select zone" value={form.zone} onChange={zone => setForm(f => ({ ...f, zone }))} options={['Jebel Ali FZ (JAFZA)', 'Dubai Airport FZ (DAFZA)', 'DMCC', 'DIFC', 'Dubai South', 'Sharjah Airport FZ']} /></Field>
             <Field label="Warehouse Type"><Sel placeholder="Select type" value={form.type} onChange={type => setForm(f => ({ ...f, type }))} options={['Free Zone', 'Bonded', 'Customs Bonded', 'Transit']} /></Field>
             <Field label="Customs Code"><Inp placeholder="Customs-issued code" value={form.customsCode} onChange={customsCode => setForm(f => ({ ...f, customsCode }))} /></Field>
-            <Field label="Number of Locations"><Inp placeholder="0" type="number" value={form.locations} onChange={locations => setForm(f => ({ ...f, locations }))} /></Field>
+            <Field label="Number of Locations"><Inp placeholder="0" type="number" step={1} value={form.locations} onChange={locations => setForm(f => ({ ...f, locations }))} /></Field>
             <Field label="Address / Location"><Inp placeholder="Street, Building" value={form.address} onChange={address => setForm(f => ({ ...f, address }))} /></Field>
             <Field label="Responsible Officer"><Inp placeholder="Name" value={form.officer} onChange={officer => setForm(f => ({ ...f, officer }))} /></Field>
             <div className="col-span-2 flex justify-end gap-2 pt-2">

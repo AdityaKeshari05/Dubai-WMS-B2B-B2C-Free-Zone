@@ -243,6 +243,7 @@ export default function WarehouseLocationConfig({ defaultTab = 'overview' }: { d
   const [zModal, setZModal] = useState(false);
   const [editZ, setEditZ] = useState<any>(null);
   const [lModal, setLModal] = useState(false);
+  const [newLocForm, setNewLocForm] = useState({ zoneId: '', aisle: '', rack: '', shelf: '', bin: '', maxWeight: '500' });
   const [rModal, setRModal] = useState(false);
   const [attrModal, setAttrModal] = useState(false);
   const [editAttr, setEditAttr] = useState<any>(null);
@@ -277,7 +278,7 @@ export default function WarehouseLocationConfig({ defaultTab = 'overview' }: { d
   });
   const [builderForm, setBuilderForm] = useState({
     targetWh: 'wh-01',
-    targetZone: 'zn-001',
+    targetZone: 'zn-rcv',
     aisleFrom: 1,
     aisleTo: 2,
     rackFrom: 1,
@@ -369,6 +370,12 @@ export default function WarehouseLocationConfig({ defaultTab = 'overview' }: { d
               isLocked: false,
               status: 'EMPTY',
               pickSequence: seq,
+              sku: '—',
+              skuName: 'Available slot',
+              qty: 0,
+              uom: 'PLT',
+              lot: '—',
+              expiry: '—',
             });
 
             if (isPreview && newLocs.length >= 20) return newLocs;
@@ -383,10 +390,56 @@ export default function WarehouseLocationConfig({ defaultTab = 'overview' }: { d
     const generated = generateBulkLocations(false);
     setLocs(prev => [...prev, ...generated]);
     toast.success(`Generated ${generated.length} warehouse locations successfully!`);
+    // Jump the facility selector to the warehouse we just generated into, so the
+    // Visual Topology Tree immediately reflects the new bins instead of silently
+    // generating locations for a warehouse the tree isn't currently showing.
+    setWhId(builderForm.targetWh);
     setHierSubTab('tree');
   };
 
   const setCfgVal = (k: string, v: any) => setCfgs(p => ({ ...p, [whId]: { ...p[whId], [k]: v } }));
+
+  const saveNewLocation = () => {
+    const zoneObj = whZones.find(z => z.id === newLocForm.zoneId);
+    if (!zoneObj || !newLocForm.aisle.trim() || !newLocForm.rack.trim() || !newLocForm.shelf.trim() || !newLocForm.bin.trim()) {
+      toast.error('Zone, Aisle, Rack, Shelf and Bin are required');
+      return;
+    }
+    const code = `${selWH?.code}-${zoneObj.code}-${newLocForm.aisle.trim()}-${newLocForm.rack.trim()}-${newLocForm.shelf.trim()}-${newLocForm.bin.trim()}`;
+    if (locs.some(l => l.code === code)) {
+      toast.error('A location with this code already exists');
+      return;
+    }
+    const maxSeq = Math.max(0, ...whLocs.map(l => l.pickSequence || 0));
+    setLocs(prev => [...prev, {
+      id: `loc-${Date.now()}`,
+      zoneId: zoneObj.id,
+      warehouseId: whId,
+      code,
+      aisle: newLocForm.aisle.trim(),
+      rack: newLocForm.rack.trim(),
+      shelf: newLocForm.shelf.trim(),
+      bin: newLocForm.bin.trim(),
+      maxWeight: Number(newLocForm.maxWeight) || 500,
+      maxVolume: 1500,
+      currentWeight: 0,
+      currentVolume: 0,
+      velocityClass: 'B',
+      isBonded: zoneObj.isBonded,
+      isLocked: false,
+      status: 'EMPTY',
+      pickSequence: maxSeq + 1,
+      sku: '—',
+      skuName: 'Available slot',
+      qty: 0,
+      uom: 'PLT',
+      lot: '—',
+      expiry: '—',
+    }]);
+    toast.success(`Location ${code} added`);
+    setNewLocForm({ zoneId: '', aisle: '', rack: '', shelf: '', bin: '', maxWeight: '500' });
+    setLModal(false);
+  };
 
   // ── Tab 1: Overview (Digital Twin Master View) ─────────────────────
   const tabOverview = () => (
@@ -694,6 +747,12 @@ export default function WarehouseLocationConfig({ defaultTab = 'overview' }: { d
       (Number(builderForm.shelfTo) - Number(builderForm.shelfFrom) + 1) *
       (Number(builderForm.binTo) - Number(builderForm.binFrom) + 1);
 
+    // Zones that belong to the warehouse currently chosen INSIDE the builder
+    // wizard (builderForm.targetWh), not the top facility selector (whId).
+    // These can differ once the user picks a different "Target Warehouse"
+    // in the wizard, so the zone dropdown must follow the wizard's own choice.
+    const builderZones = zones.filter(z => z.warehouseId === builderForm.targetWh);
+
     const activeNode = selectedLocNode || whLocs[0] || {
       code: `${selWH?.code}-ZN-BULK-A-A03-R02-S1-B04`,
       aisle: 'A03',
@@ -707,17 +766,22 @@ export default function WarehouseLocationConfig({ defaultTab = 'overview' }: { d
       velocityClass: 'A',
       status: 'OCCUPIED',
       pickSequence: 104,
+      sku: '—',
+      skuName: '',
+      qty: 0,
+      uom: 'PLT',
+      lot: '—',
     };
 
     return (
       <div className="space-y-5">
         {/* Top Control Header & Sub-Tab Switcher */}
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 bg-slate-900 text-white p-3.5 rounded-xl shadow-sm">
-          <div className="flex items-center gap-1.5 bg-slate-800/80 p-1 rounded-lg border border-slate-700/60">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 bg-white border border-gray-200 p-3.5 rounded-xl shadow-none">
+          <div className="flex items-center gap-1.5 bg-gray-50 p-1 rounded-lg border border-gray-200">
             <button
               onClick={() => setHierSubTab('tree')}
               className={`flex items-center gap-2 px-3 py-1.5 rounded-md text-xs font-semibold transition-all ${
-                hierSubTab === 'tree' ? 'bg-blue-600 text-white shadow-sm' : 'text-slate-300 hover:text-white hover:bg-slate-700/50'
+                hierSubTab === 'tree' ? 'bg-blue-600 text-white shadow-sm' : 'text-gray-600 hover:text-gray-900 hover:bg-white'
               }`}
             >
               <ListTree className="h-3.5 w-3.5" /> Visual Topology Tree
@@ -725,25 +789,25 @@ export default function WarehouseLocationConfig({ defaultTab = 'overview' }: { d
             <button
               onClick={() => setHierSubTab('builder')}
               className={`flex items-center gap-2 px-3 py-1.5 rounded-md text-xs font-semibold transition-all ${
-                hierSubTab === 'builder' ? 'bg-blue-600 text-white shadow-sm' : 'text-slate-300 hover:text-white hover:bg-slate-700/50'
+                hierSubTab === 'builder' ? 'bg-blue-600 text-white shadow-sm' : 'text-gray-600 hover:text-gray-900 hover:bg-white'
               }`}
             >
-              <Wand2 className="h-3.5 w-3.5 text-amber-300" /> Rapid Hierarchy Builder
+              <Wand2 className="h-3.5 w-3.5 text-amber-500" /> Rapid Hierarchy Builder
             </button>
             <button
               onClick={() => setHierSubTab('labels')}
               className={`flex items-center gap-2 px-3 py-1.5 rounded-md text-xs font-semibold transition-all ${
-                hierSubTab === 'labels' ? 'bg-blue-600 text-white shadow-sm' : 'text-slate-300 hover:text-white hover:bg-slate-700/50'
+                hierSubTab === 'labels' ? 'bg-blue-600 text-white shadow-sm' : 'text-gray-600 hover:text-gray-900 hover:bg-white'
               }`}
             >
-              <Printer className="h-3.5 w-3.5 text-emerald-300" /> Nomenclature & Labels
+              <Printer className="h-3.5 w-3.5 text-emerald-600" /> Nomenclature & Labels
             </button>
           </div>
 
           <div className="flex items-center gap-2 shrink-0">
-            <span className="text-xs text-slate-400 font-medium">Facility:</span>
+            <span className="text-xs text-gray-500 font-medium">Facility:</span>
             <Select value={whId} onValueChange={setWhId}>
-              <SelectTrigger className="w-48 h-8 text-xs bg-slate-800 border-slate-700 text-white"><SelectValue /></SelectTrigger>
+              <SelectTrigger className="w-48 h-8 text-xs"><SelectValue /></SelectTrigger>
               <SelectContent>{warehouses.map(w => <SelectItem key={w.id} value={w.id}>{w.code}</SelectItem>)}</SelectContent>
             </Select>
           </div>
@@ -909,6 +973,29 @@ export default function WarehouseLocationConfig({ defaultTab = 'overview' }: { d
                       </div>
                     </div>
 
+                    {/* Stored Inventory Snapshot — ties the hierarchy tree directly to
+                        bin-level stock (2.2 ↔ 2.4), so clicking a bin node also answers
+                        "what's actually stored here right now". */}
+                    <div className="space-y-2 pt-2 border-t border-slate-100">
+                      <Label className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider mb-1 block">
+                        Stored Inventory
+                      </Label>
+                      {activeNode.sku && activeNode.sku !== '—' && Number(activeNode.qty) > 0 ? (
+                        <div className="rounded-lg border border-blue-200 bg-blue-50/60 p-2.5">
+                          <p className="font-mono text-[11px] font-bold text-blue-700">{activeNode.sku}</p>
+                          <p className="text-xs font-medium text-slate-800 mt-0.5">{activeNode.skuName}</p>
+                          <div className="mt-1.5 flex items-center justify-between text-[11px] text-slate-600">
+                            <span>Qty: <strong className="text-slate-900">{activeNode.qty} {activeNode.uom}</strong></span>
+                            <span>Lot: <strong className="text-slate-900">{activeNode.lot || '—'}</strong></span>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="rounded-lg border border-dashed border-emerald-300 bg-emerald-50/50 p-2.5 text-center">
+                          <p className="text-[11px] font-semibold text-emerald-700">Bin is empty — ready for putaway</p>
+                        </div>
+                      )}
+                    </div>
+
                     {/* Industrial Thermal Sticker Preview */}
                     <div className="pt-3 border-t border-slate-100">
                       <Label className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider mb-2 block">
@@ -971,7 +1058,16 @@ export default function WarehouseLocationConfig({ defaultTab = 'overview' }: { d
                     <div className="grid grid-cols-2 gap-3">
                       <div>
                         <Label className="text-xs font-semibold text-slate-700">Target Warehouse</Label>
-                        <Select value={builderForm.targetWh} onValueChange={v => setBuilderForm(p => ({ ...p, targetWh: v }))}>
+                        <Select
+                          value={builderForm.targetWh}
+                          onValueChange={v => {
+                            // Switching warehouses must also refresh the zone choice —
+                            // otherwise a zone id from the previous warehouse stays
+                            // selected and bulk-generation silently mismatches.
+                            const firstZoneForWh = zones.find(z => z.warehouseId === v);
+                            setBuilderForm(p => ({ ...p, targetWh: v, targetZone: firstZoneForWh?.id || '' }));
+                          }}
+                        >
                           <SelectTrigger className="h-9 text-xs mt-1"><SelectValue /></SelectTrigger>
                           <SelectContent>{warehouses.map(w => <SelectItem key={w.id} value={w.id}>{w.name}</SelectItem>)}</SelectContent>
                         </Select>
@@ -980,7 +1076,7 @@ export default function WarehouseLocationConfig({ defaultTab = 'overview' }: { d
                         <Label className="text-xs font-semibold text-slate-700">Target Storage Zone</Label>
                         <Select value={builderForm.targetZone} onValueChange={v => setBuilderForm(p => ({ ...p, targetZone: v }))}>
                           <SelectTrigger className="h-9 text-xs mt-1"><SelectValue /></SelectTrigger>
-                          <SelectContent>{whZones.map(z => <SelectItem key={z.id} value={z.id}>{z.name} ({z.code})</SelectItem>)}</SelectContent>
+                          <SelectContent>{builderZones.map(z => <SelectItem key={z.id} value={z.id}>{z.name} ({z.code})</SelectItem>)}</SelectContent>
                         </Select>
                       </div>
                     </div>
@@ -1054,10 +1150,13 @@ export default function WarehouseLocationConfig({ defaultTab = 'overview' }: { d
                         <p className="text-xs text-slate-500">Calculated Combination:</p>
                         <p className="text-lg font-bold text-blue-600 font-mono">{totalCalc.toLocaleString()} Bins</p>
                       </div>
-                      <Button onClick={handleRunBulkGenerate} className="bg-blue-600 hover:bg-blue-700 text-white font-semibold gap-2">
+                      <Button disabled={!builderForm.targetZone} onClick={handleRunBulkGenerate} className="bg-blue-600 hover:bg-blue-700 text-white font-semibold gap-2 disabled:opacity-50">
                         <Zap className="h-4 w-4" /> Run Batch Database Transaction
                       </Button>
                     </div>
+                    {!builderForm.targetZone && (
+                      <p className="text-[11px] text-amber-600">This warehouse has no storage zones configured yet — add one in Storage Zones first.</p>
+                    )}
                   </CardContent>
                 </Card>
               </div>
@@ -1179,8 +1278,9 @@ export default function WarehouseLocationConfig({ defaultTab = 'overview' }: { d
                         <SelectTrigger className="w-32 h-7 text-[11px]"><SelectValue /></SelectTrigger>
                         <SelectContent>
                           <SelectItem value="ALL">All Aisles</SelectItem>
-                          <SelectItem value="A03">Aisle A03</SelectItem>
-                          <SelectItem value="B01">Aisle B01</SelectItem>
+                          {Array.from(new Set(whLocs.map(l => l.aisle))).sort().map(a => (
+                            <SelectItem key={a} value={a}>Aisle {a}</SelectItem>
+                          ))}
                         </SelectContent>
                       </Select>
                       <Button size="sm" className="h-7 text-[11px] bg-emerald-600 hover:bg-emerald-700 text-white gap-1" onClick={() => toast.success(`Sending ${whLocs.length} labels to Zebra industrial spooler...`)}>
@@ -1209,6 +1309,9 @@ export default function WarehouseLocationConfig({ defaultTab = 'overview' }: { d
                             </Button>
                           </div>
                         ))}
+                      {whLocs.filter(l => labelFilterAisle === 'ALL' || l.aisle === labelFilterAisle).length === 0 && (
+                        <p className="col-span-2 py-10 text-center text-xs text-slate-400">No locations to label for this filter yet.</p>
+                      )}
                     </div>
                   </CardContent>
                 </Card>
@@ -1316,34 +1419,31 @@ export default function WarehouseLocationConfig({ defaultTab = 'overview' }: { d
     return (
       <div className="space-y-4">
         {/* Summary Bar */}
-        <div className="grid grid-cols-3 gap-3 bg-slate-900 text-white p-3.5 rounded-xl shadow-sm">
-          <div className="flex items-center gap-3 border-r border-slate-800 pr-3">
-            <div className="h-9 w-9 rounded-lg bg-slate-800 text-blue-400 flex items-center justify-center font-bold text-sm">
-              <MapPin className="h-4 w-4" />
-            </div>
-            <div>
-              <p className="text-xl font-extrabold text-white">{totalBins}</p>
-              <p className="text-[11px] text-slate-400">Total Bins</p>
-            </div>
-          </div>
-          <div className="flex items-center gap-3 border-r border-slate-800 pr-3">
-            <div className="h-9 w-9 rounded-lg bg-slate-800 text-blue-400 flex items-center justify-center font-bold text-sm">
-              <Package className="h-4 w-4" />
-            </div>
-            <div>
-              <p className="text-xl font-extrabold text-white">{occupiedBins}</p>
-              <p className="text-[11px] text-slate-400">Occupied Bins</p>
-            </div>
-          </div>
-          <div className="flex items-center gap-3">
-            <div className="h-9 w-9 rounded-lg bg-slate-800 text-emerald-400 flex items-center justify-center font-bold text-sm">
-              <CheckCircle2 className="h-4 w-4" />
-            </div>
-            <div>
-              <p className="text-xl font-extrabold text-white">{emptyBins}</p>
-              <p className="text-[11px] text-slate-400">Empty Bins</p>
-            </div>
-          </div>
+        <div className="grid grid-cols-3 gap-3">
+          <Card className="border border-gray-200 shadow-none">
+            <CardContent className="p-3.5">
+              <div className="flex items-center gap-3">
+                <div className="h-9 w-9 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center"><MapPin className="h-4 w-4" /></div>
+                <div><p className="text-xl font-bold text-gray-900">{totalBins}</p><p className="text-xs text-gray-500">Total Bins</p></div>
+              </div>
+            </CardContent>
+          </Card>
+          <Card className="border border-gray-200 shadow-none">
+            <CardContent className="p-3.5">
+              <div className="flex items-center gap-3">
+                <div className="h-9 w-9 rounded-lg bg-purple-50 text-purple-600 flex items-center justify-center"><Package className="h-4 w-4" /></div>
+                <div><p className="text-xl font-bold text-gray-900">{occupiedBins}</p><p className="text-xs text-gray-500">Occupied Bins</p></div>
+              </div>
+            </CardContent>
+          </Card>
+          <Card className="border border-gray-200 shadow-none">
+            <CardContent className="p-3.5">
+              <div className="flex items-center gap-3">
+                <div className="h-9 w-9 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center"><CheckCircle2 className="h-4 w-4" /></div>
+                <div><p className="text-xl font-bold text-gray-900">{emptyBins}</p><p className="text-xs text-gray-500">Empty Bins</p></div>
+              </div>
+            </CardContent>
+          </Card>
         </div>
 
         {/* Top Filters */}
@@ -1369,8 +1469,12 @@ export default function WarehouseLocationConfig({ defaultTab = 'overview' }: { d
             </Select>
           </div>
 
-          <Button size="sm" className="gap-1.5 h-8 bg-blue-600 hover:bg-blue-700 text-xs" onClick={() => setLModal(true)}>
-            <Plus className="h-3.5 w-3.5" /> + Add Location
+          <Button
+            size="sm"
+            className="gap-1.5 h-8 bg-blue-600 hover:bg-blue-700 text-xs"
+            onClick={() => { setNewLocForm({ zoneId: whZones[0]?.id || '', aisle: '', rack: '', shelf: '', bin: '', maxWeight: '500' }); setLModal(true); }}
+          >
+            <Plus className="h-3.5 w-3.5" /> Add Location
           </Button>
         </div>
 
@@ -1429,7 +1533,7 @@ export default function WarehouseLocationConfig({ defaultTab = 'overview' }: { d
               </DialogHeader>
 
               <div className="space-y-4 py-2">
-                <div className="grid grid-cols-3 gap-2 text-center bg-slate-50 p-3 rounded-lg border border-slate-200">
+                <div className="grid grid-cols-4 gap-2 text-center bg-slate-50 p-3 rounded-lg border border-slate-200">
                   <div>
                     <p className="text-[10px] text-slate-500 font-medium">Max Weight</p>
                     <p className="font-mono font-bold text-slate-900 text-xs">{binDetailLoc.maxWeight || 500} kg</p>
@@ -1437,6 +1541,10 @@ export default function WarehouseLocationConfig({ defaultTab = 'overview' }: { d
                   <div>
                     <p className="text-[10px] text-slate-500 font-medium">Current Load</p>
                     <p className="font-mono font-bold text-blue-600 text-xs">{binDetailLoc.currentWeight || 0} kg</p>
+                  </div>
+                  <div>
+                    <p className="text-[10px] text-slate-500 font-medium">Volume Used</p>
+                    <p className="font-mono font-bold text-blue-600 text-xs">{binDetailLoc.currentVolume || 0} / {binDetailLoc.maxVolume || 1500} L</p>
                   </div>
                   <div>
                     <p className="text-[10px] text-slate-500 font-medium">Velocity Class</p>
@@ -2182,12 +2290,24 @@ export default function WarehouseLocationConfig({ defaultTab = 'overview' }: { d
       <Dialog open={lModal} onOpenChange={setLModal}>
         <DialogContent className="max-w-md">
           <DialogHeader><DialogTitle>Add New Location / Bin</DialogTitle><DialogDescription>Define a new bin coordinate within the warehouse zone.</DialogDescription></DialogHeader>
-          <div className="grid grid-cols-2 gap-3 py-2">
-            {[{ l: 'Zone Code', ph: 'ZN-BULK-A' }, { l: 'Aisle', ph: 'A01' }, { l: 'Rack', ph: 'R01' }, { l: 'Shelf', ph: 'S1' }, { l: 'Bin', ph: 'B01' }, { l: 'Max Weight (kg)', ph: '500' }].map(fd => (
-              <div key={fd.l} className="space-y-1.5"><Label className="text-xs font-semibold">{fd.l}</Label><Input placeholder={fd.ph} className="h-8 text-xs" /></div>
-            ))}
+          <div className="space-y-3 py-2">
+            <div className="space-y-1.5">
+              <Label className="text-xs font-semibold">Zone *</Label>
+              <Select value={newLocForm.zoneId} onValueChange={v => setNewLocForm(p => ({ ...p, zoneId: v }))}>
+                <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Select zone..." /></SelectTrigger>
+                <SelectContent>{whZones.map(z => <SelectItem key={z.id} value={z.id}>{z.name} ({z.code})</SelectItem>)}</SelectContent>
+              </Select>
+              {whZones.length === 0 && <p className="text-[11px] text-amber-600">No storage zones exist for this warehouse yet — add one in Storage Zones first.</p>}
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5"><Label className="text-xs font-semibold">Aisle *</Label><Input value={newLocForm.aisle} onChange={e => setNewLocForm(p => ({ ...p, aisle: e.target.value }))} placeholder="A01" className="h-8 text-xs" /></div>
+              <div className="space-y-1.5"><Label className="text-xs font-semibold">Rack *</Label><Input value={newLocForm.rack} onChange={e => setNewLocForm(p => ({ ...p, rack: e.target.value }))} placeholder="R01" className="h-8 text-xs" /></div>
+              <div className="space-y-1.5"><Label className="text-xs font-semibold">Shelf *</Label><Input value={newLocForm.shelf} onChange={e => setNewLocForm(p => ({ ...p, shelf: e.target.value }))} placeholder="S1" className="h-8 text-xs" /></div>
+              <div className="space-y-1.5"><Label className="text-xs font-semibold">Bin *</Label><Input value={newLocForm.bin} onChange={e => setNewLocForm(p => ({ ...p, bin: e.target.value }))} placeholder="B01" className="h-8 text-xs" /></div>
+            </div>
+            <div className="space-y-1.5"><Label className="text-xs font-semibold">Max Weight (kg)</Label><Input type="number" value={newLocForm.maxWeight} onChange={e => setNewLocForm(p => ({ ...p, maxWeight: e.target.value }))} placeholder="500" className="h-8 text-xs" /></div>
           </div>
-          <DialogFooter><Button variant="outline" size="sm" onClick={() => setLModal(false)}>Cancel</Button><Button size="sm" className="bg-blue-600 hover:bg-blue-700" onClick={() => { toast.success('Location added'); setLModal(false); }}>Add</Button></DialogFooter>
+          <DialogFooter><Button variant="outline" size="sm" onClick={() => setLModal(false)}>Cancel</Button><Button size="sm" className="bg-blue-600 hover:bg-blue-700" onClick={saveNewLocation}>Add</Button></DialogFooter>
         </DialogContent>
       </Dialog>
 

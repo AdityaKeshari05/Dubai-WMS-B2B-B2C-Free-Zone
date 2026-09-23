@@ -108,6 +108,11 @@ export function showApiError(err: any, fallback = 'Operation failed'): string {
   if (err?.response?.status === 401) {
     return '';
   }
+  // Suppress network error toasts when backend is offline (Presentation / UI Dev Mode)
+  if (err?.code === 'ERR_NETWORK' || err?.message === 'Network Error' || !err?.response) {
+    console.warn('[Demo/Presentation Mode] Backend offline, network error toast suppressed.');
+    return '';
+  }
   const message = getApiErrorMessage(err, fallback);
   toast.error(message);
   return message;

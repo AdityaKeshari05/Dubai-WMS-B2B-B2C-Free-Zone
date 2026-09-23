@@ -8,7 +8,8 @@ import {
   ChartColumnIncreasing, ArchiveX, UserRound, Building, Target, Activity,
   Route, Upload, FileCheck2, ClipboardSignature, CalendarCheck, CalendarCog, CalendarX,
   ListChecks, HandCoins, BadgeDollarSign, Wallet, UserCog, SlidersHorizontal, KeyRound,
-  Handshake, Scale, PackageCheck, History
+  Handshake, Scale, PackageCheck, History,
+  Gauge, MapPin, Settings2, Grid3X3, AlertTriangle
 } from 'lucide-react';
 
 export interface NavItem {
@@ -47,7 +48,6 @@ export const navItems: NavItem[] = [
 	      { label: 'Transfer Orders', href: '/inventory/transfers', icon: ArrowLeftRight },
 	      { label: 'Traceability', href: '/inventory/traceability', icon: Route },
 	      { label: 'Inventory Monitoring', href: '/inventory/reports/advanced', icon: BarChart3 },
-	      { label: 'Inventory Configuration', href: '/inventory/settings', icon: Settings },
 	      { label: 'Stock Balance', href: '/inventory/reports/stock-balance', icon: Boxes, permission: 'inventory:stock-balance:read' },
 	      { label: 'Stock Ledger', href: '/inventory/reports/stock-ledger', icon: BookOpen, permission: 'inventory:stock-ledger:read' },
 	      { label: 'Projected Stock', href: '/inventory/reports/projected-stock', icon: TrendingUp, permission: 'inventory:projected-stock:read' },
@@ -56,6 +56,54 @@ export const navItems: NavItem[] = [
 	      { label: 'Item-wise Sales', href: '/inventory/reports/item-wise-sales', icon: ChartColumnIncreasing, permission: 'inventory:stock-balance:read' },
 	      { label: 'Gross Profit', href: '/inventory/reports/gross-profit', icon: CircleDollarSign, permission: 'inventory:stock-balance:read' },
 	      { label: 'Slow Moving Stock', href: '/inventory/reports/slow-moving-stock', icon: ArchiveX, permission: 'inventory:stock-balance:read' },
+    ],
+  },
+  {
+    label: 'Warehouse & Locations',
+    icon: Warehouse,
+    children: [
+      { label: 'Multi-Warehouse Management', href: '/warehouse-locations/warehouses', icon: Building2 },
+      { label: 'Warehouse Hierarchy', href: '/warehouse-locations/hierarchy', icon: Layers },
+      { label: 'Storage Zone Configuration', href: '/warehouse-locations/zones', icon: Grid3X3 },
+      { label: 'Bin-Level Inventory', href: '/warehouse-locations/bins', icon: Package },
+      { label: 'Warehouse Capacity', href: '/warehouse-locations/capacity', icon: Gauge },
+      { label: 'Location Attributes', href: '/warehouse-locations/attributes', icon: MapPin },
+      { label: 'Putaway Rules', href: '/warehouse-locations/putaway', icon: Target },
+      { label: 'Warehouse Configuration', href: '/warehouse-locations/configuration', icon: Settings2 },
+    ],
+  },
+  {
+    label: 'Product & Inventory Master',
+    icon: Boxes,
+    children: [
+      { label: 'SKU Master', href: '/product-master/sku-master', icon: Package },
+      { label: 'Product Categories', href: '/product-master/categories', icon: Layers },
+      { label: 'Barcode Management', href: '/product-master/barcodes', icon: Tags },
+      { label: 'UOM Management', href: '/product-master/uom', icon: Scale },
+      { label: 'Pack Configuration', href: '/product-master/pack-config', icon: Boxes },
+      { label: 'Batch Management', href: '/product-master/batches', icon: ClipboardList },
+      { label: 'Serial Number Management', href: '/product-master/serials', icon: KeyRound },
+      { label: 'Expiry Management', href: '/product-master/expiry', icon: CalendarDays },
+      { label: 'Product Dimensions & Weight', href: '/product-master/dimensions', icon: SlidersHorizontal },
+      { label: 'Country of Origin', href: '/product-master/origin', icon: Activity },
+      { label: 'HS Code & Customs', href: '/product-master/hs-code', icon: ShieldCheck },
+    ],
+  },
+  {
+    label: 'Inbound / Receiving',
+    icon: Truck,
+    children: [
+      { label: 'Purchase Order Receiving', href: '/inbound/po-receiving', icon: ShoppingBag },
+      { label: 'Advance Shipment Notice (ASN)', href: '/inbound/asn', icon: Truck },
+      { label: 'Inbound Orders', href: '/inbound/inbound-orders', icon: ClipboardList },
+      { label: 'Dock / Appointment Scheduling', href: '/inbound/appointments', icon: CalendarDays },
+      { label: 'Goods Receipt', href: '/inbound/goods-receipt', icon: PackageCheck },
+      { label: 'Barcode Receiving', href: '/inbound/barcode-receiving', icon: Tags },
+      { label: 'Short/Excess Receiving', href: '/inbound/short-excess', icon: AlertTriangle },
+      { label: 'Quality Inspection', href: '/inbound/quality-inspection', icon: ShieldCheck },
+      { label: 'Quarantine Stock', href: '/inbound/quarantine', icon: LockKeyhole },
+      { label: 'Putaway', href: '/inbound/putaway', icon: Target },
+      { label: 'GRN Generation', href: '/inbound/grn', icon: FileCheck2 },
     ],
   },
   {
@@ -166,7 +214,7 @@ export const navItems: NavItem[] = [
     label: 'Settings', icon: Settings,
     children: [
       { label: 'General Settings', href: '/settings', icon: SlidersHorizontal },
-      { label: 'Access Control', href: '/settings/access', icon: KeyRound, permission: 'access:users:read' },
+      { label: 'User & Access Management', href: '/settings/user-access', icon: KeyRound, permission: 'access:users:read' },
     ],
   },
 ];
@@ -203,6 +251,15 @@ export function inferredPermission(href?: string) {
     if (parts[0] === 'invoicing') {
       const resource = parts[1] === 'reports' ? 'reports' : parts[1];
       return `invoicing:${resource}:read`;
+    }
+    if (parts[0] === 'warehouse-locations') {
+      return 'inventory:warehouses:read';
+    }
+    if (parts[0] === 'product-master') {
+      return 'inventory:products:read';
+    }
+    if (parts[0] === 'inbound') {
+      return 'inventory:stock-entries:read';
     }
     if (parts[0] === 'inventory' || parts[0] === 'crm' || parts[0] === 'accounting' || parts[0] === 'procurement') {
       return `${parts[0]}:${parts[1]}:read`;

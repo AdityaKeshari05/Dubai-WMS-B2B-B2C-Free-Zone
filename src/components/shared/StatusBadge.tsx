@@ -57,6 +57,19 @@ const statusConfig: Record<string, { label: string; className: string }> = {
   MEDIUM: { label: 'Medium', className: 'bg-blue-100 text-blue-700 border-blue-200' },
   HIGH: { label: 'High', className: 'bg-orange-100 text-orange-700 border-orange-200' },
   URGENT: { label: 'Urgent', className: 'bg-red-100 text-red-700 border-red-200' },
+  // Free Zone / Customs statuses
+  UNDER_CUSTOMS: { label: 'Under Customs', className: 'bg-violet-100 text-violet-700 border-violet-200' },
+  CUSTOMS_CLEARED: { label: 'Customs Cleared', className: 'bg-green-100 text-green-700 border-green-200' },
+  DUTY_FREE: { label: 'Duty Free', className: 'bg-emerald-100 text-emerald-700 border-emerald-200' },
+  DUTY_APPLICABLE: { label: 'Duty Applicable', className: 'bg-orange-100 text-orange-700 border-orange-200' },
+  SUSPENDED: { label: 'Suspended', className: 'bg-yellow-100 text-yellow-700 border-yellow-200' },
+  RE_EXPORT: { label: 'Re-Export', className: 'bg-indigo-100 text-indigo-700 border-indigo-200' },
+  IN_TRANSIT_FZ: { label: 'In Transit (FZ)', className: 'bg-sky-100 text-sky-700 border-sky-200' },
+  PENDING_CLEARANCE: { label: 'Pending Clearance', className: 'bg-amber-100 text-amber-700 border-amber-200' },
+  BONDED: { label: 'Bonded', className: 'bg-purple-100 text-purple-700 border-purple-200' },
+  RELEASED: { label: 'Released', className: 'bg-teal-100 text-teal-700 border-teal-200' },
+  DECLARED: { label: 'Declared', className: 'bg-blue-100 text-blue-700 border-blue-200' },
+  MAINLAND_BOUND: { label: 'Mainland Bound', className: 'bg-cyan-100 text-cyan-700 border-cyan-200' },
 };
 
 interface StatusBadgeProps {

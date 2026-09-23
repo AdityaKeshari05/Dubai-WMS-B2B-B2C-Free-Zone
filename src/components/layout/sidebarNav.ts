@@ -8,7 +8,9 @@ import {
   ChartColumnIncreasing, ArchiveX, UserRound, Building, Target, Activity,
   Route, Upload, FileCheck2, ClipboardSignature, CalendarCheck, CalendarCog, CalendarX,
   ListChecks, HandCoins, BadgeDollarSign, Wallet, UserCog, SlidersHorizontal, KeyRound,
-  Handshake, Scale, PackageCheck, History
+  Handshake, Scale, PackageCheck, History,
+  Shield, PackageOpen, PackageX, ArrowRightLeft, Globe, FileArchive, ScanLine,
+  BadgePercent, Stamp, MapPin, RefreshCcw
 } from 'lucide-react';
 
 export interface NavItem {
@@ -205,6 +207,26 @@ export const navItems: NavItem[] = [
       { label: 'Job Cards', href: '/manufacturing/job-cards', icon: ClipboardCheck, permission: 'manufacturing:job-cards:read' },
       { label: 'Shop Floor', href: '/manufacturing/shopfloor', icon: Activity, permission: 'manufacturing:shopfloor:read' },
       { label: 'Manufacturing Reports', href: '/manufacturing/reports', icon: ChartColumnIncreasing, permission: 'manufacturing:reports:read' },
+    ],
+  },
+  {
+    label: 'Free Zone', icon: Shield,
+    children: [
+      { label: 'FZ Dashboard', href: '/free-zone/dashboard', icon: LayoutDashboard },
+      { label: 'Warehouse Configuration', href: '/free-zone/warehouse-config', icon: Warehouse },
+      { label: 'Bonded / Customs Stock', href: '/free-zone/bonded-stock', icon: LockKeyhole },
+      { label: 'Customs Inventory Tracking', href: '/free-zone/inventory-tracking', icon: ScanLine },
+      { label: 'Customs Reference Management', href: '/free-zone/customs-references', icon: Stamp },
+      { label: 'Duty Status Tracking', href: '/free-zone/duty-status', icon: BadgePercent },
+      { label: 'FZ Inbound', href: '/free-zone/inbound', icon: PackageOpen },
+      { label: 'FZ Outbound', href: '/free-zone/outbound', icon: PackageX },
+      { label: 'FZ → FZ Transfer', href: '/free-zone/fz-transfer', icon: ArrowRightLeft },
+      { label: 'FZ → Mainland', href: '/free-zone/mainland-workflow', icon: MapPin },
+      { label: 'Re-Export', href: '/free-zone/re-export', icon: Globe },
+      { label: 'Document Repository', href: '/free-zone/documents', icon: FileArchive },
+      { label: 'Customs Reconciliation', href: '/free-zone/reconciliation', icon: RefreshCcw },
+      { label: 'FZ Audit Trail', href: '/free-zone/audit-trail', icon: History },
+      { label: 'Duty/Tax Classification', href: '/free-zone/duty-classification', icon: BadgeDollarSign },
     ],
   },
   { label: 'Projects', href: '/projects', icon: FolderOpen, permission: 'projects:projects:read' },

@@ -1,133 +1,840 @@
-import React from 'react';
-import { Card as UICard, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Input as UIInput } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { PageHeader as SharedPageHeader } from '@/components/shared/PageHeader';
-import { StatsCard } from '@/components/shared/StatsCard';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
-import { Search, X, Boxes } from 'lucide-react';
+'use client';
 
-export const Badge = ({ tone, children, ...props }: any) => {
-  const colorClass = 
-    tone === 'green' ? 'bg-green-100 text-green-700 border-green-200' :
-    tone === 'red' ? 'bg-red-100 text-red-700 border-red-200' :
-    tone === 'blue' ? 'bg-blue-100 text-blue-700 border-blue-200' :
-    tone === 'amber' ? 'bg-amber-100 text-amber-700 border-amber-200' :
-    'bg-gray-100 text-gray-600 border-gray-200';
+import {
+  useEffect,
+  type ButtonHTMLAttributes,
+  type ElementType,
+  type InputHTMLAttributes,
+  type ReactNode,
+  type SelectHTMLAttributes,
+} from 'react';
+
+import { Search, X } from 'lucide-react';
+
+// =========================================================
+// PAGE HEADER
+// =========================================================
+
+export function PageHeader({
+  title,
+  description,
+  icon: Icon,
+  action,
+  className = '',
+}: {
+  title: string;
+  description?: string;
+  icon: ElementType;
+  action?: ReactNode;
+  className?: string;
+}) {
   return (
-    <span className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-medium ${colorClass}`} {...props}>
+    <div
+      className={`flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between ${className}`}
+    >
+      <div className="min-w-0">
+        <div className="flex items-center gap-2">
+          <Icon className="h-5 w-5 shrink-0 text-[#2490ef]" />
+
+          <h1 className="text-xl font-semibold text-[#1f2937]">
+            {title}
+          </h1>
+        </div>
+
+        {description && (
+          <p className="mt-1 text-sm text-[#7c8591]">
+            {description}
+          </p>
+        )}
+      </div>
+
+      {action && (
+        <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto">
+          {action}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// =========================================================
+// BUTTONS
+// =========================================================
+
+type WmsButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & {
+  children: ReactNode;
+};
+
+export function PrimaryButton({
+  children,
+  className = '',
+  type = 'button',
+  ...props
+}: WmsButtonProps) {
+  return (
+    <button
+      {...props}
+      type={type}
+      className={`inline-flex h-9 items-center justify-center gap-2 whitespace-nowrap rounded-md bg-[#2490ef] px-4 text-sm font-medium text-white shadow-sm transition hover:bg-[#1674c4] disabled:cursor-not-allowed disabled:opacity-50 ${className}`}
+    >
+      {children}
+    </button>
+  );
+}
+
+export function SecondaryButton({
+  children,
+  className = '',
+  type = 'button',
+  ...props
+}: WmsButtonProps) {
+  return (
+    <button
+      {...props}
+      type={type}
+      className={`inline-flex h-9 items-center justify-center gap-2 whitespace-nowrap rounded-md border border-[#dcd8d1] bg-white px-3 text-sm font-medium text-[#4b5563] transition hover:bg-[#f7f8f9] disabled:cursor-not-allowed disabled:opacity-50 ${className}`}
+    >
+      {children}
+    </button>
+  );
+}
+
+// =========================================================
+// STAT CARD
+// =========================================================
+
+export function StatCard({
+  label,
+  value,
+  hint,
+  icon: Icon,
+  className = '',
+}: {
+  label: string;
+  value: string | number;
+  hint?: string;
+  icon: ElementType;
+  className?: string;
+}) {
+  return (
+    <div
+      className={`rounded-lg border border-[#e5e2dc] bg-white p-4 shadow-sm ${className}`}
+    >
+      <div className="flex items-start justify-between gap-4">
+        <div className="min-w-0">
+          <p className="text-sm text-[#7c8591]">
+            {label}
+          </p>
+
+          <p className="mt-2 text-2xl font-semibold text-[#1f2937]">
+            {value}
+          </p>
+
+          {hint && (
+            <p className="mt-1 text-xs text-[#8a929d]">
+              {hint}
+            </p>
+          )}
+        </div>
+
+        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-[#eef6ff]">
+          <Icon className="h-4 w-4 text-[#2490ef]" />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// =========================================================
+// CARD
+// =========================================================
+
+export function Card({
+  title,
+  description,
+  children,
+  className = '',
+  action,
+}: {
+  title?: string;
+  description?: string;
+  children: ReactNode;
+  className?: string;
+  action?: ReactNode;
+}) {
+  return (
+    <section
+      className={`overflow-hidden rounded-lg border border-[#e5e2dc] bg-white shadow-sm ${className}`}
+    >
+      {(title || description || action) && (
+        <div className="flex flex-col gap-3 border-b border-[#e5e2dc] px-5 py-4 lg:flex-row lg:items-start lg:justify-between">
+          <div className="min-w-0">
+            {title && (
+              <h2 className="text-base font-semibold text-[#1f2937]">
+                {title}
+              </h2>
+            )}
+
+            {description && (
+              <p className="mt-0.5 text-sm text-[#7c8591]">
+                {description}
+              </p>
+            )}
+          </div>
+
+          {action && (
+            <div className="w-full shrink-0 lg:w-auto">
+              {action}
+            </div>
+          )}
+        </div>
+      )}
+
+      {children}
+    </section>
+  );
+}
+
+// =========================================================
+// BADGE
+// =========================================================
+
+export type BadgeTone =
+  | 'blue'
+  | 'green'
+  | 'amber'
+  | 'red'
+  | 'gray'
+  | 'violet';
+
+export function Badge({
+  children,
+  tone = 'blue',
+  className = '',
+}: {
+  children: ReactNode;
+  tone?: BadgeTone;
+  className?: string;
+}) {
+  const map: Record<BadgeTone, string> = {
+    blue:
+      'border-[#d7e8f8] bg-[#eef6ff] text-[#1674c4]',
+
+    green:
+      'border-emerald-200 bg-emerald-50 text-emerald-700',
+
+    amber:
+      'border-amber-200 bg-amber-50 text-amber-700',
+
+    red:
+      'border-red-200 bg-red-50 text-red-700',
+
+    gray:
+      'border-gray-200 bg-gray-50 text-gray-600',
+
+    violet:
+      'border-violet-200 bg-violet-50 text-violet-700',
+  };
+
+  return (
+    <span
+      className={`inline-flex whitespace-nowrap rounded-full border px-2 py-0.5 text-xs font-medium ${map[tone]} ${className}`}
+    >
       {children}
     </span>
   );
-};
+}
 
-export const Card = ({ action, title, description, children, ...props }: any) => (
-  <UICard className="w-full shadow-sm border-[#e5e2dc] bg-white" {...props}>
-    {(title || description || action) && (
-      <CardHeader className="flex flex-col gap-4 pb-2 sm:flex-row sm:items-center sm:justify-between sm:space-y-0">
-        <div className="space-y-1">
-          {title && <CardTitle className="text-lg font-semibold text-[#1f2937]">{title}</CardTitle>}
-          {description && <CardDescription className="text-sm text-[#6b7280]">{description}</CardDescription>}
-        </div>
-        {action && <div>{action}</div>}
-      </CardHeader>
-    )}
-    <CardContent>{children}</CardContent>
-  </UICard>
-);
+// =========================================================
+// STATUS BADGE
+// =========================================================
 
-export const Field = ({ label, children, ...props }: any) => (
-  <div className="space-y-1.5" {...props}>
-    <Label className="text-sm font-medium text-[#374151]">{label}</Label>
-    {children}
-  </div>
-);
+export function StatusBadge({
+  children,
+  status,
+}: {
+  children?: ReactNode;
+  status?: string | null;
+}) {
+  const text = String(
+    status ??
+      children ??
+      'Unknown'
+  );
 
-export const Input = ({ onChange, ...props }: any) => (
-  <UIInput onChange={e => onChange?.(e.target.value)} {...props} />
-);
+  const value =
+    text.toLowerCase();
 
-export const SearchInput = ({ onChange, ...props }: any) => (
-  <div className="relative">
-    <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-[#6b7280]" />
-    <UIInput type="search" className="pl-9 bg-white" onChange={e => onChange?.(e.target.value)} {...props} />
-  </div>
-);
+  let tone: BadgeTone =
+    'gray';
 
-export const Select = ({ onChange, ...props }: any) => (
-  <select 
-    className="flex h-9 w-full rounded-md border border-input bg-white px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
-    onChange={e => onChange?.(e.target.value)}
-    {...props} 
-  />
-);
+  if (
+    [
+      'completed',
+      'dispatched',
+      'active',
+      'ready',
+      'verified',
+      'resolved',
+      'approved',
+      'available',
+      'connected',
+      'delivered',
+      'generated',
+      'reconciled',
+      'success',
+      'synced',
+      'released',
+      'restocked',
+    ].some((item) =>
+      value.includes(item)
+    )
+  ) {
+    tone = 'green';
+  } else if (
+    [
+      'pending',
+      'assigned',
+      'waiting',
+      'scheduled',
+      'draft',
+      'partial',
+      'queued',
+    ].some((item) =>
+      value.includes(item)
+    )
+  ) {
+    tone = 'amber';
+  } else if (
+    [
+      'progress',
+      'verification',
+      'verifying',
+      'counting',
+      'receiving',
+      'picking',
+      'packing',
+      'processing',
+      'allocated',
+      'transit',
+    ].some((item) =>
+      value.includes(item)
+    )
+  ) {
+    tone = 'blue';
+  } else if (
+    [
+      'error',
+      'failed',
+      'exception',
+      'discrepancy',
+      'blocked',
+      'rejected',
+      'damaged',
+      'expired',
+      'cancelled',
+    ].some((item) =>
+      value.includes(item)
+    )
+  ) {
+    tone = 'red';
+  } else if (
+    [
+      'hold',
+      'quarantine',
+    ].some((item) =>
+      value.includes(item)
+    )
+  ) {
+    tone = 'violet';
+  }
 
-export const Modal = ({ open, title, onClose, footer, children, ...props }: any) => (
-  <Dialog open={open} onOpenChange={(val) => !val && onClose?.()}>
-    <DialogContent className="sm:max-w-md">
-      <DialogHeader>
-        <DialogTitle>{title}</DialogTitle>
-      </DialogHeader>
-      <div className="py-4">{children}</div>
-      {footer && <DialogFooter>{footer}</DialogFooter>}
-    </DialogContent>
-  </Dialog>
-);
-
-export const PageHeader = ({ title, description, icon: Icon, action, ...props }: any) => (
-  <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between" {...props}>
-    <div>
-      <h1 className="text-xl font-semibold leading-7 text-[#1f2937]">{title}</h1>
-      {description && <p className="mt-0.5 text-sm text-[#6b7280]">{description}</p>}
-    </div>
-    <div className="flex flex-wrap items-center gap-2">
-      {action}
-    </div>
-  </div>
-);
-
-export const PrimaryButton = (props: any) => <Button variant="default" className="bg-[#2490ef] hover:bg-[#1674c4] text-white" {...props} />;
-
-export const SecondaryButton = (props: any) => <Button variant="outline" className="border-[#e5e2dc] bg-white text-[#374151] hover:bg-[#f8faf9]" {...props} />;
-
-export const StatCard = ({ label, value, hint, icon: Icon, ...props }: any) => (
-  <StatsCard title={label} value={value} subtitle={hint} icon={Icon || Boxes} iconColor="text-[#2490ef]" iconBg="bg-[#eef6fd]" {...props} />
-);
-
-export const Table = ({ headers, rows, ...props }: any) => (
-  <div className="overflow-x-auto rounded-md border border-[#e5e2dc] bg-white shadow-[0_1px_2px_rgba(16,24,40,0.04)] mt-4">
-    <table className="w-full text-sm" {...props}>
-      <thead className="border-b border-[#e5e2dc] bg-[#f8faf9]">
-        <tr>
-          {headers?.map((h: any, i: number) => (
-            <th key={i} className="px-4 py-3 text-left text-xs font-semibold uppercase text-[#6b7280] whitespace-nowrap">{h}</th>
-          ))}
-        </tr>
-      </thead>
-      <tbody className="divide-y divide-[#f0ede8] bg-white">
-        {rows?.map((row: any, i: number) => (
-          <tr key={i} className="transition-colors hover:bg-[#f8faf9]">
-            {row.map((cell: any, j: number) => (
-              <td key={j} className="px-4 py-3 text-[#374151]">{cell}</td>
-            ))}
-          </tr>
-        ))}
-      </tbody>
-    </table>
-  </div>
-);
-
-export const Toast = ({ message, onClose, ...props }: any) => {
-  React.useEffect(() => {
-    const timer = setTimeout(() => onClose?.(), 3000);
-    return () => clearTimeout(timer);
-  }, [onClose]);
-  
   return (
-    <div className="fixed bottom-4 right-4 z-50 flex items-center justify-between gap-4 rounded-md bg-gray-900 px-4 py-3 text-sm text-white shadow-lg animate-in slide-in-from-bottom-5" {...props}>
-      <span>{message}</span>
-      <button onClick={onClose} className="text-gray-400 hover:text-white"><X className="h-4 w-4" /></button>
+    <Badge tone={tone}>
+      {text}
+    </Badge>
+  );
+}
+
+// =========================================================
+// PROGRESS
+// =========================================================
+
+export function Progress({
+  value,
+  label,
+  right,
+}: {
+  value: number;
+  label?: string;
+  right?: string;
+}) {
+  const safeValue =
+    Math.max(
+      0,
+      Math.min(
+        100,
+        value
+      )
+    );
+
+  return (
+    <div>
+      {(label || right) && (
+        <div className="mb-1.5 flex items-center justify-between gap-3 text-xs">
+          <span className="text-[#4b5563]">
+            {label}
+          </span>
+
+          <span className="text-[#7c8591]">
+            {right ??
+              `${safeValue}%`}
+          </span>
+        </div>
+      )}
+
+      <div className="h-2 overflow-hidden rounded-full bg-[#edf0f2]">
+        <div
+          className="h-full rounded-full bg-[#2490ef] transition-all"
+          style={{
+            width: `${safeValue}%`,
+          }}
+        />
+      </div>
     </div>
   );
+}
+
+// =========================================================
+// INPUT
+// =========================================================
+
+type WmsInputProps = Omit<
+  InputHTMLAttributes<HTMLInputElement>,
+  'onChange'
+> & {
+  onChange?: (
+    value: string
+  ) => void;
 };
+
+export function Input({
+  value,
+  onChange,
+  className = '',
+  type = 'text',
+  ...props
+}: WmsInputProps) {
+  return (
+    <input
+      {...props}
+      type={type}
+      value={value ?? ''}
+      onChange={(event) =>
+        onChange?.(
+          event.target.value
+        )
+      }
+      className={`h-9 w-full rounded-md border border-[#dcd8d1] bg-white px-3 text-sm text-[#1f2937] outline-none placeholder:text-[#9aa1aa] focus:border-[#2490ef] focus:ring-2 focus:ring-[#2490ef]/10 disabled:cursor-not-allowed disabled:bg-[#f5f5f4] disabled:text-[#9ca3af] ${className}`}
+    />
+  );
+}
+
+// =========================================================
+// SEARCH INPUT
+// =========================================================
+
+export function SearchInput({
+  value,
+  onChange,
+  placeholder = 'Search...',
+  disabled = false,
+  className = '',
+}: {
+  value?: string;
+  onChange?: (
+    value: string
+  ) => void;
+  placeholder?: string;
+  disabled?: boolean;
+  className?: string;
+}) {
+  return (
+    <div
+      className={`relative w-full ${className}`}
+    >
+      <Search
+        className="pointer-events-none absolute left-3 top-1/2 z-10 h-4 w-4 -translate-y-1/2 text-[#9aa1aa]"
+        strokeWidth={2}
+      />
+
+      <input
+        type="search"
+        value={value ?? ''}
+        disabled={disabled}
+        onChange={(event) =>
+          onChange?.(
+            event.target.value
+          )
+        }
+        placeholder={
+          placeholder
+        }
+        className="h-9 w-full rounded-md border border-[#dcd8d1] bg-white pl-10 pr-3 text-sm text-[#1f2937] outline-none placeholder:text-[#9aa1aa] focus:border-[#2490ef] focus:ring-2 focus:ring-[#2490ef]/10 disabled:cursor-not-allowed disabled:bg-[#f5f5f4] disabled:text-[#9ca3af]"
+      />
+    </div>
+  );
+}
+
+// =========================================================
+// SELECT
+// =========================================================
+
+type WmsSelectProps = Omit<
+  SelectHTMLAttributes<HTMLSelectElement>,
+  'onChange'
+> & {
+  onChange?: (
+    value: string
+  ) => void;
+  children?: ReactNode;
+};
+
+export function Select({
+  value,
+  onChange,
+  children,
+  className = '',
+  ...props
+}: WmsSelectProps) {
+  return (
+    <select
+      {...props}
+      value={value}
+      onChange={(event) =>
+        onChange?.(
+          event.target.value
+        )
+      }
+      className={`h-9 w-full rounded-md border border-[#dcd8d1] bg-white px-3 text-sm text-[#4b5563] outline-none focus:border-[#2490ef] focus:ring-2 focus:ring-[#2490ef]/10 disabled:cursor-not-allowed disabled:bg-[#f5f5f4] disabled:text-[#9ca3af] ${className}`}
+    >
+      {children}
+    </select>
+  );
+}
+
+// =========================================================
+// FIELD
+// =========================================================
+
+export function Field({
+  label,
+  children,
+  className = '',
+}: {
+  label: string;
+  children: ReactNode;
+  className?: string;
+}) {
+  return (
+    <label
+      className={`block ${className}`}
+    >
+      <span className="mb-1.5 block text-sm font-medium text-[#374151]">
+        {label}
+      </span>
+
+      {children}
+    </label>
+  );
+}
+
+// =========================================================
+// MODAL
+// =========================================================
+
+export function Modal({
+  open,
+  title,
+  description,
+  onClose,
+  children,
+  footer,
+}: {
+  open: boolean;
+  title: string;
+  description?: string;
+  onClose: () => void;
+  children: ReactNode;
+  footer?: ReactNode;
+}) {
+  if (!open) {
+    return null;
+  }
+
+  return (
+    <div
+      className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 p-4"
+      onMouseDown={
+        onClose
+      }
+    >
+      <div
+        className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-xl border border-[#e5e2dc] bg-white shadow-xl"
+        onMouseDown={(
+          event
+        ) =>
+          event.stopPropagation()
+        }
+      >
+        <div className="flex items-start justify-between gap-4 border-b border-[#e5e2dc] px-5 py-4">
+          <div className="min-w-0">
+            <h3 className="text-base font-semibold text-[#1f2937]">
+              {title}
+            </h3>
+
+            {description && (
+              <p className="mt-1 text-sm text-[#7c8591]">
+                {
+                  description
+                }
+              </p>
+            )}
+          </div>
+
+          <button
+            type="button"
+            aria-label="Close"
+            onClick={
+              onClose
+            }
+            className="shrink-0 rounded-md p-1.5 text-[#7c8591] transition hover:bg-[#eef3f5]"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+
+        <div className="p-5">
+          {children}
+        </div>
+
+        {footer && (
+          <div className="flex flex-col-reverse gap-2 border-t border-[#e5e2dc] px-5 py-4 sm:flex-row sm:justify-end">
+            {footer}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// =========================================================
+// TOAST
+// =========================================================
+
+export function Toast({
+  message,
+  onClose,
+  duration = 3000,
+}: {
+  message: string;
+  onClose: () => void;
+  duration?: number;
+}) {
+  useEffect(() => {
+    const timer =
+      window.setTimeout(
+        () => {
+          onClose();
+        },
+        duration
+      );
+
+    return () => {
+      window.clearTimeout(
+        timer
+      );
+    };
+  }, [
+    duration,
+    message,
+    onClose,
+  ]);
+
+  return (
+    <div className="fixed bottom-5 right-5 z-[110] flex max-w-[calc(100vw-2rem)] items-center gap-3 rounded-lg border border-emerald-200 bg-white px-4 py-3 text-sm text-[#1f2937] shadow-lg">
+      <span className="h-2 w-2 shrink-0 rounded-full bg-emerald-500" />
+
+      <span className="min-w-0">
+        {message}
+      </span>
+
+      <button
+        type="button"
+        aria-label="Close notification"
+        onClick={
+          onClose
+        }
+        className="ml-2 shrink-0 rounded p-1 text-[#8a929d] hover:bg-[#f3f4f6]"
+      >
+        <X className="h-4 w-4" />
+      </button>
+    </div>
+  );
+}
+
+// =========================================================
+// TABLE
+// =========================================================
+
+export function Table({
+  headers,
+  rows,
+  className = '',
+}: {
+  headers: string[];
+  rows: ReactNode[][];
+  className?: string;
+}) {
+  return (
+    <div
+      className={`overflow-x-auto ${className}`}
+    >
+      <table className="w-full text-left">
+        <thead className="bg-[#fbfaf8]">
+          <tr>
+            {headers.map(
+              (
+                header,
+                index
+              ) => (
+                <th
+                  key={`${header}-${index}`}
+                  className="whitespace-nowrap px-5 py-3 text-xs font-medium uppercase tracking-wide text-[#7c8591]"
+                >
+                  {header}
+                </th>
+              )
+            )}
+          </tr>
+        </thead>
+
+        <tbody>
+          {rows.map(
+            (
+              row,
+              rowIndex
+            ) => (
+              <tr
+                key={
+                  rowIndex
+                }
+                className="border-t border-[#f0eee9] transition hover:bg-[#fcfbfa]"
+              >
+                {row.map(
+                  (
+                    cell,
+                    cellIndex
+                  ) => (
+                    <td
+                      key={
+                        cellIndex
+                      }
+                      className="whitespace-nowrap px-5 py-3.5 text-sm text-[#4b5563]"
+                    >
+                      {cell}
+                    </td>
+                  )
+                )}
+              </tr>
+            )
+          )}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+// =========================================================
+// MINI BARS
+// =========================================================
+
+export function MiniBars({
+  values,
+}: {
+  values: number[];
+}) {
+  return (
+    <div className="flex h-48 items-end gap-2 rounded-lg bg-[#fbfaf8] p-4">
+      {values.map(
+        (
+          value,
+          index
+        ) => (
+          <div
+            key={
+              index
+            }
+            className="flex-1 rounded-t bg-[#2490ef]/80"
+            style={{
+              height: `${Math.max(
+                0,
+                Math.min(
+                  100,
+                  value
+                )
+              )}%`,
+            }}
+          />
+        )
+      )}
+    </div>
+  );
+}
+
+// =========================================================
+// TOGGLE
+// =========================================================
+
+export function Toggle({
+  checked,
+  onChange,
+  disabled = false,
+}: {
+  checked: boolean;
+  onChange: (
+    value: boolean
+  ) => void;
+  disabled?: boolean;
+}) {
+  return (
+    <button
+      type="button"
+      role="switch"
+      aria-checked={
+        checked
+      }
+      disabled={
+        disabled
+      }
+      onClick={() =>
+        onChange(
+          !checked
+        )
+      }
+      className={`relative h-6 w-11 shrink-0 rounded-full transition ${
+        checked
+          ? 'bg-[#2490ef]'
+          : 'bg-[#d8dde3]'
+      } disabled:cursor-not-allowed disabled:opacity-50`}
+    >
+      <span
+        className={`absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition-all ${
+          checked
+            ? 'left-[22px]'
+            : 'left-0.5'
+        }`}
+      />
+    </button>
+  );
+}

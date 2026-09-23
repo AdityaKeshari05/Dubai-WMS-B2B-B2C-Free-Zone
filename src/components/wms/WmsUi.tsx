@@ -108,12 +108,16 @@ export function StatCard({
   value,
   hint,
   icon: Icon,
+  iconColor,
+  iconBg,
   className = '',
 }: {
   label: string;
   value: string | number;
   hint?: string;
   icon: ElementType;
+  iconColor?: string;
+  iconBg?: string;
   className?: string;
 }) {
   return (
@@ -137,8 +141,8 @@ export function StatCard({
           )}
         </div>
 
-        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-[#eef6ff]">
-          <Icon className="h-4 w-4 text-[#2490ef]" />
+        <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-md ${iconBg || 'bg-[#eef6ff]'}`}>
+          <Icon className={`h-4 w-4 ${iconColor || 'text-[#2490ef]'}`} />
         </div>
       </div>
     </div>

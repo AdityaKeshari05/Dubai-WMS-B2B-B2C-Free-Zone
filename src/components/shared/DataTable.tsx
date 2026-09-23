@@ -1,5 +1,6 @@
 'use client';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Inbox } from 'lucide-react';
 
 interface Column<T> {
   key: string;
@@ -13,7 +14,7 @@ interface DataTableProps<T> {
   data: T[];
   isLoading?: boolean;
   keyField?: string;
-  emptyMessage?: string;
+  emptyMessage?: React.ReactNode;
   onRowClick?: (item: T) => void;
 }
 
@@ -43,8 +44,16 @@ export function DataTable<T extends Record<string, any>>({ columns, data, isLoad
         <tbody className="divide-y divide-[#f0ede8] bg-white">
           {data.length === 0 ? (
             <tr>
-              <td colSpan={columns.length} className="px-4 py-12 text-center text-sm text-[#8a929d]">
-                {emptyMessage}
+              <td colSpan={columns.length}>
+                <div className="flex flex-col items-center justify-center py-16 text-center">
+                  <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-[#f8faf9]">
+                    <Inbox className="h-6 w-6 text-[#9aa1aa]" />
+                  </div>
+                  <h3 className="text-sm font-medium text-[#1f2937]">
+                    {typeof emptyMessage === 'string' ? emptyMessage : 'No records found'}
+                  </h3>
+                  {typeof emptyMessage !== 'string' && emptyMessage}
+                </div>
               </td>
             </tr>
           ) : (

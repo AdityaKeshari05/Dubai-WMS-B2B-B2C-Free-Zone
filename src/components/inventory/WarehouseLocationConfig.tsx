@@ -228,7 +228,9 @@ export default function WarehouseLocationConfig({ defaultTab = 'overview' }: { d
   const [tab, setTab] = useState(defaultTab);
   const [warehouses, setWarehouses] = useState(WAREHOUSES_INIT);
   const [zones, setZones] = useState(ZONES_INIT);
+  const LOCATIONS_STORAGE_KEY = 'wms-warehouse-location-bins';
   const [locs, setLocs] = useState(LOCATIONS_INIT);
+  const [locationsHydrated, setLocationsHydrated] = useState(false);
   const [attributes, setAttributes] = useState(LOCATION_ATTRIBUTES_INIT);
   const [rules, setRules] = useState(SLOTTING_RULES_INIT);
   const [cfgs, setCfgs] = useState<Record<string, any>>(WH_CFG_INIT);
@@ -303,12 +305,57 @@ export default function WarehouseLocationConfig({ defaultTab = 'overview' }: { d
     }
   }, [defaultTab]);
 
+  // Restore locally-created locations after route changes/remounts.
+  React.useEffect(() => {
+    try {
+      const saved = window.localStorage.getItem(LOCATIONS_STORAGE_KEY);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed)) setLocs(parsed);
+      }
+    } catch (error) {
+      console.error('Failed to restore warehouse locations:', error);
+    } finally {
+      setLocationsHydrated(true);
+    }
+  }, []);
+
+  // Persist the current location master so Hierarchy and Bin Inventory
+  // continue to show the same locations after navigation/remounts.
+  React.useEffect(() => {
+    if (!locationsHydrated) return;
+    try {
+      window.localStorage.setItem(LOCATIONS_STORAGE_KEY, JSON.stringify(locs));
+    } catch (error) {
+      console.error('Failed to persist warehouse locations:', error);
+    }
+  }, [locs, locationsHydrated]);
+
+
+  React.useEffect(() => {
+    const firstZoneForWarehouse = zones.find(z => z.warehouseId === whId);
+
+    setBuilderForm(prev => ({
+      ...prev,
+      targetWh: whId,
+      targetZone: firstZoneForWarehouse?.id || '',
+    }));
+  }, [whId, zones]);
+
   const handleTabChange = (val: string) => {
     setTab(val);
     const target = TAB_ROUTES[val];
     if (target && pathname !== target) {
       router.push(target);
     }
+  };
+
+  const handleWarehouseChange = (nextWarehouseId: string) => {
+    setWhId(nextWarehouseId);
+    setSelectedLocNode(null);
+    setBinDetailLoc(null);
+    setQ('');
+    setLStat('ALL');
   };
 
   const selWH = warehouses.find(w => w.id === whId) || warehouses[0];
@@ -318,42 +365,96 @@ export default function WarehouseLocationConfig({ defaultTab = 'overview' }: { d
   const cfg = cfgs[whId] || {};
 
   const fZones = whZones.filter(z => zType === 'ALL' || z.type === zType);
-  const fLocs = whLocs.filter(l => (lStat === 'ALL' || l.status === lStat) && (!q || l.code.toLowerCase().includes(q.toLowerCase())));
+  const normalizedQuery = q.trim().toLowerCase();
+  const fLocs = whLocs.filter(l => {
+    const matchesStatus = lStat === 'ALL' || l.status === lStat;
+    if (!normalizedQuery) return matchesStatus;
+
+    const searchableFields = [
+      l.code, l.bin, l.aisle, l.rack, l.shelf,
+      l.sku, l.skuName, l.lot,
+    ];
+
+    return matchesStatus && searchableFields.some(value =>
+      String(value || '').toLowerCase().includes(normalizedQuery)
+    );
+  });
   const fAttrs = whAttrs.filter(a => (attrType === 'ALL' || a.type === attrType) && (!q || a.code.toLowerCase().includes(q.toLowerCase())));
 
-  const hier: Record<string, Record<string, Record<string, string[]>>> = {};
+  type HierarchyTree = Record<string, {
+    zone: any;
+    aisles: Record<string, Record<string, Record<string, string[]>>>;
+  }>;
+
+  const hier: HierarchyTree = {};
+
   whLocs.forEach(l => {
-    if (!hier[l.aisle]) hier[l.aisle] = {};
-    if (!hier[l.aisle][l.rack]) hier[l.aisle][l.rack] = {};
-    if (!hier[l.aisle][l.rack][l.shelf]) hier[l.aisle][l.rack][l.shelf] = [];
-    if (!hier[l.aisle][l.rack][l.shelf].includes(l.bin)) hier[l.aisle][l.rack][l.shelf].push(l.bin);
+    const zone = zones.find(z => z.id === l.zoneId);
+    if (!zone) return;
+
+    if (!hier[zone.id]) {
+      hier[zone.id] = { zone, aisles: {} };
+    }
+
+    if (!hier[zone.id].aisles[l.aisle]) {
+      hier[zone.id].aisles[l.aisle] = {};
+    }
+
+    if (!hier[zone.id].aisles[l.aisle][l.rack]) {
+      hier[zone.id].aisles[l.aisle][l.rack] = {};
+    }
+
+    if (!hier[zone.id].aisles[l.aisle][l.rack][l.shelf]) {
+      hier[zone.id].aisles[l.aisle][l.rack][l.shelf] = [];
+    }
+
+    const bins = hier[zone.id].aisles[l.aisle][l.rack][l.shelf];
+    if (!bins.includes(l.bin)) bins.push(l.bin);
   });
 
   const generateBulkLocations = (isPreview = false) => {
     const targetWhObj = warehouses.find(w => w.id === builderForm.targetWh);
     const targetZoneObj = zones.find(z => z.id === builderForm.targetZone);
-    const whCode = targetWhObj ? targetWhObj.code : 'WH1';
-    const zoneCode = targetZoneObj ? targetZoneObj.code : 'ZN-A';
+
+    if (!targetWhObj || !targetZoneObj) return [];
+
+    const whCode = targetWhObj.code;
+    const zoneCode = targetZoneObj.code;
     const sep = nomenConfig.separator;
 
+    const existingCodes = new Set(locs.map(l => String(l.code).toUpperCase()));
     const newLocs: any[] = [];
-    let seq = 100;
+
+    let seq = Math.max(
+      0,
+      ...locs
+        .filter(l => l.warehouseId === builderForm.targetWh)
+        .map(l => Number(l.pickSequence) || 0)
+    );
+
     for (let a = Number(builderForm.aisleFrom); a <= Number(builderForm.aisleTo); a++) {
       const aisleNum = nomenConfig.zeroPadding ? String(a).padStart(2, '0') : String(a);
       const aisleStr = `${nomenConfig.aislePrefix}${aisleNum}`;
+
       for (let r = Number(builderForm.rackFrom); r <= Number(builderForm.rackTo); r++) {
         const rackNum = nomenConfig.zeroPadding ? String(r).padStart(2, '0') : String(r);
         const rackStr = `${nomenConfig.rackPrefix}${rackNum}`;
+
         for (let s = Number(builderForm.shelfFrom); s <= Number(builderForm.shelfTo); s++) {
           const shelfStr = `${nomenConfig.shelfPrefix}${s}`;
+
           for (let b = Number(builderForm.binFrom); b <= Number(builderForm.binTo); b++) {
             const binNum = nomenConfig.zeroPadding ? String(b).padStart(2, '0') : String(b);
             const binStr = `${nomenConfig.binPrefix}${binNum}`;
 
+            const code = [whCode, zoneCode, aisleStr, rackStr, shelfStr, binStr].join(sep);
+
+            if (existingCodes.has(code.toUpperCase())) continue;
+
             seq++;
-            const code = `${whCode}${sep}${zoneCode}${sep}${aisleStr}${sep}${rackStr}${sep}${shelfStr}${sep}${binStr}`;
+
             newLocs.push({
-              id: `loc-gen-${Date.now()}-${seq}-${Math.random().toString(36).substr(2, 4)}`,
+              id: `loc-gen-${builderForm.targetWh}-${builderForm.targetZone}-${aisleStr}-${rackStr}-${shelfStr}-${binStr}`,
               warehouseId: builderForm.targetWh,
               zoneId: builderForm.targetZone,
               code,
@@ -361,12 +462,12 @@ export default function WarehouseLocationConfig({ defaultTab = 'overview' }: { d
               rack: rackStr,
               shelf: shelfStr,
               bin: binStr,
-              maxWeight: Number(builderForm.maxWeight),
-              maxVolume: Math.round(Number(builderForm.cbm) * 1000),
+              maxWeight: Number(builderForm.maxWeight) || 500,
+              maxVolume: Math.round(Number(builderForm.cbm || 1.44) * 1000),
               currentWeight: 0,
               currentVolume: 0,
               velocityClass: builderForm.velocityClass,
-              isBonded: targetZoneObj?.isBonded ?? true,
+              isBonded: targetZoneObj.isBonded ?? true,
               isLocked: false,
               status: 'EMPTY',
               pickSequence: seq,
@@ -383,43 +484,77 @@ export default function WarehouseLocationConfig({ defaultTab = 'overview' }: { d
         }
       }
     }
+
     return newLocs;
   };
 
   const handleRunBulkGenerate = () => {
     const generated = generateBulkLocations(false);
+
+    if (generated.length === 0) {
+      toast.error('No new bins were generated. These locations may already exist.');
+      return;
+    }
+
     setLocs(prev => [...prev, ...generated]);
-    toast.success(`Generated ${generated.length} warehouse locations successfully!`);
-    // Jump the facility selector to the warehouse we just generated into, so the
-    // Visual Topology Tree immediately reflects the new bins instead of silently
-    // generating locations for a warehouse the tree isn't currently showing.
     setWhId(builderForm.targetWh);
+    setSelectedLocNode(generated[0]);
     setHierSubTab('tree');
+
+    toast.success(`Generated ${generated.length} new warehouse bins successfully`);
   };
 
   const setCfgVal = (k: string, v: any) => setCfgs(p => ({ ...p, [whId]: { ...p[whId], [k]: v } }));
 
   const saveNewLocation = () => {
     const zoneObj = whZones.find(z => z.id === newLocForm.zoneId);
-    if (!zoneObj || !newLocForm.aisle.trim() || !newLocForm.rack.trim() || !newLocForm.shelf.trim() || !newLocForm.bin.trim()) {
+
+    if (
+      !zoneObj ||
+      !newLocForm.aisle.trim() ||
+      !newLocForm.rack.trim() ||
+      !newLocForm.shelf.trim() ||
+      !newLocForm.bin.trim()
+    ) {
       toast.error('Zone, Aisle, Rack, Shelf and Bin are required');
       return;
     }
-    const code = `${selWH?.code}-${zoneObj.code}-${newLocForm.aisle.trim()}-${newLocForm.rack.trim()}-${newLocForm.shelf.trim()}-${newLocForm.bin.trim()}`;
-    if (locs.some(l => l.code === code)) {
-      toast.error('A location with this code already exists');
+
+    const aisle = newLocForm.aisle.trim().toUpperCase();
+    const rack = newLocForm.rack.trim().toUpperCase();
+    const shelf = newLocForm.shelf.trim().toUpperCase();
+    const bin = newLocForm.bin.trim().toUpperCase();
+
+    const code = [selWH?.code, zoneObj.code, aisle, rack, shelf, bin].join('-');
+
+    const duplicate = locs.some(l =>
+      l.warehouseId === whId &&
+      l.zoneId === zoneObj.id &&
+      l.aisle.toUpperCase() === aisle &&
+      l.rack.toUpperCase() === rack &&
+      l.shelf.toUpperCase() === shelf &&
+      l.bin.toUpperCase() === bin
+    );
+
+    if (duplicate) {
+      toast.error('This bin already exists in the selected location');
       return;
     }
-    const maxSeq = Math.max(0, ...whLocs.map(l => l.pickSequence || 0));
-    setLocs(prev => [...prev, {
-      id: `loc-${Date.now()}`,
+
+    const maxSeq = Math.max(
+      0,
+      ...whLocs.map(l => Number(l.pickSequence) || 0)
+    );
+
+    const newLocation = {
+      id: `loc-${whId}-${zoneObj.id}-${aisle}-${rack}-${shelf}-${bin}`,
       zoneId: zoneObj.id,
       warehouseId: whId,
       code,
-      aisle: newLocForm.aisle.trim(),
-      rack: newLocForm.rack.trim(),
-      shelf: newLocForm.shelf.trim(),
-      bin: newLocForm.bin.trim(),
+      aisle,
+      rack,
+      shelf,
+      bin,
       maxWeight: Number(newLocForm.maxWeight) || 500,
       maxVolume: 1500,
       currentWeight: 0,
@@ -435,9 +570,22 @@ export default function WarehouseLocationConfig({ defaultTab = 'overview' }: { d
       uom: 'PLT',
       lot: '—',
       expiry: '—',
-    }]);
-    toast.success(`Location ${code} added`);
-    setNewLocForm({ zoneId: '', aisle: '', rack: '', shelf: '', bin: '', maxWeight: '500' });
+    };
+
+    setLocs(prev => [...prev, newLocation]);
+    setSelectedLocNode(newLocation);
+    setHierSubTab('tree');
+
+    toast.success(`Bin ${code} added successfully`);
+
+    setNewLocForm({
+      zoneId: whZones[0]?.id || '',
+      aisle: '',
+      rack: '',
+      shelf: '',
+      bin: '',
+      maxWeight: '500',
+    });
     setLModal(false);
   };
 
@@ -575,7 +723,7 @@ export default function WarehouseLocationConfig({ defaultTab = 'overview' }: { d
           </Button>
         </div>
         <Button size="sm" className="gap-1.5 bg-blue-600 hover:bg-blue-700 h-8 text-xs" onClick={() => { setEditWh(null); setWhModal(true); }}>
-          <Plus className="h-3.5 w-3.5" /> + Add Warehouse
+          <Plus className="h-3.5 w-3.5" /> Add Warehouse
         </Button>
       </div>
 
@@ -639,7 +787,7 @@ export default function WarehouseLocationConfig({ defaultTab = 'overview' }: { d
 
                 <div className="pt-2 border-t border-gray-100">
                   <div className="flex justify-between text-xs text-gray-500 mb-1">
-                    <span>{wh.locations.toLocaleString()} Bins Mapped</span>
+                    <span>{locs.filter(l => l.warehouseId === wh.id).length.toLocaleString()} Bins Mapped</span>
                     <span className="font-semibold text-gray-700">Capacity: {wh.capacity}%</span>
                   </div>
                   <Bar value={wh.capacity} />
@@ -701,7 +849,7 @@ export default function WarehouseLocationConfig({ defaultTab = 'overview' }: { d
                     </span>
                   </td>
                   <td className="px-4 py-3 text-gray-800 font-medium">{wh.zones} Zones</td>
-                  <td className="px-4 py-3 text-gray-800 font-mono">{wh.locations.toLocaleString()} Bins</td>
+                  <td className="px-4 py-3 text-gray-800 font-mono">{locs.filter(l => l.warehouseId === wh.id).length.toLocaleString()} Bins</td>
                   <td className="px-4 py-3"><StatusBadge status={wh.status} /></td>
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-1">
@@ -753,7 +901,10 @@ export default function WarehouseLocationConfig({ defaultTab = 'overview' }: { d
     // in the wizard, so the zone dropdown must follow the wizard's own choice.
     const builderZones = zones.filter(z => z.warehouseId === builderForm.targetWh);
 
-    const activeNode = selectedLocNode || whLocs[0] || {
+    const activeNode =
+      selectedLocNode && selectedLocNode.warehouseId === whId
+        ? selectedLocNode
+        : whLocs[0] || {
       code: `${selWH?.code}-ZN-BULK-A-A03-R02-S1-B04`,
       aisle: 'A03',
       rack: 'R02',
@@ -806,7 +957,7 @@ export default function WarehouseLocationConfig({ defaultTab = 'overview' }: { d
 
           <div className="flex items-center gap-2 shrink-0">
             <span className="text-xs text-gray-500 font-medium">Facility:</span>
-            <Select value={whId} onValueChange={setWhId}>
+            <Select value={whId} onValueChange={handleWarehouseChange}>
               <SelectTrigger className="w-48 h-8 text-xs"><SelectValue /></SelectTrigger>
               <SelectContent>{warehouses.map(w => <SelectItem key={w.id} value={w.id}>{w.code}</SelectItem>)}</SelectContent>
             </Select>
@@ -845,67 +996,106 @@ export default function WarehouseLocationConfig({ defaultTab = 'overview' }: { d
                     {Object.entries(hier).length === 0 ? (
                       <div className="py-12 text-center text-slate-400">
                         <MapPin className="h-8 w-8 mx-auto mb-2 text-slate-300" />
-                        No structural nodes mapped for this warehouse yet. Use the Rapid Builder to generate hierarchy.
+                        <p className="text-sm font-medium text-slate-500">No structural nodes mapped for this warehouse yet.</p>
+                        <p className="text-xs text-slate-400 mt-1">Create a location or use the Rapid Hierarchy Builder.</p>
                       </div>
                     ) : (
-                      Object.entries(hier).map(([aisle, racks]) => (
-                        <div key={aisle} className="border border-slate-100 rounded-lg p-2.5 bg-slate-50/50">
-                          <button
-                            className="flex items-center justify-between w-full text-amber-800 font-bold py-1 px-2 rounded hover:bg-amber-100/60 transition-colors"
-                            onClick={() => setExpanded(p => ({ ...p, [aisle]: !p[aisle] }))}
-                          >
-                            <span className="flex items-center gap-2">
-                              {expanded[aisle] ? <ChevronDown className="h-4 w-4 text-amber-600" /> : <ChevronRight className="h-4 w-4 text-amber-600" />}
-                              <Grid3X3 className="h-4 w-4 text-amber-600" /> Aisle {aisle}
-                            </span>
-                            <span className="text-[11px] font-normal text-slate-500">Corridor Route #{aisle}</span>
-                          </button>
+                      Object.entries(hier).map(([zoneId, zoneData]) => {
+                        const { zone, aisles } = zoneData;
 
-                          {expanded[aisle] && (
-                            <div className="ml-4 mt-2 space-y-2 border-l-2 border-amber-200 pl-3">
-                              {Object.entries(racks).map(([rack, shelves]) => (
-                                <div key={rack} className="bg-white rounded border border-slate-200 p-2">
-                                  <div className="flex items-center gap-1.5 text-orange-700 font-semibold mb-1.5">
-                                    <ChevronRight className="h-3.5 w-3.5 text-orange-500" /> Rack / Bay {rack}
-                                  </div>
-                                  <div className="ml-3 space-y-1.5">
-                                    {Object.entries(shelves).map(([shelf, bins]) => (
-                                      <div key={shelf} className="flex flex-col gap-1 py-1 border-t border-slate-100">
-                                        <div className="flex items-center gap-2 text-rose-700 text-[11px] font-medium">
-                                          <ChevronRight className="h-3 w-3 text-rose-400" /> Shelf Level {shelf}
-                                          <span className="text-slate-400 text-[10px]">({bins.length} Slots)</span>
-                                        </div>
-                                        <div className="flex gap-1.5 flex-wrap ml-4 mt-0.5">
-                                          {bins.map(bin => {
-                                            const loc = whLocs.find(l => l.bin === bin && l.shelf === shelf && l.rack === rack && l.aisle === aisle);
-                                            const isSelected = activeNode?.code === loc?.code;
-                                            return (
-                                              <button
-                                                key={bin}
-                                                onClick={() => loc && setSelectedLocNode(loc)}
-                                                className={`rounded px-2 py-1 text-[11px] font-mono border transition-all flex items-center gap-1 ${
-                                                  isSelected ? 'bg-blue-600 text-white border-blue-700 ring-2 ring-blue-300 font-bold' :
-                                                  loc?.status === 'EMPTY' ? 'bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100' :
-                                                  loc?.status === 'QUARANTINE' ? 'bg-red-50 text-red-700 border-red-200 hover:bg-red-100' :
-                                                  loc?.status === 'NEAR_FULL' ? 'bg-amber-50 text-amber-700 border-amber-200 hover:bg-amber-100' :
-                                                  'bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100'
-                                                }`}
-                                              >
-                                                <span>{bin}</span>
-                                                {loc?.pickSequence && <span className="opacity-75 text-[9px]">#{loc.pickSequence}</span>}
-                                              </button>
-                                            );
-                                          })}
-                                        </div>
+                        return (
+                          <div key={zoneId} className="border border-slate-100 rounded-lg p-2.5 bg-slate-50/50">
+                            <button
+                              className="flex items-center justify-between w-full text-purple-800 font-bold py-1.5 px-2 rounded hover:bg-purple-100/60 transition-colors"
+                              onClick={() => setExpanded(p => ({ ...p, [`zone:${zoneId}`]: !p[`zone:${zoneId}`] }))}
+                            >
+                              <span className="flex items-center gap-2">
+                                {expanded[`zone:${zoneId}`] !== false ? <ChevronDown className="h-4 w-4 text-purple-600" /> : <ChevronRight className="h-4 w-4 text-purple-600" />}
+                                <Layers className="h-4 w-4 text-purple-600" />
+                                <span>{zone.name}</span>
+                                <span className="font-mono text-[10px] text-purple-500">({zone.code})</span>
+                              </span>
+                              <span className="text-[10px] font-normal text-slate-500">
+                                {whLocs.filter(l => l.zoneId === zoneId).length} bins
+                              </span>
+                            </button>
+
+                            {expanded[`zone:${zoneId}`] !== false && (
+                              <div className="ml-4 mt-2 space-y-2 border-l-2 border-purple-200 pl-3">
+                                {Object.entries(aisles).map(([aisle, racks]) => (
+                                  <div key={aisle} className="border border-slate-200 rounded-lg bg-white p-2">
+                                    <button
+                                      className="flex items-center justify-between w-full text-amber-800 font-bold py-1 px-2 rounded hover:bg-amber-100/60 transition-colors"
+                                      onClick={() => setExpanded(p => ({ ...p, [`aisle:${zoneId}:${aisle}`]: !p[`aisle:${zoneId}:${aisle}`] }))}
+                                    >
+                                      <span className="flex items-center gap-2">
+                                        {expanded[`aisle:${zoneId}:${aisle}`] !== false ? <ChevronDown className="h-4 w-4 text-amber-600" /> : <ChevronRight className="h-4 w-4 text-amber-600" />}
+                                        <Grid3X3 className="h-4 w-4 text-amber-600" />
+                                        <span>Aisle {aisle}</span>
+                                      </span>
+                                      <span className="text-[10px] text-slate-400">{Object.keys(racks).length} racks</span>
+                                    </button>
+
+                                    {expanded[`aisle:${zoneId}:${aisle}`] !== false && (
+                                      <div className="ml-4 mt-2 space-y-2 border-l-2 border-amber-200 pl-3">
+                                        {Object.entries(racks).map(([rack, shelves]) => (
+                                          <div key={rack} className="bg-white rounded border border-slate-200 p-2">
+                                            <div className="flex items-center gap-1.5 text-orange-700 font-semibold mb-1.5">
+                                              <ChevronRight className="h-3.5 w-3.5 text-orange-500" /> Rack / Bay {rack}
+                                            </div>
+                                            <div className="ml-3 space-y-1.5">
+                                              {Object.entries(shelves).map(([shelf, bins]) => (
+                                                <div key={shelf} className="flex flex-col gap-1 py-1 border-t border-slate-100">
+                                                  <div className="flex items-center gap-2 text-rose-700 text-[11px] font-medium">
+                                                    <ChevronRight className="h-3 w-3 text-rose-400" /> Shelf Level {shelf}
+                                                    <span className="text-slate-400 text-[10px]">({bins.length} Slots)</span>
+                                                  </div>
+                                                  <div className="flex gap-1.5 flex-wrap ml-4 mt-0.5">
+                                                    {bins.map(bin => {
+                                                      const loc = whLocs.find(l =>
+                                                        l.zoneId === zoneId &&
+                                                        l.bin === bin &&
+                                                        l.shelf === shelf &&
+                                                        l.rack === rack &&
+                                                        l.aisle === aisle
+                                                      );
+
+                                                      if (!loc) return null;
+                                                      const isSelected = activeNode?.code === loc.code;
+
+                                                      return (
+                                                        <button
+                                                          key={loc.id}
+                                                          onClick={() => setSelectedLocNode(loc)}
+                                                          className={`rounded px-2 py-1 text-[11px] font-mono border transition-all flex items-center gap-1 ${
+                                                            isSelected ? 'bg-blue-600 text-white border-blue-700 ring-2 ring-blue-300 font-bold' :
+                                                            loc.status === 'EMPTY' ? 'bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100' :
+                                                            loc.status === 'QUARANTINE' ? 'bg-red-50 text-red-700 border-red-200 hover:bg-red-100' :
+                                                            loc.status === 'NEAR_FULL' ? 'bg-amber-50 text-amber-700 border-amber-200 hover:bg-amber-100' :
+                                                            'bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100'
+                                                          }`}
+                                                        >
+                                                          <span>{loc.bin}</span>
+                                                          {loc.qty > 0 && <span className="opacity-80 text-[9px]">{loc.qty}</span>}
+                                                          {loc.pickSequence && <span className="opacity-60 text-[9px]">#{loc.pickSequence}</span>}
+                                                        </button>
+                                                      );
+                                                    })}
+                                                  </div>
+                                                </div>
+                                              ))}
+                                            </div>
+                                          </div>
+                                        ))}
                                       </div>
-                                    ))}
+                                    )}
                                   </div>
-                                </div>
-                              ))}
-                            </div>
-                          )}
-                        </div>
-                      ))
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })
                     )}
                   </CardContent>
                 </Card>
@@ -1005,7 +1195,7 @@ export default function WarehouseLocationConfig({ defaultTab = 'overview' }: { d
                         <ThermalSticker
                           locCode={activeNode.code}
                           whCode={selWH?.code || 'WH1'}
-                          zoneCode="ZN-BULK-A"
+                          zoneCode={zones.find(z => z.id === activeNode.zoneId)?.code || 'ZN-A'}
                           aisle={activeNode.aisle}
                           rack={activeNode.rack}
                           shelf={activeNode.shelf}
@@ -1297,7 +1487,7 @@ export default function WarehouseLocationConfig({ defaultTab = 'overview' }: { d
                             <ThermalSticker
                               locCode={loc.code}
                               whCode={selWH?.code || 'WH1'}
-                              zoneCode="ZN-A"
+                              zoneCode={zones.find(z => z.id === loc.zoneId)?.code || 'ZN-A'}
                               aisle={loc.aisle}
                               rack={loc.rack}
                               shelf={loc.shelf}
@@ -1340,13 +1530,13 @@ export default function WarehouseLocationConfig({ defaultTab = 'overview' }: { d
               <SelectItem value="Dispatch">Dispatch</SelectItem>
             </SelectContent>
           </Select>
-          <Select value={whId} onValueChange={setWhId}>
+          <Select value={whId} onValueChange={handleWarehouseChange}>
             <SelectTrigger className="w-48 h-8 text-xs"><SelectValue /></SelectTrigger>
             <SelectContent>{warehouses.map(w => <SelectItem key={w.id} value={w.id}>{w.code}</SelectItem>)}</SelectContent>
           </Select>
         </div>
         <Button size="sm" className="gap-1.5 h-8 bg-blue-600 hover:bg-blue-700 text-xs" onClick={() => { setEditZ(null); setZModal(true); }}>
-          <Plus className="h-3.5 w-3.5" /> + Add Zone
+          <Plus className="h-3.5 w-3.5" /> Add Zone
         </Button>
       </div>
 
@@ -1453,7 +1643,7 @@ export default function WarehouseLocationConfig({ defaultTab = 'overview' }: { d
               <Search className="h-3.5 w-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400" />
               <Input value={q} onChange={e => setQ(e.target.value)} placeholder="Search Product / SKU / Bin..." className="pl-8 h-8 text-xs w-56" />
             </div>
-            <Select value={whId} onValueChange={setWhId}>
+            <Select value={whId} onValueChange={handleWarehouseChange}>
               <SelectTrigger className="w-44 h-8 text-xs"><SelectValue /></SelectTrigger>
               <SelectContent>{warehouses.map(w => <SelectItem key={w.id} value={w.id}>{w.code}</SelectItem>)}</SelectContent>
             </Select>
@@ -1651,7 +1841,7 @@ export default function WarehouseLocationConfig({ defaultTab = 'overview' }: { d
             <CardTitle className="text-sm font-bold flex items-center gap-2 text-slate-900">
               <BarChart3 className="h-4 w-4 text-blue-600" /> Zone-Level Capacity & Utilization — {selWH?.code}
             </CardTitle>
-            <Select value={whId} onValueChange={setWhId}>
+            <Select value={whId} onValueChange={handleWarehouseChange}>
               <SelectTrigger className="w-48 h-8 text-xs"><SelectValue /></SelectTrigger>
               <SelectContent>{warehouses.map(w => <SelectItem key={w.id} value={w.id}>{w.code}</SelectItem>)}</SelectContent>
             </Select>
@@ -1718,12 +1908,12 @@ export default function WarehouseLocationConfig({ defaultTab = 'overview' }: { d
             <SelectItem value="Pallet Position">Pallet Position</SelectItem>
           </SelectContent>
         </Select>
-        <Select value={whId} onValueChange={setWhId}>
+        <Select value={whId} onValueChange={handleWarehouseChange}>
           <SelectTrigger className="w-40 h-8 text-xs"><SelectValue /></SelectTrigger>
           <SelectContent>{warehouses.map(w => <SelectItem key={w.id} value={w.id}>{w.code}</SelectItem>)}</SelectContent>
         </Select>
         <Button size="sm" className="gap-1.5 h-8 bg-blue-600 hover:bg-blue-700 text-xs" onClick={() => { setEditAttr(null); setAttrModal(true); }}>
-          <Plus className="h-3.5 w-3.5" /> + Add/Edit Location
+          <Plus className="h-3.5 w-3.5" /> Add/Edit Location
         </Button>
       </div>
 
@@ -1782,7 +1972,7 @@ export default function WarehouseLocationConfig({ defaultTab = 'overview' }: { d
       <div className="flex justify-between items-center">
         <h4 className="text-sm font-bold text-gray-900">Configured Putaway Routing Rules</h4>
         <Button size="sm" className="gap-1.5 h-8 bg-blue-600 hover:bg-blue-700 text-xs" onClick={() => { setRuleWizardStep(1); setRuleWizardOpen(true); }}>
-          <Plus className="h-3.5 w-3.5" /> + Add Rule (3-Step Wizard)
+          <Plus className="h-3.5 w-3.5" /> Add Rule (3-Step Wizard)
         </Button>
       </div>
 
@@ -1953,7 +2143,7 @@ export default function WarehouseLocationConfig({ defaultTab = 'overview' }: { d
   const tabConfig = () => (
     <div className="space-y-5 pb-16">
       <div className="flex justify-end items-center gap-2">
-        <Select value={whId} onValueChange={setWhId}>
+        <Select value={whId} onValueChange={handleWarehouseChange}>
           <SelectTrigger className="w-64 h-8 text-xs"><SelectValue /></SelectTrigger>
           <SelectContent>{warehouses.map(w => <SelectItem key={w.id} value={w.id}>{w.code}</SelectItem>)}</SelectContent>
         </Select>

@@ -29,75 +29,20 @@ interface RegisterData {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [user, setUser] = useState<User | null>(() => {
-    if (typeof window !== 'undefined') {
-      try {
-        const savedToken = localStorage.getItem('token');
-        const savedUser = localStorage.getItem('user');
-        // Only return user if a valid token is also saved
-        return savedToken && savedUser ? JSON.parse(savedUser) : null;
-      } catch {
-        return null;
-      }
-    }
-    return null;
-  });
+  const [user, setUser] = useState<User | null>({
+    id: 'demo-user-id',
+    firstName: 'Demo',
+    lastName: 'Admin',
+    email: 'admin@example.com',
+    role: 'Super Admin',
+  } as any);
 
-  const [token, setToken] = useState<string | null>(() => {
-    if (typeof window !== 'undefined') {
-      try {
-        return localStorage.getItem('token');
-      } catch {
-        return null;
-      }
-    }
-    return null;
-  });
+  const [token, setToken] = useState<string | null>('demo-token');
 
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
-    const savedToken = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
-    if (!savedToken) {
-      setUser(null);
-      setToken(null);
-      setIsLoading(false);
-      return;
-    }
-
-    setAccessToken(savedToken);
-    setToken(savedToken);
-
-    // Validate the token and fetch fresh user access and profile from backend
-    api.get('/auth/me')
-      .then((res) => {
-        const payload = res.data?.data;
-        if (payload) {
-          setUser(payload);
-          if (typeof window !== 'undefined') {
-            try {
-              localStorage.setItem('user', JSON.stringify(payload));
-            } catch {}
-          }
-        }
-      })
-      .catch((err) => {
-        // If 401 Unauthorized or 403 Forbidden, session was revoked or expired
-        if (err.response?.status === 401 || err.response?.status === 403) {
-          setAccessToken(null);
-          setToken(null);
-          setUser(null);
-          if (typeof window !== 'undefined') {
-            try {
-              localStorage.removeItem('token');
-              localStorage.removeItem('user');
-            } catch {}
-          }
-        }
-      })
-      .finally(() => {
-        setIsLoading(false);
-      });
+    // Disabled backend validation for demo mode
   }, []);
 
   const login = async (email: string, password: string, code?: string, challenge?: string) => {

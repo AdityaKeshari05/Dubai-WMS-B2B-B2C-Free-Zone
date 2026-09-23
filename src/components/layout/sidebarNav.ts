@@ -1,3 +1,4 @@
+// Nav configuration resolved
 import {
   LayoutDashboard, BookOpen, Package, Users, ShoppingCart, UserCheck,
   TrendingUp, FileText, ShoppingBag, FolderOpen, Building2, Truck,

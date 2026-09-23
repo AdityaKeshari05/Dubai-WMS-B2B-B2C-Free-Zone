@@ -1,3 +1,3 @@
-import { AccessControlPage } from '@/components/access/AccessControlPage';
+import UserAccessManagementPage from '@/components/access/UserAccessManagementPage';
 
-export default AccessControlPage;
+export default UserAccessManagementPage;

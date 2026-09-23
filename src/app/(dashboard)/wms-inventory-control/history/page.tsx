@@ -78,7 +78,7 @@ const config: FeaturePageConfig = {
     "Completed"
   ],
   "primaryAction": "none",
-  "modalTitle": null,
+  "modalTitle": "",
   "fields": [
     {
       "key": "sku",

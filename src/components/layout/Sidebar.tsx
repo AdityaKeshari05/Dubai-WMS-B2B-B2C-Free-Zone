@@ -37,16 +37,16 @@ function NavItemComponent({ item, depth = 0 }: { item: NavItem; depth?: number }
         <button
           onClick={() => setIsExpanded(!isExpanded)}
           className={cn(
-            'w-full flex items-center justify-between rounded-md px-2.5 py-1.5 text-sm transition-colors',
+            'w-full flex items-center justify-between rounded-md px-2.5 py-1.5 text-sm transition-colors text-left',
             'text-[#4b5563] hover:bg-[#eef3f5] hover:text-[#1f2937]',
             depth === 0 ? 'font-medium' : 'font-normal'
           )}
         >
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3 text-left min-w-0 flex-1">
             <item.icon className="h-4 w-4 shrink-0" />
-            <span>{item.label}</span>
+            <span className="text-left leading-tight block">{item.label}</span>
           </div>
-          {isExpanded ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
+          {isExpanded ? <ChevronDown className="h-3 w-3 shrink-0 ml-1" /> : <ChevronRight className="h-3 w-3 shrink-0 ml-1" />}
         </button>
         {isExpanded && (
           <div className="ml-4 mt-1 space-y-0.5 border-l border-[#e5e2dc] pl-2">
@@ -63,7 +63,7 @@ function NavItemComponent({ item, depth = 0 }: { item: NavItem; depth?: number }
     <Link
       href={item.href!}
       className={cn(
-        'flex items-center gap-2.5 rounded-md px-2.5 py-1.5 text-sm transition-colors',
+        'flex items-center gap-2.5 rounded-md px-2.5 py-1.5 text-sm transition-colors text-left',
         isActive
           ? 'bg-[#e8f3ff] text-[#1674c4] font-medium'
           : 'text-[#4b5563] hover:bg-[#eef3f5] hover:text-[#1f2937]',
@@ -71,7 +71,7 @@ function NavItemComponent({ item, depth = 0 }: { item: NavItem; depth?: number }
       )}
     >
       <item.icon className="h-4 w-4 shrink-0" />
-      <span>{item.label}</span>
+      <span className="text-left leading-tight block">{item.label}</span>
     </Link>
   );
 }
@@ -106,8 +106,8 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
               <span className="text-sm font-bold text-white">V</span>
             </div>
             <div>
-              <span className="text-base font-semibold text-[#1f2937]">Orus</span>
-              <span className="block -mt-1 text-xs text-[#7c8591]">ERP Desk</span>
+              <span className="text-base font-semibold text-[#1f2937]">WMS</span>
+              <span className="block -mt-1 text-xs text-[#7c8591]">Desk</span>
             </div>
           </div>
           {onClose && (

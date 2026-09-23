@@ -10,6 +10,7 @@ import { isSubdomainEnabled } from '@/lib/subdomain';
 import { WorkspaceNotFound } from '@/components/workspace/WorkspaceNotFound';
 import { WorkspaceMismatch } from '@/components/workspace/WorkspaceMismatch';
 import { LoadingSpinner } from '@/components/shared/LoadingSpinner';
+import { FreeZoneRuntimeProvider } from '@/contexts/FreeZoneRuntimeContext';
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -59,9 +60,11 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
       <div className="flex-1 flex flex-col overflow-hidden">
         <Header onMenuClick={() => setSidebarOpen(true)} />
-        <main className="flex-1 overflow-y-auto px-4 py-4 sm:px-6 sm:py-5">
-          {children}
-        </main>
+        <FreeZoneRuntimeProvider>
+          <main className="flex-1 overflow-y-auto px-4 py-4 sm:px-6 sm:py-5">
+            {children}
+          </main>
+        </FreeZoneRuntimeProvider>
       </div>
     </div>
   );

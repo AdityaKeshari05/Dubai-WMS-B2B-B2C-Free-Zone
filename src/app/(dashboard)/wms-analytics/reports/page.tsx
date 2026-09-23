@@ -80,7 +80,7 @@ export default function ReportsPage(){
     </div>
 
     <Panel title={activeDef.name} description={`${activeDef.description} · ${range}`} action={<div className="w-72"><SearchField value={search} onChange={setSearch} placeholder="Search current report..."/></div>}>
-      <DataTable rows={filtered} rowKey={(row)=>String(row[columns[0]] ?? JSON.stringify(row))} columns={columns.map(column=>({label:column,render:(row)=>{
+      <DataTable rows={filtered} rowKey={(row)=>String(row[columns[0]] ?? JSON.stringify(row))} columns={columns.map(column=>({label:column,render:(row: Record<string, string | number>)=>{
         const value=row[column];
         if(column==='SLA' && (value==='Delayed'||value==='Within SLA')) return <Badge tone={value==='Delayed'?'red':'green'}>{String(value)}</Badge>;
         if(column==='Severity') return <Badge tone={value==='Critical'?'red':value==='High'?'amber':'blue'}>{String(value)}</Badge>;

@@ -28,64 +28,24 @@ interface WorkspaceContextType {
 const WorkspaceContext = createContext<WorkspaceContextType | undefined>(undefined);
 
 export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
-  const [slug, setSlug] = useState<string | null>(null);
-  const [company, setCompany] = useState<WorkspaceCompany | null>(null);
-  const [isValid, setIsValid] = useState<boolean | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const [slug, setSlug] = useState<string | null>('demo');
+  const [company, setCompany] = useState<WorkspaceCompany | null>({
+    id: 'demo-company-id',
+    name: 'Demo Workspace',
+    slug: 'demo',
+    currency: 'USD',
+  });
+  const [isValid, setIsValid] = useState<boolean | null>(true);
+  const [isLoading, setIsLoading] = useState(false);
   const [isMismatch, setIsMismatch] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const fetchWorkspace = useCallback(async (activeSlug: string) => {
-    setIsLoading(true);
-    setError(null);
-    try {
-      const res = await api.get(`/auth/workspace/${activeSlug}`);
-      if (res.data?.success && res.data?.data) {
-        setCompany(res.data.data);
-        setIsValid(true);
-      } else {
-        setIsValid(false);
-        setError('Workspace not found');
-      }
-    } catch (err: any) {
-      setCompany(null);
-      setIsValid(false);
-      setError(err.response?.data?.message || 'Workspace not found');
-    } finally {
-      setIsLoading(false);
-    }
+    // Disabled backend validation for demo mode
   }, []);
 
   useEffect(() => {
-    const detectedSlug = extractSubdomain();
-    setSlug(detectedSlug);
-
-    if (detectedSlug) {
-      fetchWorkspace(detectedSlug);
-    } else {
-      // Single Project / Root domain direct mode
-      if (typeof window !== 'undefined') {
-        try {
-          const savedUserStr = localStorage.getItem('user');
-          if (savedUserStr) {
-            const user = JSON.parse(savedUserStr);
-            const userCompany = user?.company;
-            if (userCompany) {
-              setCompany({
-                id: userCompany.id || user.companyId,
-                name: userCompany.name || 'My Workspace',
-                slug: userCompany.slug || user.companySlug || '',
-                logo: userCompany.logo || null,
-                currency: userCompany.currency || 'USD',
-              });
-              setIsValid(true);
-            }
-          }
-        } catch {}
-      }
-      setIsLoading(false);
-      setIsValid(true);
-    }
+    // Disabled subdomain and workspace checking for demo mode
   }, [fetchWorkspace]);
 
   // Check for session mismatch (only active when in subdomain mode with an explicit slug)

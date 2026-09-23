@@ -8,7 +8,7 @@ import {
   ChartColumnIncreasing, ArchiveX, UserRound, Building, Target, Activity,
   Route, Upload, FileCheck2, ClipboardSignature, CalendarCheck, CalendarCog, CalendarX,
   ListChecks, HandCoins, BadgeDollarSign, Wallet, UserCog, SlidersHorizontal, KeyRound,
-  Handshake, Scale, PackageCheck, History
+  Handshake, Scale, PackageCheck, History, Waves, Send, RotateCcw, CheckCircle2, AlertTriangle
 } from 'lucide-react';
 
 export interface NavItem {
@@ -162,6 +162,74 @@ export const navItems: NavItem[] = [
   },
   { label: 'Projects', href: '/projects', icon: FolderOpen, permission: 'projects:projects:read' },
   { label: 'Suppliers', href: '/suppliers', icon: Truck, permission: 'suppliers:suppliers:read' },
+  {
+    label: 'Inventory Control', icon: Boxes,
+    children: [
+      { label: 'Real-Time Inventory', href: '/wms-inventory-control', icon: Boxes },
+      { label: 'Available / Reserved Stock', href: '/wms-inventory-control/stock-availability', icon: LockKeyhole },
+      { label: 'Stock Transfer', href: '/wms-inventory-control/stock-transfer', icon: ArrowLeftRight },
+      { label: 'Warehouse Transfer', href: '/wms-inventory-control/warehouse-transfer', icon: Warehouse },
+      { label: 'Stock Adjustment', href: '/wms-inventory-control/stock-adjustment', icon: SlidersHorizontal },
+      { label: 'Cycle Counting', href: '/wms-inventory-control/cycle-counting', icon: ClipboardCheck },
+      { label: 'Physical Stock Count', href: '/wms-inventory-control/physical-count', icon: ListChecks },
+      { label: 'Stock Reconciliation', href: '/wms-inventory-control/reconciliation', icon: Scale },
+      { label: 'Inventory History', href: '/wms-inventory-control/history', icon: History },
+      { label: 'Batch / Expiry Tracking', href: '/wms-inventory-control/batch-expiry', icon: Archive },
+      { label: 'FEFO / FIFO', href: '/wms-inventory-control/rotation-rules', icon: Repeat },
+      { label: 'Damaged Stock', href: '/wms-inventory-control/damaged-stock', icon: ArchiveX },
+    ],
+  },
+  {
+    label: 'B2B Orders', icon: Building2,
+    children: [
+      { label: 'Sales Order Management', href: '/b2b-orders', icon: ShoppingCart },
+      { label: 'Customer-Specific SKU', href: '/b2b-orders/customer-sku', icon: Tags },
+      { label: 'Customer Pricing', href: '/b2b-orders/customer-pricing', icon: CircleDollarSign },
+      { label: 'Order Allocation', href: '/b2b-orders/allocation', icon: PackageCheck },
+      { label: 'Partial Fulfillment', href: '/b2b-orders/partial-fulfillment', icon: ClipboardList },
+      { label: 'Backorders', href: '/b2b-orders/backorders', icon: Hourglass },
+      { label: 'ASN for Customers', href: '/b2b-orders/asn', icon: FileCheck2 },
+      { label: 'B2B Picking', href: '/b2b-orders/picking', icon: ClipboardCheck },
+      { label: 'Pallet & Carton Handling', href: '/b2b-orders/pallet-carton', icon: Boxes },
+      { label: 'Delivery Scheduling', href: '/b2b-orders/delivery-scheduling', icon: CalendarCheck },
+      { label: 'Proof of Delivery', href: '/b2b-orders/proof-of-delivery', icon: ClipboardSignature },
+    ],
+  },
+  {
+    label: 'B2C Fulfillment', icon: ShoppingBag,
+    children: [
+      { label: 'B2C Order Management', href: '/b2c-fulfillment', icon: ShoppingBag },
+      { label: 'E-Commerce Order Import', href: '/b2c-fulfillment/order-import', icon: Upload },
+      { label: 'Order Sync', href: '/b2c-fulfillment/order-sync', icon: Repeat },
+      { label: 'Order Allocation', href: '/b2c-fulfillment/allocation', icon: PackageCheck },
+      { label: 'Wave Picking', href: '/b2c-fulfillment/wave-picking', icon: Layers },
+      { label: 'Batch Picking', href: '/b2c-fulfillment/batch-picking', icon: Boxes },
+      { label: 'Single-Order Picking', href: '/b2c-fulfillment/single-order-picking', icon: ClipboardCheck },
+      { label: 'Packing Workflow', href: '/b2c-fulfillment/packing', icon: PackageCheck },
+      { label: 'Shipping Labels', href: '/b2c-fulfillment/shipping-labels', icon: Printer },
+      { label: 'Tracking Management', href: '/b2c-fulfillment/tracking', icon: Route },
+      { label: 'COD Support', href: '/b2c-fulfillment/cod', icon: Wallet },
+      { label: 'RTO Management', href: '/b2c-fulfillment/rto', icon: RotateCcw },
+      { label: 'Customer Returns', href: '/b2c-fulfillment/returns', icon: Repeat },
+    ],
+  },
+  {
+    label: 'Picking & Dispatch', icon: ClipboardCheck,
+    children: [
+      { label: 'Picking Task Creation', href: '/warehouse-fulfillment', icon: ClipboardList },
+      { label: 'Wave Planning', href: '/warehouse-fulfillment/wave-planning', icon: Layers },
+      { label: 'Zone Picking', href: '/warehouse-fulfillment/zone-picking', icon: Warehouse },
+      { label: 'Batch Picking', href: '/warehouse-fulfillment/batch-picking', icon: Boxes },
+      { label: 'Pick Confirmation', href: '/warehouse-fulfillment/pick-confirmation', icon: CheckCircle2 },
+      { label: 'Pick Exceptions', href: '/warehouse-fulfillment/pick-exceptions', icon: AlertTriangle },
+      { label: 'Packing Station', href: '/warehouse-fulfillment/packing-station', icon: PackageCheck },
+      { label: 'Packing Verification', href: '/warehouse-fulfillment/packing-verification', icon: ClipboardCheck },
+      { label: 'Box / Carton Selection', href: '/warehouse-fulfillment/box-selection', icon: Package },
+      { label: 'Shipment Consolidation', href: '/warehouse-fulfillment/shipment-consolidation', icon: Truck },
+      { label: 'Dispatch Verification', href: '/warehouse-fulfillment/dispatch-verification', icon: ShieldCheck },
+      { label: 'Dispatch Documentation', href: '/warehouse-fulfillment/dispatch-documentation', icon: FileText },
+    ],
+  },
   {
     label: 'Settings', icon: Settings,
     children: [

@@ -31,6 +31,7 @@ export default function WavesPage() {
           { key: 'name', header: 'Name' },
           { key: 'warehouse', header: 'Warehouse', render: (w) => warehouseMap.get(w.warehouseId)?.name ?? '—' },
           { key: 'orders', header: 'Orders', render: (w) => w.orderIds.length },
+          { key: 'carrier', header: 'Carrier', render: (w) => w.carrier ?? <span className="text-gray-400">Any</span> },
           { key: 'priority', header: 'Priority', render: (w) => <span className="capitalize">{w.priority}</span> },
           { key: 'cutoff', header: 'Cutoff', render: (w) => w.cutoffTime ? formatDateTime(w.cutoffTime) : '-' },
           { key: 'status', header: 'Status', render: (w) => <Badge variant={WAVE_VARIANT[w.status]}>{w.status}</Badge> },

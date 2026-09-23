@@ -1,5 +1,5 @@
 import { wmsDb as db } from "./db";
-import type { CycleCount, CycleCountLine } from "@/types";
+import type { CycleCount, CycleCountLine, StockCountType } from "@/types";
 import { inventoryService } from "./inventoryService";
 
 function nextId(prefix: string) {
@@ -14,7 +14,7 @@ function logActivity(module: string, entityId: string, action: string, descripti
   db.mutate((draft) => {
     draft.activityLogs.unshift({
       id: nextId("log"),
-      entityType: module as any,
+      entityType: module,
       entityId,
       action,
       description,
@@ -25,16 +25,33 @@ function logActivity(module: string, entityId: string, action: string, descripti
 }
 
 export const cycleCountService = {
+  // countType 'physical' is a full, warehouse-wide stock take (every
+  // product/bin in scope, no manual product picking); 'cycle' counts only
+  // the specific products the user selected. Both share the same session/
+  // reconciliation machinery - only how the line list is built differs.
   createSession(params: {
     warehouseId: string;
     zone?: string;
     assignedUser: string;
     countDate: string;
     productIds: string[];
+    countType?: StockCountType;
   }): CycleCount {
     const state = db.getSnapshot();
+    const countType = params.countType ?? "cycle";
+    const productIds =
+      countType === "physical"
+        ? Array.from(
+            new Set(
+              state.inventoryItems
+                .filter((i) => i.warehouseId === params.warehouseId && (!params.zone || state.locations.find((l) => l.id === i.locationId)?.zone === params.zone))
+                .map((i) => i.productId)
+            )
+          )
+        : params.productIds;
+
     const lines: CycleCountLine[] = [];
-    for (const productId of params.productIds) {
+    for (const productId of productIds) {
       const items = state.inventoryItems.filter(
         (i) =>
           i.productId === productId &&
@@ -56,7 +73,8 @@ export const cycleCountService = {
 
     const session: CycleCount = {
       id: nextId("cc"),
-      countNumber: nextSequence("CC", state.cycleCounts.length + 1),
+      countNumber: nextSequence(countType === "physical" ? "PC" : "CC", state.cycleCounts.length + 1),
+      countType,
       warehouseId: params.warehouseId,
       zone: params.zone,
       assignedUser: params.assignedUser,
@@ -69,7 +87,7 @@ export const cycleCountService = {
     db.mutate((draft) => {
       draft.cycleCounts.push(session);
     });
-    logActivity("cycle_count", session.id, "create", `Cycle count ${session.countNumber} created with ${lines.length} line(s)`);
+    logActivity("cycle_count", session.id, "create", `${countType === "physical" ? "Physical count" : "Cycle count"} ${session.countNumber} created with ${lines.length} line(s)`);
     return session;
   },
 

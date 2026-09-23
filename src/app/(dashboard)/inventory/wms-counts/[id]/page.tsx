@@ -57,34 +57,6 @@ export default function CycleCountDetailPage({ params }: { params: Promise<{ id:
     setConfirmOpen(false);
   }
 
-  const columns = [
-    { key: "sku", header: "SKU", render: (line: any) => <span className="font-mono text-xs text-gray-500">{productMap.get(line.productId)?.sku}</span> },
-    { key: "product", header: "Product", render: (line: any) => <span className="font-medium text-gray-900">{productMap.get(line.productId)?.name}</span> },
-    { key: "bin", header: "Bin", render: (line: any) => <span className="font-mono text-xs">{locationMap.get(line.locationId)?.code}</span> },
-    { key: "expected", header: "Expected", className: "text-right", render: (line: any) => line.expectedQty },
-    { key: "counted", header: "Counted", className: "text-right", render: (line: any) => (
-      <input
-        type="number"
-        min={0}
-        disabled={count.status === "reconciled"}
-        defaultValue={line.countedQty ?? ""}
-        onBlur={(e) => {
-          const val = e.target.value === "" ? null : Number(e.target.value);
-          if (val !== null) cycleCountService.enterCount(count.id, line.id, val);
-        }}
-        className="w-20 rounded-md border border-gray-300 px-2 py-1 text-right text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100 disabled:bg-gray-50"
-        placeholder="-"
-      />
-    )},
-    { key: "diff", header: "Difference", className: "text-right", render: (line: any) => {
-      const diff = line.countedQty === null ? null : line.countedQty - line.expectedQty;
-      return <span className={`font-medium ${diff && diff < 0 ? "text-red-600" : diff && diff > 0 ? "text-amber-600" : "text-gray-500"}`}>
-        {diff === null ? "-" : diff > 0 ? `+${diff}` : diff}
-      </span>;
-    }},
-    { key: "status", header: "Status", render: (line: any) => <Badge variant={LINE_TONE[line.status as keyof typeof LINE_TONE]} className="capitalize">{line.status}</Badge> },
-  ];
-
   return (
     <div className="space-y-6">
       <Link href="/inventory/wms-counts" className="inline-flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-800">
@@ -94,23 +66,23 @@ export default function CycleCountDetailPage({ params }: { params: Promise<{ id:
       <PageHeader
         title={count.countNumber}
         description={`${warehouseMap.get(count.warehouseId)?.name} ${count.zone ? `· Zone ${count.zone}` : ""} · Assigned to ${count.assignedUser}`}
-        children={
-          <div className="flex items-center gap-2">
-            <Badge variant="outline" className="capitalize">{count.status}</Badge>
-            {count.status !== "reconciled" ? (
-              <Button
-                disabled={!allCounted}
-                onClick={() => {
-                  if (count.status !== "completed") cycleCountService.markCompleted(count.id);
-                  setConfirmOpen(true);
-                }}
-              >
-                <CheckCircle2 className="mr-2 size-4" /> Apply Reconciliation
-              </Button>
-            ) : null}
-          </div>
-        }
-      />
+      >
+        <div className="flex items-center gap-2">
+          <Badge variant={count.countType === "physical" ? "purple" : "outline"}>{count.countType === "physical" ? "Physical Count" : "Cycle Count"}</Badge>
+          <Badge variant="outline" className="capitalize">{count.status}</Badge>
+          {count.status !== "reconciled" ? (
+            <Button
+              disabled={!allCounted}
+              onClick={() => {
+                if (count.status !== "completed") cycleCountService.markCompleted(count.id);
+                setConfirmOpen(true);
+              }}
+            >
+              <CheckCircle2 className="mr-2 size-4" /> Apply Reconciliation
+            </Button>
+          ) : null}
+        </div>
+      </PageHeader>
 
       <div className="flex gap-4 text-sm">
         <span className="text-gray-500">Match: <span className="font-semibold text-green-600">{diffSummary.match}</span></span>
@@ -119,8 +91,34 @@ export default function CycleCountDetailPage({ params }: { params: Promise<{ id:
       </div>
 
       <DataTable
-        columns={columns}
         data={count.lines}
+        columns={[
+          { key: "sku", header: "SKU", render: (line) => <span className="font-mono text-xs text-gray-500">{productMap.get(line.productId)?.sku}</span> },
+          { key: "product", header: "Product", render: (line) => <span className="font-medium text-gray-900">{productMap.get(line.productId)?.name}</span> },
+          { key: "bin", header: "Bin", render: (line) => <span className="font-mono text-xs">{locationMap.get(line.locationId)?.code}</span> },
+          { key: "expected", header: "Expected", className: "text-right", render: (line) => line.expectedQty },
+          { key: "counted", header: "Counted", className: "text-right", render: (line) => (
+            <input
+              type="number"
+              min={0}
+              disabled={count.status === "reconciled"}
+              defaultValue={line.countedQty ?? ""}
+              onBlur={(e) => {
+                const val = e.target.value === "" ? null : Number(e.target.value);
+                if (val !== null) cycleCountService.enterCount(count.id, line.id, val);
+              }}
+              className="w-20 rounded-md border border-gray-300 px-2 py-1 text-right text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100 disabled:bg-gray-50"
+              placeholder="-"
+            />
+          )},
+          { key: "diff", header: "Difference", className: "text-right", render: (line) => {
+            const diff = line.countedQty === null ? null : line.countedQty - line.expectedQty;
+            return <span className={`font-medium ${diff && diff < 0 ? "text-red-600" : diff && diff > 0 ? "text-amber-600" : "text-gray-500"}`}>
+              {diff === null ? "-" : diff > 0 ? `+${diff}` : diff}
+            </span>;
+          }},
+          { key: "status", header: "Status", render: (line) => <Badge variant={LINE_TONE[line.status]} className="capitalize">{line.status}</Badge> },
+        ]}
         emptyMessage="No lines found in this count session."
       />
 

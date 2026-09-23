@@ -30,7 +30,7 @@ type ModalKind = 'allocate' | 'pick' | 'package' | 'shipment' | 'asn' | 'pod' | 
 export default function B2BOrderDetailPage() {
   const params = useParams();
   const id = params.id as string;
-  const { products, customers, physicalQtyByProductId } = useWmsLookups();
+  const { products, customers } = useWmsLookups();
   const order = useWmsDbSelector((s) => s.b2bOrders.find((o) => o.id === id));
   const allocations = useWmsDbSelector((s) => s.allocations.filter((a) => a.orderId === id && a.orderType === 'b2b'));
   const pickingTasks = useWmsDbSelector((s) => s.pickingTasks.filter((t) => t.orderId === id && t.orderType === 'b2b'));
@@ -244,7 +244,7 @@ export default function B2BOrderDetailPage() {
         </TabsContent>
       </Tabs>
 
-      <AllocateOrderModal open={modal === 'allocate'} onOpenChange={(v) => setModal(v ? 'allocate' : null)} orderId={order.id} orderType="b2b" warehouseId={order.warehouseId} items={order.items} products={products} physicalQtyByProductId={physicalQtyByProductId} />
+      <AllocateOrderModal open={modal === 'allocate'} onOpenChange={(v) => setModal(v ? 'allocate' : null)} orderId={order.id} orderType="b2b" warehouseId={order.warehouseId} items={order.items} products={products} />
       <CreatePickingTaskModal open={modal === 'pick'} onOpenChange={(v) => setModal(v ? 'pick' : null)} orderId={order.id} orderType="b2b" warehouseId={order.warehouseId} priority={order.priority} />
       <CreatePackageModal open={modal === 'package'} onOpenChange={(v) => setModal(v ? 'package' : null)} orderId={order.id} orderType="b2b" />
       <CreateShipmentModal open={modal === 'shipment'} onOpenChange={(v) => setModal(v ? 'shipment' : null)} orderId={order.id} orderType="b2b" />

@@ -1,22 +1,19 @@
 import { wmsDb } from '../db';
 import { nextId } from '../id';
 import { logWmsActivity } from '../activityLog';
-import { inventoryService } from './inventoryService';
+import { inventoryService } from '../inventoryService';
+import { pickingService } from './pickingService';
 import type { AllocationStrategy, B2BOrder, B2COrder } from '@/types';
 
 export type OrderType = 'b2b' | 'b2c';
 
 // Shared by both B2B and B2C so the reservation logic never diverges between
-// the two flows. `physicalQtyByProductId` is supplied by the caller (fetched
-// from the real `/inventory/products` endpoint) since this module has no
-// access to the API client's auth/tenant context on its own.
+// the two flows. Reserves against the same local inventory ledger
+// (src/lib/wms/inventoryService.ts) the M05 Inventory Control screens use,
+// so allocating an order and adjusting/transferring stock always agree on
+// the same numbers.
 export const allocationService = {
-  allocateOrder(
-    orderId: string,
-    orderType: OrderType,
-    physicalQtyByProductId: Record<string, number>,
-    strategy: AllocationStrategy = 'FEFO'
-  ) {
+  allocateOrder(orderId: string, orderType: OrderType, strategy: AllocationStrategy = 'FEFO') {
     const state = wmsDb.getSnapshot();
     const order =
       orderType === 'b2b'
@@ -27,22 +24,20 @@ export const allocationService = {
     const results = order.items.map((item) => {
       const remaining = item.quantity - item.allocatedQty;
       if (remaining <= 0) {
-        return { itemId: item.id, productId: item.productId, allocatedQty: item.allocatedQty, backorderQty: 0, batchIds: [] as string[] };
+        return { itemId: item.id, productId: item.productId, allocatedQty: item.allocatedQty, backorderQty: 0, batchAllocations: [] as { batchId?: string; locationId: string; qty: number }[] };
       }
-      const physicalQty = physicalQtyByProductId[item.productId] ?? 0;
-      const result = inventoryService.reserve({
+      const result = inventoryService.reserveStock({
         productId: item.productId,
         warehouseId: order.warehouseId,
         quantity: remaining,
-        physicalQty,
         strategy,
       });
       return {
         itemId: item.id,
         productId: item.productId,
-        allocatedQty: item.allocatedQty + result.reservedQty,
+        allocatedQty: item.allocatedQty + result.allocatedQty,
         backorderQty: result.backorderQty,
-        batchIds: result.batchIds,
+        batchAllocations: result.batchAllocations,
       };
     });
 
@@ -68,7 +63,7 @@ export const allocationService = {
           allocatedQty: item.allocatedQty,
           backorderQty: item.backorderQty,
           strategy,
-          batchAllocations: r.batchIds.map((batchId) => ({ batchId, locationId: '', qty: item.allocatedQty })),
+          batchAllocations: r.batchAllocations,
           createdAt: new Date().toISOString(),
         });
       }
@@ -82,5 +77,17 @@ export const allocationService = {
     });
 
     logWmsActivity(orderType === 'b2b' ? 'b2b_order' : 'b2c_order', orderId, 'allocate', `Inventory allocated using ${strategy} strategy`);
+
+    // Picking tasks are generated automatically once allocation reserves
+    // real stock, instead of requiring a separate manual button.
+    if (results.some((r) => r.allocatedQty > 0)) {
+      try {
+        const priority = orderType === 'b2b' ? (order as B2BOrder).priority : 'normal';
+        pickingService.createTaskFromOrder(orderId, orderType, { warehouseId: order.warehouseId, priority });
+      } catch {
+        // Nothing newly pickable (e.g. re-allocating an order with no
+        // change) - the manual "Create Picking Task" action stays available.
+      }
+    }
   },
 };

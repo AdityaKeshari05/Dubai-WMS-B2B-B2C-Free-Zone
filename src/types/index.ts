@@ -1046,6 +1046,7 @@ export interface Wave {
   name: string;
   warehouseId: string;
   zone?: string;
+  carrier?: string;
   priority: 'low' | 'normal' | 'high' | 'urgent';
   cutoffTime: string;
   orderIds: string[];
@@ -1083,8 +1084,16 @@ export interface PackageUnit {
   verification: PackageVerification;
   shippingLabel?: ShippingLabel;
   palletId?: string;
+  stationId?: string;
   createdAt: string;
   updatedAt: string;
+}
+
+export interface PackingStation {
+  id: string;
+  stationNumber: string;
+  operator?: string;
+  currentPackageId?: string;
 }
 
 export interface Pallet {
@@ -1161,6 +1170,7 @@ export interface WmsStockAdjustment {
   quantity: number;
   reason: string;
   notes?: string;
+  authorizedBy: string;
   createdAt: string;
   createdBy: string;
 }
@@ -1178,9 +1188,12 @@ export interface CycleCountLine {
   status: CycleCountLineStatus;
 }
 
+export type StockCountType = 'cycle' | 'physical';
+
 export interface CycleCount {
   id: string;
   countNumber: string;
+  countType: StockCountType;
   warehouseId: string;
   zone?: string;
   assignedUser: string;

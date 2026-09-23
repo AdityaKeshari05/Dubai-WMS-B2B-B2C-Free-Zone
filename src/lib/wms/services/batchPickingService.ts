@@ -37,13 +37,13 @@ export const batchPickingService = {
     return Array.from(groups.values());
   },
 
-  distributePick(group: BatchPickGroup, totalPicked: number, warehouseId: string) {
+  distributePick(group: BatchPickGroup, totalPicked: number) {
     let remaining = totalPicked;
     for (const ti of group.taskItems) {
       if (remaining <= 0) break;
       if (ti.pickedQty > 0) continue;
       const take = Math.min(ti.expectedQty, remaining);
-      pickingService.confirmPickItem(ti.taskId, ti.itemId, take, warehouseId);
+      pickingService.confirmPickItem(ti.taskId, ti.itemId, take);
       remaining -= take;
     }
   },

@@ -3,7 +3,7 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import toast from 'react-hot-toast';
-import { ArrowLeft, PlayCircle, CheckCircle2, UserPlus } from 'lucide-react';
+import { ArrowLeft, PlayCircle, CheckCircle2, UserPlus, ScanBarcode, Check, X } from 'lucide-react';
 import { PageHeader } from '@/components/shared/PageHeader';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -27,12 +27,15 @@ export default function PickingTaskDetailPage() {
   const id = params.id as string;
   const { products, warehouses } = useWmsLookups();
   const task = useWmsDbSelector((s) => s.pickingTasks.find((t) => t.id === id));
+  const locations = useWmsDbSelector((s) => s.locations);
   const productMap = new Map(products.map((p) => [p.id, p]));
   const warehouseMap = new Map(warehouses.map((w) => [w.id, w]));
+  const locationMap = new Map(locations.map((l) => [l.id, l]));
 
   const [picker, setPicker] = useState('');
   const [inputs, setInputs] = useState<Record<string, number>>({});
   const [exceptionItem, setExceptionItem] = useState<string | null>(null);
+  const [scans, setScans] = useState<Record<string, string>>({});
 
   if (!task) {
     return <div><PageHeader title="Task Not Found" /></div>;
@@ -51,12 +54,12 @@ export default function PickingTaskDetailPage() {
   }
   function handleConfirm(itemId: string, expected: number) {
     const qty = inputs[itemId] ?? expected;
-    pickingService.confirmPickItem(task!.id, itemId, qty, task!.warehouseId);
+    pickingService.confirmPickItem(task!.id, itemId, qty);
     toast.success(`${qty} unit(s) picked`);
   }
   function handleException(itemId: string, type: PickExceptionType) {
     const qty = type === 'shortage' ? (inputs[itemId] ?? 0) : 0;
-    pickingService.confirmPickItem(task!.id, itemId, qty, task!.warehouseId, { type, notes: 'Reported via picking screen' });
+    pickingService.confirmPickItem(task!.id, itemId, qty, { type, notes: 'Reported via picking screen' });
     toast(EXCEPTION_LABEL[type]);
     setExceptionItem(null);
   }
@@ -92,13 +95,17 @@ export default function PickingTaskDetailPage() {
       <div className="space-y-3">
         {task.items.map((item) => {
           const product = productMap.get(item.productId);
+          const location = locationMap.get(item.locationId);
           return (
             <Card key={item.id}>
               <CardContent className="pt-4">
                 <div className="mb-2 flex items-center justify-between">
                   <div>
                     <p className="text-sm font-medium text-gray-900">{product?.sku} — {product?.name}</p>
-                    <p className="text-xs text-gray-500">Expected {item.expectedQty}</p>
+                    <p className="text-xs text-gray-500">
+                      Expected {item.expectedQty}
+                      {location ? <> · Bin <span className="font-mono">{location.code}</span> · Zone {location.zone}</> : null}
+                    </p>
                   </div>
                   <Badge variant={item.status === 'picked' ? 'success' : item.status === 'pending' ? 'secondary' : item.status === 'short' ? 'warning' : 'destructive'}>
                     {item.status.replace('_', ' ')}
@@ -115,11 +122,38 @@ export default function PickingTaskDetailPage() {
                       <Button size="sm" variant="ghost" onClick={() => setExceptionItem(null)}>Cancel</Button>
                     </div>
                   ) : (
-                    <div className="flex flex-wrap items-center gap-2">
-                      <Input type="number" min={0} max={item.expectedQty} defaultValue={item.expectedQty} onChange={(e) => setInputs((prev) => ({ ...prev, [item.id]: Number(e.target.value) }))} className="w-24" />
-                      <Button size="sm" onClick={() => handleConfirm(item.id, item.expectedQty)}>Confirm Pick</Button>
-                      <Button size="sm" variant="outline" onClick={() => setExceptionItem(item.id)}>Report Exception</Button>
-                    </div>
+                    (() => {
+                      const scanned = scans[item.id] ?? '';
+                      const requiresScan = !!product?.barcode;
+                      const scanMatched = !requiresScan || scanned === product?.barcode;
+                      return (
+                        <div className="space-y-2">
+                          {requiresScan ? (
+                            <div className="flex items-center gap-2">
+                              <ScanBarcode className="h-4 w-4 shrink-0 text-gray-400" />
+                              <Input
+                                placeholder="Scan or enter barcode to confirm SKU"
+                                value={scanned}
+                                onChange={(e) => setScans((prev) => ({ ...prev, [item.id]: e.target.value }))}
+                                className="w-64 font-mono text-xs"
+                              />
+                              {scanned ? (
+                                scanMatched ? (
+                                  <span className="flex items-center gap-1 text-xs font-medium text-green-600"><Check className="h-3.5 w-3.5" />Matched</span>
+                                ) : (
+                                  <span className="flex items-center gap-1 text-xs font-medium text-red-600"><X className="h-3.5 w-3.5" />Barcode mismatch</span>
+                                )
+                              ) : null}
+                            </div>
+                          ) : null}
+                          <div className="flex flex-wrap items-center gap-2">
+                            <Input type="number" min={0} max={item.expectedQty} defaultValue={item.expectedQty} onChange={(e) => setInputs((prev) => ({ ...prev, [item.id]: Number(e.target.value) }))} className="w-24" />
+                            <Button size="sm" disabled={!scanMatched} onClick={() => handleConfirm(item.id, item.expectedQty)}>Confirm Pick</Button>
+                            <Button size="sm" variant="outline" onClick={() => setExceptionItem(item.id)}>Report Exception</Button>
+                          </div>
+                        </div>
+                      );
+                    })()
                   )
                 ) : (
                   <p className="text-xs text-gray-500">

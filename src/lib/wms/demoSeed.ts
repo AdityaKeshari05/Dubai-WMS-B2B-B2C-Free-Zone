@@ -16,6 +16,7 @@ import type {
   CustomerPricing,
   WmsInventoryItem,
   Batch,
+  PackingStation,
 } from '@/types';
 import { DEMO_WAREHOUSES, DEMO_PRODUCTS } from './demoData';
 
@@ -328,7 +329,7 @@ export const DEMO_PACKAGES: PackageUnit[] = [
   { id: 'demo-pkg-2', packageNumber: 'PKG-00002', orderId: 'demo-b2b-2', orderType: 'b2b', boxType: 'medium_box', weightKg: 12, dimensions: { l: 45, w: 35, h: 25 }, items: [{ productId: P_XPS, qty: 5 }], status: 'ready_to_ship', verification: { skuVerified: true, quantityVerified: true, packageSelected: true, labelGenerated: true }, shippingLabel: { trackingNumber: 'FDX612345789034', carrier: 'FedEx', generatedAt: '2026-09-18T10:00:00.000Z' }, createdAt: '2026-09-18T09:30:00.000Z', updatedAt: '2026-09-18T10:00:00.000Z' },
   { id: 'demo-pkg-3', packageNumber: 'PKG-00003', orderId: 'demo-b2c-1', orderType: 'b2c', boxType: 'small_box', weightKg: 0.5, dimensions: { l: 30, w: 20, h: 15 }, items: [{ productId: P_IPHONE, qty: 1 }], status: 'ready_to_ship', verification: { skuVerified: true, quantityVerified: true, packageSelected: true, labelGenerated: true }, shippingLabel: { trackingNumber: 'USPS9400111899223344556677', carrier: 'USPS', generatedAt: '2026-09-17T09:00:00.000Z' }, createdAt: '2026-09-17T08:40:00.000Z', updatedAt: '2026-09-17T09:00:00.000Z' },
   { id: 'demo-pkg-4', packageNumber: 'PKG-00004', orderId: 'demo-b2c-2', orderType: 'b2c', boxType: 'medium_box', weightKg: 3, dimensions: { l: 45, w: 35, h: 25 }, items: [{ productId: P_INSTANTPOT, qty: 2 }], status: 'ready_to_ship', verification: { skuVerified: true, quantityVerified: true, packageSelected: true, labelGenerated: true }, shippingLabel: { trackingNumber: 'FDX784512369870', carrier: 'FedEx', generatedAt: '2026-09-19T09:00:00.000Z' }, createdAt: '2026-09-19T08:30:00.000Z', updatedAt: '2026-09-19T09:00:00.000Z' },
-  { id: 'demo-pkg-5', packageNumber: 'PKG-00005', orderId: 'demo-b2c-3', orderType: 'b2c', boxType: 'large_box', weightKg: 4, dimensions: { l: 60, w: 45, h: 40 }, items: [{ productId: P_DYSON, qty: 1 }], status: 'packed', verification: { skuVerified: true, quantityVerified: true, packageSelected: true, labelGenerated: true }, shippingLabel: { trackingNumber: 'UPS1Z999AA10987654321', carrier: 'UPS', generatedAt: '2026-09-21T11:30:00.000Z' }, createdAt: '2026-09-21T11:00:00.000Z', updatedAt: '2026-09-21T12:00:00.000Z' },
+  { id: 'demo-pkg-5', packageNumber: 'PKG-00005', orderId: 'demo-b2c-3', orderType: 'b2c', boxType: 'large_box', weightKg: 4, dimensions: { l: 60, w: 45, h: 40 }, items: [{ productId: P_DYSON, qty: 1 }], status: 'packed', verification: { skuVerified: true, quantityVerified: true, packageSelected: true, labelGenerated: true }, shippingLabel: { trackingNumber: 'UPS1Z999AA10987654321', carrier: 'UPS', generatedAt: '2026-09-21T11:30:00.000Z' }, stationId: 'demo-stn-1', createdAt: '2026-09-21T11:00:00.000Z', updatedAt: '2026-09-21T12:00:00.000Z' },
   { id: 'demo-pkg-6', packageNumber: 'PKG-00006', orderId: 'demo-b2c-4', orderType: 'b2c', boxType: 'medium_box', weightKg: 1.5, dimensions: { l: 45, w: 35, h: 25 }, items: [{ productId: P_NIKE, qty: 2 }], status: 'ready_to_ship', verification: { skuVerified: true, quantityVerified: true, packageSelected: true, labelGenerated: true }, shippingLabel: { trackingNumber: 'FDX998877665544', carrier: 'FedEx', generatedAt: '2026-09-14T12:00:00.000Z' }, createdAt: '2026-09-14T11:30:00.000Z', updatedAt: '2026-09-14T12:00:00.000Z' },
 ];
 
@@ -356,6 +357,7 @@ export const DEMO_CYCLE_COUNTS: CycleCount[] = [
   {
     id: 'demo-cc-1',
     countNumber: 'CC-00001',
+    countType: 'cycle',
     warehouseId: WH1,
     zone: 'A',
     assignedUser: 'Robert Chen',
@@ -391,3 +393,9 @@ export const DEMO_RESERVATIONS: Record<string, number> = {
   [`${P_GALAXY}:${WH1}`]: 8,
   [`${P_SONY}:${WH1}`]: 1,
 };
+
+export const DEMO_PACKING_STATIONS: PackingStation[] = [
+  { id: 'demo-stn-1', stationNumber: 'STN-01', operator: 'Robert Chen', currentPackageId: 'demo-pkg-5' },
+  { id: 'demo-stn-2', stationNumber: 'STN-02', operator: 'Maria Gonzalez' },
+  { id: 'demo-stn-3', stationNumber: 'STN-03' },
+];

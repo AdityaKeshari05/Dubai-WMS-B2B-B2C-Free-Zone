@@ -12,6 +12,7 @@ import { Input } from "@/components/ui/input";
 import { useWmsLookups } from "@/lib/wms/useLookups";
 import { cycleCountService } from "@/lib/wms/cycleCountService";
 import toast from "react-hot-toast";
+import type { StockCountType } from "@/types";
 
 const TODAY = new Date().toISOString().split("T")[0];
 
@@ -20,6 +21,7 @@ export function NewCycleCountModal({ open, onOpenChange }: { open: boolean; onOp
   const locations = useWmsDbSelector((s) => s.locations);
   const router = useRouter();
 
+  const [countType, setCountType] = useState<StockCountType>("cycle");
   const [warehouseId, setWarehouseId] = useState(warehouses[0]?.id ?? "");
   const [zone, setZone] = useState("");
   const [assignedUser, setAssignedUser] = useState("Utkarsh Pratap");
@@ -36,8 +38,12 @@ export function NewCycleCountModal({ open, onOpenChange }: { open: boolean; onOp
   }
 
   async function handleSubmit() {
-    if (!warehouseId || selectedProducts.length === 0) {
-      toast.error("Select a warehouse and at least one product.");
+    if (!warehouseId) {
+      toast.error("Select a warehouse.");
+      return;
+    }
+    if (countType === "cycle" && selectedProducts.length === 0) {
+      toast.error("Select at least one product.");
       return;
     }
     setSubmitting(true);
@@ -47,7 +53,8 @@ export function NewCycleCountModal({ open, onOpenChange }: { open: boolean; onOp
         zone: zone || undefined,
         assignedUser,
         countDate,
-        productIds: selectedProducts });
+        productIds: selectedProducts,
+        countType });
       toast.success(`${session.countNumber} created with ${session.lines.length} line(s).`);
       onOpenChange(false);
       router.push(`/inventory/wms-counts/${session.id}`);
@@ -62,11 +69,22 @@ export function NewCycleCountModal({ open, onOpenChange }: { open: boolean; onOp
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[500px]">
         <DialogHeader>
-          <DialogTitle>New Cycle Count</DialogTitle>
-          <DialogDescription>Select the scope for this physical count session</DialogDescription>
+          <DialogTitle>New Stock Count</DialogTitle>
+          <DialogDescription>Select the scope for this count session</DialogDescription>
         </DialogHeader>
 
         <div className="grid gap-4 py-4">
+          <div className="grid gap-2">
+            <Label>Count Type</Label>
+            <Select value={countType} onValueChange={(val) => setCountType(val as StockCountType)}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="cycle">Cycle Count — selected products only, no operational stoppage</SelectItem>
+                <SelectItem value="physical">Physical Stock Count — every product in the warehouse/zone</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
           <div className="grid grid-cols-2 gap-4">
             <div className="grid gap-2">
               <Label>Warehouse</Label>
@@ -111,18 +129,24 @@ export function NewCycleCountModal({ open, onOpenChange }: { open: boolean; onOp
             </div>
           </div>
 
-          <div className="grid gap-2">
-            <Label>Products ({selectedProducts.length} selected)</Label>
-            <div className="max-h-48 overflow-y-auto rounded-md border border-gray-200">
-              {products.map((p) => (
-                <label key={p.id} className="flex cursor-pointer items-center gap-2 border-b border-gray-100 px-3 py-2 text-sm last:border-b-0 hover:bg-gray-50">
-                  <input type="checkbox" className="rounded text-blue-600 focus:ring-blue-500" checked={selectedProducts.includes(p.id)} onChange={() => toggleProduct(p.id)} />
-                  <span className="font-mono text-xs text-gray-500">{p.sku}</span>
-                  <span className="text-gray-800">{p.name}</span>
-                </label>
-              ))}
+          {countType === "cycle" ? (
+            <div className="grid gap-2">
+              <Label>Products ({selectedProducts.length} selected)</Label>
+              <div className="max-h-48 overflow-y-auto rounded-md border border-gray-200">
+                {products.map((p) => (
+                  <label key={p.id} className="flex cursor-pointer items-center gap-2 border-b border-gray-100 px-3 py-2 text-sm last:border-b-0 hover:bg-gray-50">
+                    <input type="checkbox" className="rounded text-blue-600 focus:ring-blue-500" checked={selectedProducts.includes(p.id)} onChange={() => toggleProduct(p.id)} />
+                    <span className="font-mono text-xs text-gray-500">{p.sku}</span>
+                    <span className="text-gray-800">{p.name}</span>
+                  </label>
+                ))}
+              </div>
             </div>
-          </div>
+          ) : (
+            <p className="rounded-md bg-gray-50 px-3 py-2 text-xs text-gray-600">
+              Every product currently stocked in this warehouse{zone ? ` / zone ${zone}` : ""} will be included automatically.
+            </p>
+          )}
         </div>
 
         <DialogFooter>

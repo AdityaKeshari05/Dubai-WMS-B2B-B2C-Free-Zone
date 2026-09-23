@@ -49,7 +49,7 @@ export default function WaveDetailPage() {
     const group = groups.find((g) => g.productId === productId);
     const qty = pickInputs[productId];
     if (!group || !qty) return;
-    batchPickingService.distributePick(group, qty, wave!.warehouseId);
+    batchPickingService.distributePick(group, qty);
     setPickInputs((prev) => ({ ...prev, [productId]: 0 }));
     toast.success(`${qty} unit(s) distributed across orders`);
   }

@@ -265,7 +265,11 @@ export const inventoryService = {
     quantity: number;
     reason: string;
     notes?: string;
+    authorizedBy: string;
   }) {
+    if (!params.authorizedBy.trim()) {
+      throw new Error("Stock adjustments require an authorizing name before they can be applied.");
+    }
     if (params.type === "decrease") {
       const item = db
         .getSnapshot()
@@ -297,6 +301,7 @@ export const inventoryService = {
         quantity: params.quantity,
         reason: params.reason,
         notes: params.notes,
+        authorizedBy: params.authorizedBy,
         createdAt: new Date().toISOString(),
         createdBy: "System",
       });
@@ -315,7 +320,7 @@ export const inventoryService = {
       });
     });
 
-    logActivity("inventory", params.productId, "adjust", `Stock ${params.type}d by ${params.quantity}`);
+    logActivity("inventory", params.productId, "adjust", `Stock ${params.type}d by ${params.quantity}, authorized by ${params.authorizedBy}`);
   },
 
   markDamaged(params: {

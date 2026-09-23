@@ -15,16 +15,17 @@ export function MarkDamagedModal({ open, onOpenChange, row }: { open: boolean; o
   const [submitting, setSubmitting] = useState(false);
 
   if (!open || !row) return null;
+  const currentRow = row;
   const goodQty = row.item.physicalQty - row.item.damagedQty;
 
   async function handleSubmit() {
     setSubmitting(true);
     try {
       inventoryService.markDamaged({
-        productId: row.product.id,
-        warehouseId: row.warehouse.id,
-        locationId: row.location.id,
-        batchId: row.batch?.id,
+        productId: currentRow.product.id,
+        warehouseId: currentRow.warehouse.id,
+        locationId: currentRow.location.id,
+        batchId: currentRow.batch?.id,
         quantity,
         reason: reason || "Damaged during handling",
       });

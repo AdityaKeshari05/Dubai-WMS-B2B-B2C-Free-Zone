@@ -1,7 +1,6 @@
 'use client';
 
 import { useMemo, useState } from "react";
-import { History } from "lucide-react";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
@@ -30,16 +29,6 @@ export default function InventoryHistoryPage() {
 
   const filtered = useMemo(() => movements.filter((m) => type === "all" || m.type === type), [movements, type]);
 
-  const columns = [
-    { key: "date", header: "Date", render: (m: any) => <span className="text-xs text-gray-500">{formatDate(m.createdAt)}</span> },
-    { key: "type", header: "Type", render: (m: any) => <Badge variant={TYPE_TONE[m.type]} className="capitalize">{m.type}</Badge> },
-    { key: "product", header: "Product", render: (m: any) => <span className="font-medium text-gray-900">{productMap.get(m.productId)?.name ?? m.productId}</span> },
-    { key: "from", header: "From", render: (m: any) => <span className="font-mono text-xs">{m.fromLocationId ? locationMap.get(m.fromLocationId)?.code : "-"}</span> },
-    { key: "to", header: "To", render: (m: any) => <span className="font-mono text-xs">{m.toLocationId ? locationMap.get(m.toLocationId)?.code : "-"}</span> },
-    { key: "qty", header: "Quantity", className: "text-right", render: (m: any) => m.quantity },
-    { key: "reference", header: "Reference", render: (m: any) => <span className="text-xs text-gray-500">{m.referenceLabel ?? m.reason ?? "-"}</span> },
-  ];
-
   return (
     <div className="space-y-6">
       <PageHeader title="Inventory History" description="Full audit trail of every stock movement" />
@@ -63,8 +52,16 @@ export default function InventoryHistoryPage() {
       </div>
 
       <DataTable
-        columns={columns}
         data={filtered}
+        columns={[
+          { key: "date", header: "Date", render: (m) => <span className="text-xs text-gray-500">{formatDate(m.createdAt)}</span> },
+          { key: "type", header: "Type", render: (m) => <Badge variant={TYPE_TONE[m.type]} className="capitalize">{m.type}</Badge> },
+          { key: "product", header: "Product", render: (m) => <span className="font-medium text-gray-900">{productMap.get(m.productId)?.name ?? m.productId}</span> },
+          { key: "from", header: "From", render: (m) => <span className="font-mono text-xs">{m.fromLocationId ? locationMap.get(m.fromLocationId)?.code : "-"}</span> },
+          { key: "to", header: "To", render: (m) => <span className="font-mono text-xs">{m.toLocationId ? locationMap.get(m.toLocationId)?.code : "-"}</span> },
+          { key: "qty", header: "Quantity", className: "text-right", render: (m) => m.quantity },
+          { key: "reference", header: "Reference", render: (m) => <span className="text-xs text-gray-500">{m.referenceLabel ?? m.reason ?? "-"}</span> },
+        ]}
         emptyMessage="No movements found. Inventory movements will appear here as they happen."
       />
     </div>

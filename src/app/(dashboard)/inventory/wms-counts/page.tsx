@@ -34,35 +34,33 @@ export default function CycleCountsPage() {
   
   const sortedCounts = [...counts].reverse();
 
-  const columns = [
-    { key: "countNumber", header: "Count #", render: (c: any) => <span className="font-medium text-gray-900">{c.countNumber}</span> },
-    { key: "warehouse", header: "Warehouse", render: (c: any) => warehouseMap.get(c.warehouseId)?.name },
-    { key: "zone", header: "Zone", render: (c: any) => c.zone ?? "All" },
-    { key: "assigned", header: "Assigned", render: (c: any) => c.assignedUser },
-    { key: "date", header: "Date", render: (c: any) => <span className="text-xs text-gray-500">{formatDate(c.countDate)}</span> },
-    { key: "lines", header: "Lines", render: (c: any) => c.lines.length },
-    { key: "status", header: "Status", render: (c: any) => <Badge variant={STATUS_TONE[c.status]}>{STATUS_LABEL[c.status]}</Badge> },
-    { key: "actions", header: "", render: (c: any) => (
-      <Link href={`/inventory/wms-counts/${c.id}`}>
-        <Button size="sm" variant="ghost">Open</Button>
-      </Link>
-    ) },
-  ];
-
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Cycle Counts"
-        description="Physical stock counts and reconciliation"
-        children={
-          <Button onClick={() => setOpen(true)}>
-            <ClipboardCheck className="mr-2 size-4" /> New Count
-          </Button>
-        }
-      />
+        title="Stock Counts"
+        description="Cycle counts and full physical stock counts, with reconciliation"
+      >
+        <Button onClick={() => setOpen(true)}>
+          <ClipboardCheck className="mr-2 size-4" /> New Count
+        </Button>
+      </PageHeader>
       <DataTable
-        columns={columns}
         data={sortedCounts}
+        columns={[
+          { key: "countNumber", header: "Count #", render: (c) => <span className="font-medium text-gray-900">{c.countNumber}</span> },
+          { key: "type", header: "Type", render: (c) => <Badge variant={c.countType === "physical" ? "purple" : "outline"}>{c.countType === "physical" ? "Physical" : "Cycle"}</Badge> },
+          { key: "warehouse", header: "Warehouse", render: (c) => warehouseMap.get(c.warehouseId)?.name },
+          { key: "zone", header: "Zone", render: (c) => c.zone ?? "All" },
+          { key: "assigned", header: "Assigned", render: (c) => c.assignedUser },
+          { key: "date", header: "Date", render: (c) => <span className="text-xs text-gray-500">{formatDate(c.countDate)}</span> },
+          { key: "lines", header: "Lines", render: (c) => c.lines.length },
+          { key: "status", header: "Status", render: (c) => <Badge variant={STATUS_TONE[c.status]}>{STATUS_LABEL[c.status]}</Badge> },
+          { key: "actions", header: "", render: (c) => (
+            <Link href={`/inventory/wms-counts/${c.id}`}>
+              <Button size="sm" variant="ghost">Open</Button>
+            </Link>
+          ) },
+        ]}
         emptyMessage="No cycle counts yet. Create a count session to start reconciling stock."
       />
       <NewCycleCountModal open={open} onOpenChange={setOpen} />

@@ -18,6 +18,7 @@ import type {
   WmsActivityLog,
   Allocation,
   WmsInventoryItem,
+  PackingStation,
 } from '@/types';
 import {
   DEMO_B2B_ORDERS,
@@ -38,6 +39,7 @@ import {
   DEMO_RESERVATIONS,
   DEMO_INVENTORY_ITEMS,
   DEMO_BATCHES,
+  DEMO_PACKING_STATIONS,
 } from './demoSeed';
 
 export interface WmsDatabase {
@@ -63,6 +65,7 @@ export interface WmsDatabase {
   // (which the backend owns) - keyed by `${productId}:${warehouseId}`.
   reservations: Record<string, number>;
   inventoryItems: WmsInventoryItem[];
+  packingStations: PackingStation[];
   meta: { lastSync: string | null };
 }
 
@@ -88,12 +91,13 @@ function freshDatabase(): WmsDatabase {
     allocations: structuredClone(DEMO_ALLOCATIONS),
     reservations: structuredClone(DEMO_RESERVATIONS),
     inventoryItems: structuredClone(DEMO_INVENTORY_ITEMS),
+    packingStations: structuredClone(DEMO_PACKING_STATIONS),
     meta: { lastSync: null },
   };
 }
 
-// v4: bumped to include batches in the seed
-const STORAGE_KEY = 'orus-wms-mock-db-v4';
+// v5: bumped to include packing stations in the seed
+const STORAGE_KEY = 'orus-wms-mock-db-v5';
 type Listener = () => void;
 
 class WmsDatabaseStore {

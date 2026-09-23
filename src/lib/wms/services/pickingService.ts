@@ -1,8 +1,7 @@
 import { wmsDb } from '../db';
 import { nextId, nextSequence } from '../id';
 import { logWmsActivity } from '../activityLog';
-import { inventoryService } from './inventoryService';
-import { locationService } from './locationService';
+import { inventoryService } from '../inventoryService';
 import type { PickingItem, PickingTask, B2BOrder, B2COrder, PickExceptionType } from '@/types';
 import type { OrderType } from './allocationService';
 
@@ -37,19 +36,23 @@ export const pickingService = {
         .flatMap((t) => t.items.map((i) => i.productId))
     );
 
-    const defaultBin = locationService.ensureDefaultBin(opts.warehouseId);
+    // One PickingItem per bin/batch an allocation actually drew from, so the
+    // picker is sent to the real location instead of a generic default bin.
     const items: PickingItem[] = [];
     for (const alloc of allocations) {
       if (existingProductIds.has(alloc.productId) || alloc.allocatedQty <= 0) continue;
-      items.push({
-        id: nextId('pki'),
-        productId: alloc.productId,
-        locationId: defaultBin.id,
-        batchId: alloc.batchAllocations[0]?.batchId,
-        expectedQty: alloc.allocatedQty,
-        pickedQty: 0,
-        status: 'pending',
-      });
+      for (const ba of alloc.batchAllocations) {
+        if (ba.qty <= 0) continue;
+        items.push({
+          id: nextId('pki'),
+          productId: alloc.productId,
+          locationId: ba.locationId,
+          batchId: ba.batchId,
+          expectedQty: ba.qty,
+          pickedQty: 0,
+          status: 'pending',
+        });
+      }
     }
     if (items.length === 0) throw new Error('No newly allocated stock available to pick for this order.');
 
@@ -111,7 +114,6 @@ export const pickingService = {
     taskId: string,
     itemId: string,
     pickedQty: number,
-    warehouseId: string,
     exception?: { type: PickExceptionType; notes: string }
   ) {
     const state = wmsDb.getSnapshot();
@@ -121,7 +123,6 @@ export const pickingService = {
 
     inventoryService.consumeForPick({
       productId: item.productId,
-      warehouseId,
       locationId: item.locationId,
       batchId: item.batchId,
       pickedQty,

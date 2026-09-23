@@ -114,9 +114,17 @@ export const navItems: NavItem[] = [
       {
         label: 'B2B Orders', icon: Building2,
         children: [
-          { label: 'Orders', href: '/wms/b2b', icon: Building2 },
-          { label: 'Customers', href: '/wms/b2b/customers', icon: Users },
-          { label: 'ASN', href: '/wms/b2b/asn', icon: FileCheck2 },
+          { label: '6.1 Sales Order Management', href: '/wms/b2b', icon: Building2 },
+          { label: '6.2 Customer-Specific SKU', href: '/wms/b2b/customers', icon: Users },
+          { label: '6.3 Customer Pricing', href: '/wms/b2b/customers', icon: Tags },
+          { label: '6.4 Order Allocation', href: '/wms/b2b', icon: Boxes },
+          { label: '6.5 Partial Fulfillment', href: '/wms/b2b', icon: Layers },
+          { label: '6.6 Backorders', href: '/wms/b2b', icon: Clock },
+          { label: '6.7 ASN for Customers', href: '/wms/b2b/asn', icon: FileCheck2 },
+          { label: '6.8 B2B Picking', href: '/wms/fulfillment/picking', icon: ClipboardList },
+          { label: '6.9 Pallet & Carton Handling', href: '/wms/fulfillment/packing', icon: Archive },
+          { label: '6.10 Delivery Scheduling', href: '/wms/b2b', icon: CalendarDays },
+          { label: '6.11 Proof of Delivery', href: '/wms/b2b', icon: ClipboardSignature },
         ],
       },
       {

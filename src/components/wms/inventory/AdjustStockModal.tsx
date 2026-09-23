@@ -18,24 +18,31 @@ export function AdjustStockModal({ open, onOpenChange, row }: { open: boolean; o
   const [quantity, setQuantity] = useState(1);
   const [reason, setReason] = useState(REASONS[0]);
   const [notes, setNotes] = useState("");
+  const [authorizedBy, setAuthorizedBy] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
   if (!open || !row) return null;
+  const currentRow = row;
 
   async function handleSubmit() {
+    if (!authorizedBy.trim()) {
+      toast.error("Enter the name of the person authorizing this adjustment.");
+      return;
+    }
     setSubmitting(true);
     try {
       inventoryService.adjustStock({
-        productId: row.product.id,
-        warehouseId: row.warehouse.id,
-        locationId: row.location.id,
-        batchId: row.batch?.id,
+        productId: currentRow.product.id,
+        warehouseId: currentRow.warehouse.id,
+        locationId: currentRow.location.id,
+        batchId: currentRow.batch?.id,
         type,
         quantity,
         reason,
         notes,
+        authorizedBy,
       });
-      toast.success(`${row.product.name} ${type}d by ${quantity} unit(s).`);
+      toast.success(`${currentRow.product.name} ${type}d by ${quantity} unit(s).`);
       onOpenChange(false);
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Unknown error");
@@ -94,6 +101,11 @@ export function AdjustStockModal({ open, onOpenChange, row }: { open: boolean; o
           <div className="grid gap-2">
             <Label>Notes</Label>
             <Textarea value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Optional notes" />
+          </div>
+
+          <div className="grid gap-2">
+            <Label>Authorized By <span className="text-red-500">*</span></Label>
+            <Input value={authorizedBy} onChange={(e) => setAuthorizedBy(e.target.value)} placeholder="Name of approving supervisor" />
           </div>
 
           <p className="text-xs text-gray-500">

@@ -28,6 +28,7 @@ export function NewAdjustmentModal({ open, onOpenChange }: { open: boolean; onOp
   const [quantity, setQuantity] = useState(1);
   const [reason, setReason] = useState(REASONS[0]);
   const [notes, setNotes] = useState("");
+  const [authorizedBy, setAuthorizedBy] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
   if (!open) return null;
@@ -50,6 +51,10 @@ export function NewAdjustmentModal({ open, onOpenChange }: { open: boolean; onOp
       toast.error("Select a product, warehouse and bin.");
       return;
     }
+    if (!authorizedBy.trim()) {
+      toast.error("Enter the name of the person authorizing this adjustment.");
+      return;
+    }
     setSubmitting(true);
     try {
       inventoryService.adjustStock({
@@ -60,7 +65,8 @@ export function NewAdjustmentModal({ open, onOpenChange }: { open: boolean; onOp
         type,
         quantity,
         reason,
-        notes });
+        notes,
+        authorizedBy });
       toast.success("The adjustment has been applied.");
       onOpenChange(false);
     } catch (e) {
@@ -179,6 +185,11 @@ export function NewAdjustmentModal({ open, onOpenChange }: { open: boolean; onOp
           <div className="grid gap-2">
             <Label>Notes</Label>
             <Textarea value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Optional notes" />
+          </div>
+
+          <div className="grid gap-2">
+            <Label>Authorized By <span className="text-red-500">*</span></Label>
+            <Input value={authorizedBy} onChange={(e) => setAuthorizedBy(e.target.value)} placeholder="Name of approving supervisor" />
           </div>
         </div>
 

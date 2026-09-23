@@ -3,11 +3,12 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import toast from 'react-hot-toast';
-import { ArrowLeft, CheckCircle2, Circle, Truck, Send } from 'lucide-react';
+import { ArrowLeft, CheckCircle2, Circle, Truck, Send, ScanBarcode } from 'lucide-react';
 import { PageHeader } from '@/components/shared/PageHeader';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { useWmsDbSelector } from '@/lib/wms/useWmsDb';
 import { useWmsLookups } from '@/lib/wms/useLookups';
@@ -27,7 +28,8 @@ export default function DispatchDetailPage() {
   const productMap = new Map(products.map((p) => [p.id, p]));
   const customerMap = new Map(customers.map((c) => [c.id, c]));
 
-  const [checks, setChecks] = useState({ order: false, cartons: false, tracking: false, items: false });
+  const [checks, setChecks] = useState({ order: false, cartons: false, items: false });
+  const [scannedTracking, setScannedTracking] = useState('');
   const [confirmOpen, setConfirmOpen] = useState(false);
 
   if (!shipment) {
@@ -38,7 +40,8 @@ export default function DispatchDetailPage() {
   const orderHref = shipment.orderType === 'b2b' ? `/wms/b2b/${shipment.orderId}` : `/wms/b2c/${shipment.orderId}`;
   const customerName = b2bOrder ? customerMap.get(b2bOrder.customerId)?.name ?? '-' : b2cOrder?.customerName ?? '-';
   const address = b2bOrder?.deliveryAddress ?? b2cOrder?.customerAddress ?? '-';
-  const allChecked = Object.values(checks).every(Boolean);
+  const trackingScanned = scannedTracking === shipment.trackingNumber;
+  const allChecked = Object.values(checks).every(Boolean) && trackingScanned;
 
   function toggle(key: keyof typeof checks) {
     setChecks((prev) => ({ ...prev, [key]: !prev[key] }));
@@ -56,7 +59,6 @@ export default function DispatchDetailPage() {
   const checklist: { key: keyof typeof checks; label: string; value: string }[] = [
     { key: 'order', label: 'Order matches shipment', value: orderNumber },
     { key: 'cartons', label: 'Cartons verified', value: `${packages.length} package(s)` },
-    { key: 'tracking', label: 'Tracking number confirmed', value: shipment.trackingNumber },
     { key: 'items', label: 'Items match manifest', value: `${packages.reduce((s, p) => s + p.items.reduce((a, i) => a + i.qty, 0), 0)} unit(s)` },
   ];
 
@@ -79,6 +81,23 @@ export default function DispatchDetailPage() {
               <span className="text-xs text-gray-500">{c.value}</span>
             </button>
           ))}
+
+          <div className={`rounded-md border px-3 py-2.5 text-sm ${trackingScanned ? 'border-green-200 bg-green-50' : 'border-[#e5e2dc]'}`}>
+            <div className="mb-1.5 flex items-center gap-2">
+              {trackingScanned ? <CheckCircle2 className="h-4 w-4 text-green-600" /> : <Circle className="h-4 w-4 text-gray-300" />}
+              Final scan — tracking number
+            </div>
+            <div className="flex items-center gap-2 pl-6">
+              <ScanBarcode className="h-4 w-4 shrink-0 text-gray-400" />
+              <Input
+                placeholder={`Scan ${shipment.trackingNumber}`}
+                value={scannedTracking}
+                onChange={(e) => setScannedTracking(e.target.value)}
+                disabled={shipment.status !== 'label_created'}
+                className="h-8 font-mono text-xs"
+              />
+            </div>
+          </div>
         </div>
         {shipment.status === 'label_created' ? (
           <Button className="mt-4" disabled={!allChecked} onClick={() => setConfirmOpen(true)}><Truck className="mr-1.5 h-3.5 w-3.5" />Dispatch Shipment</Button>

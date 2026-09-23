@@ -53,9 +53,9 @@ export function InventoryDetailDrawer({ row, onClose }: { row: InventoryRow | nu
                 <h3 className="mb-2 text-xs font-semibold tracking-wide text-gray-500 uppercase">Product Information</h3>
                 <div className="grid grid-cols-2 gap-y-2 rounded-lg border border-gray-200 p-3 text-sm">
                   <span className="text-gray-500">Category</span>
-                  <span className="text-gray-900">{row.product.category}</span>
+                  <span className="text-gray-900">{row.product.category?.name ?? "-"}</span>
                   <span className="text-gray-500">UOM</span>
-                  <span className="text-gray-900">{row.product.uom}</span>
+                  <span className="text-gray-900">{row.product.unit?.symbol ?? row.product.unit?.name ?? "-"}</span>
                   <span className="text-gray-500">Cost Price</span>
                   <span className="text-gray-900">{formatCurrency(row.product.costPrice)}</span>
                   <span className="text-gray-500">Sale Price</span>

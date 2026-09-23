@@ -9,6 +9,7 @@ export const waveService = {
     name: string;
     warehouseId: string;
     zone?: string;
+    carrier?: string;
     priority: Wave['priority'];
     cutoffTime: string;
     orderIds: string[];
@@ -20,6 +21,7 @@ export const waveService = {
       name: params.name,
       warehouseId: params.warehouseId,
       zone: params.zone,
+      carrier: params.carrier,
       priority: params.priority,
       cutoffTime: params.cutoffTime,
       orderIds: params.orderIds,

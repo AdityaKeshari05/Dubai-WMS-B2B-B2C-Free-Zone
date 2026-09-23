@@ -1,7 +1,7 @@
 'use client';
 
 import { useMemo, useState } from "react";
-import { ArrowLeftRight, Building2, Search, Boxes } from "lucide-react";
+import { ArrowLeftRight, Building2, Search } from "lucide-react";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -54,36 +54,21 @@ export default function InventoryStockPage() {
 
   const tableData = filtered.map(r => ({ ...r, id: r.item.id }));
 
-  const columns = [
-    { key: "sku", header: "SKU", render: (r: any) => <span className="font-mono text-xs text-gray-500">{r.product.sku}</span> },
-    { key: "product", header: "Product", render: (r: any) => <span className="font-medium text-gray-900">{r.product.name}</span> },
-    { key: "warehouse", header: "Warehouse", render: (r: any) => r.warehouse.name },
-    { key: "bin", header: "Bin", render: (r: any) => <span className="font-mono text-xs">{r.location.code}</span> },
-    { key: "batch", header: "Batch", render: (r: any) => <span className="text-xs text-gray-500">{r.batch?.batchNumber ?? "-"}</span> },
-    { key: "physical", header: "Physical", className: "text-right", render: (r: any) => r.item.physicalQty },
-    { key: "reserved", header: "Reserved", className: "text-right", render: (r: any) => r.item.reservedQty },
-    { key: "available", header: "Available", className: "text-right", render: (r: any) => <span className="font-medium text-gray-900">{r.availableQty}</span> },
-    { key: "damaged", header: "Damaged", className: "text-right", render: (r: any) => r.item.damagedQty },
-    { key: "status", header: "Status", render: (r: any) => <Badge variant={STOCK_STATE_TONE[r.stockState as keyof typeof STOCK_STATE_TONE]}>{STOCK_STATE_LABEL[r.stockState as keyof typeof STOCK_STATE_LABEL]}</Badge> },
-    { key: "actions", header: "Actions", render: (r: any) => <Button size="sm" variant="ghost" onClick={(e) => { e.stopPropagation(); setSelectedId(r.item.id); }}>View</Button> },
-  ];
-
   return (
     <div className="space-y-6">
       <PageHeader
         title="WMS Stock"
         description="Monitor stock across warehouses, bins and inventory states"
-        children={
-          <div className="flex gap-2">
-            <Button variant="outline" onClick={() => setTransferOpen("stock")}>
-              <ArrowLeftRight className="mr-2 size-4" /> Stock Transfer
-            </Button>
-            <Button variant="outline" onClick={() => setTransferOpen("warehouse")}>
-              <Building2 className="mr-2 size-4" /> Warehouse Transfer
-            </Button>
-          </div>
-        }
-      />
+      >
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={() => setTransferOpen("stock")}>
+            <ArrowLeftRight className="mr-2 size-4" /> Stock Transfer
+          </Button>
+          <Button variant="outline" onClick={() => setTransferOpen("warehouse")}>
+            <Building2 className="mr-2 size-4" /> Warehouse Transfer
+          </Button>
+        </div>
+      </PageHeader>
 
       <InventoryStatsBar />
 
@@ -123,9 +108,21 @@ export default function InventoryStockPage() {
       </div>
 
       <DataTable
-        columns={columns}
         data={tableData}
         keyField="id"
+        columns={[
+          { key: "sku", header: "SKU", render: (r) => <span className="font-mono text-xs text-gray-500">{r.product.sku}</span> },
+          { key: "product", header: "Product", render: (r) => <span className="font-medium text-gray-900">{r.product.name}</span> },
+          { key: "warehouse", header: "Warehouse", render: (r) => r.warehouse.name },
+          { key: "bin", header: "Bin", render: (r) => <span className="font-mono text-xs">{r.location.code}</span> },
+          { key: "batch", header: "Batch", render: (r) => <span className="text-xs text-gray-500">{r.batch?.batchNumber ?? "-"}</span> },
+          { key: "physical", header: "Physical", className: "text-right", render: (r) => r.item.physicalQty },
+          { key: "reserved", header: "Reserved", className: "text-right", render: (r) => r.item.reservedQty },
+          { key: "available", header: "Available", className: "text-right", render: (r) => <span className="font-medium text-gray-900">{r.availableQty}</span> },
+          { key: "damaged", header: "Damaged", className: "text-right", render: (r) => r.item.damagedQty },
+          { key: "status", header: "Status", render: (r) => <Badge variant={STOCK_STATE_TONE[r.stockState]}>{STOCK_STATE_LABEL[r.stockState]}</Badge> },
+          { key: "actions", header: "Actions", render: (r) => <Button size="sm" variant="ghost" onClick={(e) => { e.stopPropagation(); setSelectedId(r.item.id); }}>View</Button> },
+        ]}
         emptyMessage="No inventory found. Try adjusting your filters or search term."
         onRowClick={(r) => setSelectedId(r.item.id)}
       />

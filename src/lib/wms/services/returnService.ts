@@ -1,7 +1,7 @@
 import { wmsDb } from '../db';
 import { nextId, nextSequence } from '../id';
 import { logWmsActivity } from '../activityLog';
-import { inventoryService } from './inventoryService';
+import { inventoryService } from '../inventoryService';
 import type { ReturnItem, ReturnRequest } from '@/types';
 import type { OrderType } from './allocationService';
 
@@ -35,22 +35,29 @@ export const returnService = {
 
     if (status === 'restocked') {
       for (const item of ret.items) {
-        inventoryService.recordMovement({
-          type: 'return',
+        inventoryService.restock({
           productId: item.productId,
-          toLocationId: returnsLocationId,
+          warehouseId,
+          locationId: returnsLocationId,
           quantity: item.quantity,
           referenceLabel: `Return ${ret.returnNumber} restocked`,
         });
       }
     } else if (status === 'damaged') {
       for (const item of ret.items) {
-        inventoryService.recordMovement({
-          type: 'damage',
+        inventoryService.restock({
           productId: item.productId,
-          toLocationId: returnsLocationId,
+          warehouseId,
+          locationId: returnsLocationId,
           quantity: item.quantity,
           referenceLabel: `Return ${ret.returnNumber} received damaged`,
+        });
+        inventoryService.markDamaged({
+          productId: item.productId,
+          warehouseId,
+          locationId: returnsLocationId,
+          quantity: item.quantity,
+          reason: `Return ${ret.returnNumber} inspected as damaged`,
         });
       }
     }

@@ -44,7 +44,24 @@ const config: FeaturePageConfig = {
       "sku": "SKU-10022",
       "price": "AED 57.50",
       "uom": "Carton",
-      "validity": "31 Dec 2026",
+      "status": "Active"
+    },
+    {
+      "id": "PRICE-003",
+      "customer": "Spinneys",
+      "sku": "SKU-9901",
+      "price": "AED 120.00",
+      "uom": "Pallet",
+      "validity": "31 Dec 2025",
+      "status": "Expired"
+    },
+    {
+      "id": "PRICE-004",
+      "customer": "Lulu Hypermarket",
+      "sku": "SKU-4402",
+      "price": "AED 0.01",
+      "uom": "Unit",
+      "validity": "01 Jan 2099",
       "status": "Active"
     }
   ],

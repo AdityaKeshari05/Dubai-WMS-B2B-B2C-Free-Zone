@@ -46,6 +46,33 @@ const config: FeaturePageConfig = {
       "requestedBy": "Sara",
       "approval": "Manager",
       "status": "Approved"
+    },
+    {
+      "id": "ADJ-0049",
+      "sku": "SKU-9901",
+      "qty": -15,
+      "reason": "Expired",
+      "requestedBy": "Mohammed",
+      "approval": "Supervisor",
+      "status": "Pending Approval"
+    },
+    {
+      "id": "ADJ-0050",
+      "sku": "SKU-4402",
+      "qty": 20,
+      "reason": "Inventory Adjustment",
+      "requestedBy": "Fatima",
+      "approval": "Manager",
+      "status": "Approved"
+    },
+    {
+      "id": "ADJ-0051",
+      "sku": "SKU-10024",
+      "qty": -2,
+      "reason": "Customer Return",
+      "requestedBy": "Ali",
+      "approval": "Supervisor",
+      "status": "Rejected"
     }
   ],
   "statuses": [

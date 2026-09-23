@@ -46,6 +46,24 @@ const config: FeaturePageConfig = {
       "weight": "604 kg",
       "dimensions": "120×100×160 cm",
       "status": "Pending"
+    },
+    {
+      "id": "PAL-003",
+      "order": "SO-B2B-1888",
+      "pallet": "PAL-77899",
+      "cartons": 1,
+      "weight": "2 kg",
+      "dimensions": "10x10x10 cm",
+      "status": "Verified"
+    },
+    {
+      "id": "PAL-004",
+      "order": "SO-B2B-1902",
+      "pallet": "PAL-77900",
+      "cartons": 100,
+      "weight": "2000 kg",
+      "dimensions": "150x150x200 cm",
+      "status": "Loaded"
     }
   ],
   "statuses": [

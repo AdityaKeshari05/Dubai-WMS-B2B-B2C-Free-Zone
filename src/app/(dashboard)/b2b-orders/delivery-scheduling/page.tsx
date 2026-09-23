@@ -46,6 +46,33 @@ const config: FeaturePageConfig = {
       "window": "12:00–14:00",
       "vehicle": "DXB-TRK-22",
       "status": "Scheduled"
+    },
+    {
+      "id": "DEL-003",
+      "order": "SO-B2B-1840",
+      "customer": "Spinneys",
+      "date": "24 Sep 2026",
+      "window": "08:00–10:00",
+      "vehicle": "Van-01 (DXB)",
+      "status": "Scheduled"
+    },
+    {
+      "id": "DEL-004",
+      "order": "SO-B2B-1845",
+      "customer": "Lulu Hypermarket",
+      "date": "24 Sep 2026",
+      "window": "14:00–16:00",
+      "vehicle": "Reefer-01",
+      "status": "Dispatched"
+    },
+    {
+      "id": "DEL-005",
+      "order": "SO-B2B-1850",
+      "customer": "Carrefour",
+      "date": "25 Sep 2026",
+      "window": "10:00–12:00",
+      "vehicle": "Truck-04 (SHJ)",
+      "status": "Delivered"
     }
   ],
   "statuses": [

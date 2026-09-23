@@ -54,10 +54,18 @@ const config: FeaturePageConfig = {
       "syncDirection": "Both (Full Sync)",
       "dateRange": "Last 24 hours",
       "externalOrder": "AMZ-77210",
-      "lastSync": "7 mins ago",
-      "changes": "Cancellation",
-      "result": "Pending",
       "status": "Pending"
+    },
+    {
+      "id": "SYNC-003",
+      "channel": "WooCommerce",
+      "syncDirection": "Export Fulfillments",
+      "dateRange": "Last 4 hours",
+      "externalOrder": "WC-1002",
+      "lastSync": "12 hours ago",
+      "changes": "Tracking updated",
+      "result": "Failed",
+      "status": "Failed"
     }
   ],
   "statuses": [

@@ -46,6 +46,24 @@ const config: FeaturePageConfig = {
       "backorderQty": 184,
       "eta": "29 Sep 2026",
       "status": "Pending"
+    },
+    {
+      "id": "BO-003",
+      "order": "SO-B2B-1850",
+      "customer": "Carrefour",
+      "sku": "SKU-9901",
+      "backorderQty": 1000,
+      "eta": "05 Oct 2026",
+      "status": "Pending"
+    },
+    {
+      "id": "BO-004",
+      "order": "SO-B2B-1877",
+      "customer": "Lulu Hypermarket",
+      "sku": "SKU-4402",
+      "backorderQty": 10,
+      "eta": "01 Oct 2026",
+      "status": "Allocated"
     }
   ],
   "statuses": [

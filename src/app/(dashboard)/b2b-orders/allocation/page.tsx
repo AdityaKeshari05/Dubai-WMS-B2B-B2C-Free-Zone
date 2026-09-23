@@ -46,6 +46,33 @@ const config: FeaturePageConfig = {
       "allocated": 80,
       "warehouse": "Free Zone",
       "status": "Partial"
+    },
+    {
+      "id": "ALLOC-003",
+      "order": "SO-B2B-1904",
+      "sku": "SKU-9901",
+      "required": 500,
+      "allocated": 0,
+      "warehouse": "Dubai Main",
+      "status": "Pending"
+    },
+    {
+      "id": "ALLOC-004",
+      "order": "SO-B2B-1910",
+      "sku": "SKU-4402",
+      "required": 120,
+      "allocated": 120,
+      "warehouse": "Jebel Ali",
+      "status": "Allocated"
+    },
+    {
+      "id": "ALLOC-005",
+      "order": "SO-B2B-1922",
+      "sku": "SKU-10024",
+      "required": 50,
+      "allocated": 25,
+      "warehouse": "Free Zone",
+      "status": "Partial"
     }
   ],
   "statuses": [

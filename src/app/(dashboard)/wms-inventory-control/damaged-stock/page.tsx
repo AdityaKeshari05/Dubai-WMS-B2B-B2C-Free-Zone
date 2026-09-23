@@ -52,6 +52,26 @@ const config: FeaturePageConfig = {
       "reason": "Water damage",
       "disposition": "Supplier return",
       "status": "Damaged"
+    },
+    {
+      "id": "DMG-0032",
+      "sku": "SKU-9901",
+      "qty": 42,
+      "source": "A-01-01",
+      "location": "Q-09-99",
+      "reason": "Eaten by warehouse cat",
+      "disposition": "Discard",
+      "status": "Disposed"
+    },
+    {
+      "id": "DMG-0033",
+      "sku": "SKU-4402",
+      "qty": 1,
+      "source": "FZ-05-02",
+      "location": "Q-FZ-05",
+      "reason": "Melted into a modern art masterpiece",
+      "disposition": "Sell at Discount",
+      "status": "Quarantine"
     }
   ],
   "statuses": [

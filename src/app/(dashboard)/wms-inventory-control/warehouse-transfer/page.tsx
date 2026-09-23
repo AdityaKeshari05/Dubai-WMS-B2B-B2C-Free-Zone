@@ -43,9 +43,26 @@ const config: FeaturePageConfig = {
       "sku": "SKU-10021",
       "from": "Dubai Main",
       "to": "Overflow",
-      "qty": 40,
       "reference": "WH-MOVE-70",
       "status": "Completed"
+    },
+    {
+      "id": "WT-00122",
+      "sku": "SKU-9901",
+      "from": "Sharjah",
+      "to": "Abu Dhabi Hub",
+      "qty": 500,
+      "reference": "WH-MOVE-72-URGENT",
+      "status": "Draft"
+    },
+    {
+      "id": "WT-00123",
+      "sku": "SKU-4402",
+      "from": "Jebel Ali",
+      "to": "Free Zone",
+      "qty": 50,
+      "reference": "WH-MOVE-73-LOST",
+      "status": "In Transit"
     }
   ],
   "statuses": [

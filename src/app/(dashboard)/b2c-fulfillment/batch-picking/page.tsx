@@ -46,6 +46,33 @@ const config: FeaturePageConfig = {
       "picker": "Ahmed",
       "trolley": "T-11",
       "status": "Completed"
+    },
+    {
+      "id": "BATCH-103",
+      "batch": "Batch C - Express",
+      "orders": 8,
+      "skuCount": 4,
+      "picker": "Fatima",
+      "trolley": "T-05",
+      "status": "Planned"
+    },
+    {
+      "id": "BATCH-104",
+      "batch": "Batch D",
+      "orders": 15,
+      "skuCount": 10,
+      "picker": "Ali",
+      "trolley": "T-09",
+      "status": "Picking"
+    },
+    {
+      "id": "BATCH-105",
+      "batch": "Batch E - Oversized",
+      "orders": 5,
+      "skuCount": 5,
+      "picker": "Hassan",
+      "trolley": "T-01",
+      "status": "Planned"
     }
   ],
   "statuses": [

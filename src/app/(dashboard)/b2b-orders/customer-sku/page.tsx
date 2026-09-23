@@ -37,9 +37,24 @@ const config: FeaturePageConfig = {
       "id": "CSKU-002",
       "customer": "Dubai Stores PJSC",
       "internalSku": "SKU-10022",
-      "customerSku": "DS-COF-44",
       "uom": "Carton",
       "status": "Active"
+    },
+    {
+      "id": "CSKU-003",
+      "customer": "Spinneys",
+      "internalSku": "SKU-9901",
+      "customerSku": "SP-MILK-L",
+      "uom": "Pallet",
+      "status": "Active"
+    },
+    {
+      "id": "CSKU-004",
+      "customer": "Lulu Hypermarket",
+      "internalSku": "SKU-4402",
+      "customerSku": "LL-MYSTERY-BOX",
+      "uom": "Unit",
+      "status": "Inactive"
     }
   ],
   "statuses": [

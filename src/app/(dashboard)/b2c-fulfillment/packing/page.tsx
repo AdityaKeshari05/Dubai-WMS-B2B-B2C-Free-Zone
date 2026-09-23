@@ -43,9 +43,26 @@ const config: FeaturePageConfig = {
       "order": "B2C-92020",
       "expected": 2,
       "verified": 2,
-      "box": "Medium Box",
       "station": "P-03",
       "status": "Completed"
+    },
+    {
+      "id": "PACK-7714",
+      "order": "B2C-93000",
+      "expected": 5,
+      "verified": 5,
+      "box": "Large Box",
+      "station": "P-01",
+      "status": "Completed"
+    },
+    {
+      "id": "PACK-7715",
+      "order": "B2C-93005",
+      "expected": 10,
+      "verified": 0,
+      "box": "Custom Box",
+      "station": "P-04",
+      "status": "Waiting"
     }
   ],
   "statuses": [

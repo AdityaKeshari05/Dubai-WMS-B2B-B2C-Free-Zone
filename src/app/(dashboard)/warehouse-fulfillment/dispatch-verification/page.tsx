@@ -43,9 +43,25 @@ const config: FeaturePageConfig = {
       "shipment": "SHP-00882",
       "packages": 33,
       "verified": 21,
-      "carrier": "Aramex",
-      "trackingBatch": "BATCH-ARX-091",
       "status": "Verifying"
+    },
+    {
+      "id": "DVER-003",
+      "shipment": "SHP-00999",
+      "packages": 1,
+      "verified": 1,
+      "carrier": "FedEx",
+      "trackingBatch": "BATCH-FDX-001",
+      "status": "Verified"
+    },
+    {
+      "id": "DVER-004",
+      "shipment": "SHP-01000",
+      "packages": 100,
+      "verified": 0,
+      "carrier": "UPS",
+      "trackingBatch": "BATCH-UPS-999",
+      "status": "Waiting"
     }
   ],
   "statuses": [

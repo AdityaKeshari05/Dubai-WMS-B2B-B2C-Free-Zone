@@ -46,6 +46,15 @@ const config: FeaturePageConfig = {
       "picker": "Team B",
       "priority": "Priority",
       "status": "Released"
+    },
+    {
+      "id": "WAVE-093",
+      "wave": "Afternoon 1",
+      "orders": 120,
+      "zone": "Zone C",
+      "picker": "Team C",
+      "priority": "Standard",
+      "status": "Planned"
     }
   ],
   "statuses": [

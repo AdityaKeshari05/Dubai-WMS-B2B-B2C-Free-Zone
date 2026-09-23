@@ -46,6 +46,24 @@ const config: FeaturePageConfig = {
       "packages": 68,
       "scheduled": "23 Sep 13:30",
       "status": "Pending"
+    },
+    {
+      "id": "ASN-003",
+      "order": "SO-B2B-1901",
+      "customer": "Spinneys",
+      "shipment": "SHP-00999",
+      "packages": 12,
+      "scheduled": "24 Sep 09:00",
+      "status": "Generated"
+    },
+    {
+      "id": "ASN-004",
+      "order": "SO-B2B-1922",
+      "customer": "Lulu Hypermarket",
+      "shipment": "SHP-01050",
+      "packages": 1,
+      "scheduled": "24 Sep 14:00",
+      "status": "Sent"
     }
   ],
   "statuses": [

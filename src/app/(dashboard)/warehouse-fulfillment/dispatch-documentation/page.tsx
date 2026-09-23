@@ -43,7 +43,23 @@ const config: FeaturePageConfig = {
       "shipment": "SHP-00882",
       "carrier": "Aramex",
       "manifest": "—",
-      "deliveryNote": "DN-7712",
+      "status": "Pending"
+    },
+    {
+      "id": "DOC-003",
+      "shipment": "SHP-00900",
+      "carrier": "FedEx",
+      "manifest": "MAN-900",
+      "deliveryNote": "DN-8800",
+      "handover": "16:00",
+      "status": "Dispatched"
+    },
+    {
+      "id": "DOC-004",
+      "shipment": "SHP-00901",
+      "carrier": "UPS",
+      "manifest": "—",
+      "deliveryNote": "—",
       "handover": "—",
       "status": "Pending"
     }

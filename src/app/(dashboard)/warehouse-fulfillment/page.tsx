@@ -43,9 +43,25 @@ const config: FeaturePageConfig = {
       "order": "SO-B2B-1824",
       "zone": "Bulk B",
       "picker": "Unassigned",
-      "required": 390,
-      "priority": "High",
       "status": "Assigned"
+    },
+    {
+      "id": "PICK-00875",
+      "order": "SO-B2B-1900",
+      "zone": "Bulk C",
+      "picker": "Team C",
+      "required": 1000,
+      "priority": "Urgent",
+      "status": "Picking"
+    },
+    {
+      "id": "PICK-00876",
+      "order": "SO-B2B-1911",
+      "zone": "Fast Pick",
+      "picker": "Team B",
+      "required": 50,
+      "priority": "Normal",
+      "status": "Completed"
     }
   ],
   "statuses": [

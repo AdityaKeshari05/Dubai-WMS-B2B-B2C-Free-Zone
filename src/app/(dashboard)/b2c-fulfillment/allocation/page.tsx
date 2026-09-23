@@ -42,10 +42,16 @@ const config: FeaturePageConfig = {
       "id": "BALLOC-002",
       "order": "B2C-92022",
       "items": 4,
-      "allocated": 2,
-      "warehouse": "Dubai Main",
-      "rule": "FIFO",
       "status": "Partial"
+    },
+    {
+      "id": "BALLOC-003",
+      "order": "B2C-92040",
+      "items": 1,
+      "allocated": 0,
+      "warehouse": "Free Zone",
+      "rule": "LIFO",
+      "status": "Pending"
     }
   ],
   "statuses": [

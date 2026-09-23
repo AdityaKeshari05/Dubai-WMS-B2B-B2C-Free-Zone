@@ -52,6 +52,26 @@ const config: FeaturePageConfig = {
       "available": 22,
       "warehouse": "Dubai Main",
       "status": "Low Stock"
+    },
+    {
+      "id": "AVL-003",
+      "sku": "SKU-9901",
+      "physical": 5000,
+      "reserved": 4999,
+      "allocated": 0,
+      "available": 1,
+      "warehouse": "Free Zone",
+      "status": "Available"
+    },
+    {
+      "id": "AVL-004",
+      "sku": "SKU-4402",
+      "physical": 0,
+      "reserved": 0,
+      "allocated": 0,
+      "available": 0,
+      "warehouse": "Sharjah",
+      "status": "Low Stock"
     }
   ],
   "statuses": [

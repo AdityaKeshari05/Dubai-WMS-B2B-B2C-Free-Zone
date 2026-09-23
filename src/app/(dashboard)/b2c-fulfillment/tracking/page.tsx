@@ -43,9 +43,26 @@ const config: FeaturePageConfig = {
       "order": "B2C-92020",
       "carrier": "Aramex",
       "tracking": "AWB-882920",
-      "lastEvent": "Label created",
       "updated": "15 mins ago",
       "status": "Active"
+    },
+    {
+      "id": "TRK-003",
+      "order": "B2C-92100",
+      "carrier": "FedEx",
+      "tracking": "AWB-777777",
+      "lastEvent": "Lost in transit",
+      "updated": "2 days ago",
+      "status": "Exception"
+    },
+    {
+      "id": "TRK-004",
+      "order": "B2C-92101",
+      "carrier": "UPS",
+      "tracking": "AWB-888888",
+      "lastEvent": "Delivered to front porch",
+      "updated": "1 min ago",
+      "status": "Delivered"
     }
   ],
   "statuses": [

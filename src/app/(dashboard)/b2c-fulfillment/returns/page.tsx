@@ -46,6 +46,24 @@ const config: FeaturePageConfig = {
       "action": "Replacement",
       "refund": "—",
       "status": "Completed"
+    },
+    {
+      "id": "RET-0092",
+      "order": "B2C-91999",
+      "reason": "Not as magical as pictured",
+      "condition": "Sellable",
+      "action": "Refund",
+      "refund": "AED 50",
+      "status": "Pending"
+    },
+    {
+      "id": "RET-0093",
+      "order": "B2C-92001",
+      "reason": "Wrong item (received a potato instead)",
+      "condition": "Unsellable",
+      "action": "Replacement",
+      "refund": "—",
+      "status": "Inspected"
     }
   ],
   "statuses": [

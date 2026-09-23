@@ -46,6 +46,24 @@ const config: FeaturePageConfig = {
       "items": 2,
       "importedAt": "23 Sep 09:31",
       "status": "Imported"
+    },
+    {
+      "id": "IMP-003",
+      "channel": "Magento",
+      "externalOrder": "MG-9022",
+      "customer": "Sara Khalifa",
+      "items": 12,
+      "importedAt": "24 Sep 11:00",
+      "status": "Validated"
+    },
+    {
+      "id": "IMP-004",
+      "channel": "Amazon",
+      "externalOrder": "AMZ-912233",
+      "customer": "Mohammed Al Maktoum",
+      "items": 1,
+      "importedAt": "24 Sep 11:15",
+      "status": "Allocated"
     }
   ],
   "statuses": [

@@ -46,6 +46,24 @@ const config: FeaturePageConfig = {
       "expiry": "01 Jul 2026 receipt",
       "qty": 94,
       "status": "Active"
+    },
+    {
+      "id": "ROT-003",
+      "sku": "SKU-9901",
+      "rule": "FEFO",
+      "batch": "B-240001-MILK",
+      "expiry": "15 Jan 2026",
+      "qty": 500,
+      "status": "Active"
+    },
+    {
+      "id": "ROT-004",
+      "sku": "SKU-4402",
+      "rule": "LIFO",
+      "batch": "B-LAST-IN",
+      "expiry": "23 Sep 2026 receipt",
+      "qty": 10,
+      "status": "Paused"
     }
   ],
   "statuses": [

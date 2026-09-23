@@ -35,8 +35,25 @@ const config: FeaturePageConfig = {
       "ordered": 112,
       "fulfilled": 80,
       "remaining": 32,
-      "nextDate": "26 Sep 2026",
       "status": "Partial"
+    },
+    {
+      "id": "PART-002",
+      "order": "SO-B2B-1950",
+      "ordered": 500,
+      "fulfilled": 100,
+      "remaining": 400,
+      "nextDate": "27 Sep 2026",
+      "status": "Partial"
+    },
+    {
+      "id": "PART-003",
+      "order": "SO-B2B-1965",
+      "ordered": 20,
+      "fulfilled": 20,
+      "remaining": 0,
+      "nextDate": "—",
+      "status": "Completed"
     }
   ],
   "statuses": [

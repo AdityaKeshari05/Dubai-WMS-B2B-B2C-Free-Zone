@@ -43,8 +43,34 @@ const config: FeaturePageConfig = {
       "warehouse": "Free Zone",
       "scope": "FZ-03 / 22 SKUs",
       "systemQty": 940,
-      "countedQty": 936,
       "variance": -4,
+      "status": "Completed"
+    },
+    {
+      "id": "CC-00129",
+      "warehouse": "Jebel Ali",
+      "scope": "High Value Bin",
+      "systemQty": 40,
+      "countedQty": "—",
+      "variance": "—",
+      "status": "Scheduled"
+    },
+    {
+      "id": "CC-00130",
+      "warehouse": "Dubai Main",
+      "scope": "Cold Storage",
+      "systemQty": 120,
+      "countedQty": 120,
+      "variance": 0,
+      "status": "Counting"
+    },
+    {
+      "id": "CC-00131",
+      "warehouse": "Abu Dhabi Hub",
+      "scope": "Zone C / 10 SKUs",
+      "systemQty": 55,
+      "countedQty": 55,
+      "variance": 0,
       "status": "Completed"
     }
   ],

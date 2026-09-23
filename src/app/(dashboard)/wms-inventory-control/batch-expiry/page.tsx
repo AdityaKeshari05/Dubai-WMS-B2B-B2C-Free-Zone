@@ -52,6 +52,26 @@ const config: FeaturePageConfig = {
       "qty": 42,
       "warehouse": "Dubai Main",
       "status": "Active"
+    },
+    {
+      "id": "BAT-003",
+      "sku": "SKU-9901",
+      "batch": "B-240001-MILK",
+      "received": "01 Jan 2026",
+      "expiry": "15 Jan 2026",
+      "qty": 500,
+      "warehouse": "Sharjah",
+      "status": "Expired"
+    },
+    {
+      "id": "BAT-004",
+      "sku": "SKU-4402",
+      "batch": "B-SUSPICIOUS",
+      "received": "10 Aug 2026",
+      "expiry": "10 Aug 2099",
+      "qty": 1,
+      "warehouse": "Jebel Ali",
+      "status": "Quarantine"
     }
   ],
   "statuses": [

@@ -43,8 +43,25 @@ const config: FeaturePageConfig = {
       "warehouse": "Free Zone",
       "countDate": "31 Aug 2026",
       "systemQty": 9210,
-      "countedQty": 9201,
       "variance": -9,
+      "status": "Completed"
+    },
+    {
+      "id": "PC-00043",
+      "warehouse": "Sharjah",
+      "countDate": "01 Oct 2026",
+      "systemQty": 5200,
+      "countedQty": "—",
+      "variance": "—",
+      "status": "Scheduled"
+    },
+    {
+      "id": "PC-00044",
+      "warehouse": "Jebel Ali",
+      "countDate": "15 Sep 2026",
+      "systemQty": 11050,
+      "countedQty": 11050,
+      "variance": 0,
       "status": "Completed"
     }
   ],

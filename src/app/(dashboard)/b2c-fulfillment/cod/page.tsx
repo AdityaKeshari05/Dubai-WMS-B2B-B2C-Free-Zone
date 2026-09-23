@@ -43,9 +43,26 @@ const config: FeaturePageConfig = {
       "order": "B2C-91988",
       "customer": "Mariam Ali",
       "amount": "AED 96",
-      "carrier": "Aramex",
       "collection": "Collected",
       "status": "Completed"
+    },
+    {
+      "id": "COD-003",
+      "order": "B2C-92050",
+      "customer": "Zayed Sultan",
+      "amount": "AED 5,000",
+      "carrier": "FedEx",
+      "collection": "Pending settlement",
+      "status": "Pending"
+    },
+    {
+      "id": "COD-004",
+      "order": "B2C-92055",
+      "customer": "Laila Ahmed",
+      "amount": "AED 25",
+      "carrier": "Aramex",
+      "collection": "Failed (Customer didn't have change)",
+      "status": "Pending"
     }
   ],
   "statuses": [

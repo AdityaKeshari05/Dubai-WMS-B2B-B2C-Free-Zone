@@ -43,9 +43,25 @@ const config: FeaturePageConfig = {
       "order": "B2C-92018",
       "station": "Station 2",
       "skuCount": 3,
-      "verified": 2,
-      "operator": "Sara",
       "status": "Packing"
+    },
+    {
+      "id": "PKS-0093",
+      "order": "SO-B2B-1999",
+      "station": "Station 3",
+      "skuCount": 500,
+      "verified": 0,
+      "operator": "Ahmed",
+      "status": "Waiting"
+    },
+    {
+      "id": "PKS-0094",
+      "order": "B2C-92055",
+      "station": "Station 4",
+      "skuCount": 1,
+      "verified": 1,
+      "operator": "Mohammed",
+      "status": "Completed"
     }
   ],
   "statuses": [

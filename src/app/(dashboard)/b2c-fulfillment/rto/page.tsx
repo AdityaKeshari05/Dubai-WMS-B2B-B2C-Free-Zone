@@ -43,8 +43,25 @@ const config: FeaturePageConfig = {
       "order": "B2C-91977",
       "tracking": "AWB-882811",
       "reason": "Customer refused",
-      "received": "Yes",
       "action": "Restock",
+      "status": "Completed"
+    },
+    {
+      "id": "RTO-0075",
+      "order": "B2C-92080",
+      "tracking": "AWB-882912",
+      "reason": "Invalid address (Middle of desert)",
+      "received": "No",
+      "action": "Awaiting return",
+      "status": "In Transit"
+    },
+    {
+      "id": "RTO-0076",
+      "order": "B2C-92085",
+      "tracking": "AWB-882915",
+      "reason": "Customer refused (Changed mind)",
+      "received": "Yes",
+      "action": "Dispose",
       "status": "Completed"
     }
   ],

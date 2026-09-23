@@ -43,9 +43,26 @@ const config: FeaturePageConfig = {
       "criteria": "Priority",
       "orders": 28,
       "zone": "Zone B",
-      "carrier": "Aramex",
       "cutoff": "12:00",
       "status": "Released"
+    },
+    {
+      "id": "WW-213",
+      "criteria": "Customer",
+      "orders": 1,
+      "zone": "Zone A",
+      "carrier": "FedEx",
+      "cutoff": "18:00",
+      "status": "Planned"
+    },
+    {
+      "id": "WW-214",
+      "criteria": "Zone",
+      "orders": 99,
+      "zone": "Zone C",
+      "carrier": "Mixed",
+      "cutoff": "15:00",
+      "status": "Completed"
     }
   ],
   "statuses": [

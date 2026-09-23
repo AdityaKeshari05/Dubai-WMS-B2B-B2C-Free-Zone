@@ -43,9 +43,25 @@ const config: FeaturePageConfig = {
       "carrier": "Aramex",
       "orders": 31,
       "packages": 33,
-      "route": "BATCH-ARX-091",
-      "cutoff": "12:00",
       "status": "Pending"
+    },
+    {
+      "id": "CONS-003",
+      "carrier": "FedEx",
+      "orders": 150,
+      "packages": 150,
+      "route": "BATCH-FDX-001",
+      "cutoff": "15:00",
+      "status": "Completed"
+    },
+    {
+      "id": "CONS-004",
+      "carrier": "Own Fleet",
+      "orders": 10,
+      "packages": 50,
+      "route": "BATCH-LOCAL-001",
+      "cutoff": "18:00",
+      "status": "Ready"
     }
   ],
   "statuses": [

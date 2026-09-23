@@ -8,6 +8,9 @@ import {
   Plus,
   RefreshCw,
   Search,
+  Inbox,
+  Eye,
+  ArrowRight,
 } from 'lucide-react';
 import {
   Badge,
@@ -117,7 +120,7 @@ export default function M05M08FeaturePage({ config }: { config: FeaturePageConfi
   };
 
   const metrics = config.metrics || [
-    { label: 'Total Records', value: String(rows.length), hint: 'Current demo records' },
+    { label: 'Total Records', value: String(rows.length), hint: 'Current records' },
     { label: 'Active / Open', value: String(rows.filter(r => !['Completed','Delivered','Approved','Reconciled','Shipped'].includes(r.status)).length), hint: 'Needs action' },
     { label: 'Completed', value: String(rows.filter(r => ['Completed','Delivered','Approved','Reconciled','Shipped','Generated','Verified'].includes(r.status)).length), hint: 'Processed' },
   ];
@@ -146,31 +149,29 @@ export default function M05M08FeaturePage({ config }: { config: FeaturePageConfi
             value={m.value}
             hint={m.hint}
             icon={i === 0 ? Activity : i === 1 ? RefreshCw : CheckCircle2}
+            iconColor={i === 0 ? 'text-blue-600' : i === 1 ? 'text-purple-600' : 'text-green-600'}
+            iconBg={i === 0 ? 'bg-blue-50' : i === 1 ? 'bg-purple-50' : 'bg-green-50'}
           />
         ))}
       </div>
 
-      <Card
-        title={config.title}
-        description="Frontend-only interactive WMS demo"
-        action={
-          <div className="flex w-full flex-col gap-2 sm:flex-row lg:w-auto">
-            <div className="w-full sm:w-72">
-              <SearchInput
-                value={search}
-                onChange={setSearch}
-                placeholder={config.searchPlaceholder || 'Search records...'}
-              />
-            </div>
-            <div className="w-full sm:w-40">
-              <Select value={status} onChange={setStatus}>
-                <option>All</option>
-                {config.statuses.map(s => <option key={s}>{s}</option>)}
-              </Select>
-            </div>
-          </div>
-        }
-      >
+      <div className="mb-4 flex flex-wrap gap-2">
+        <div className="w-full sm:w-72">
+          <SearchInput
+            value={search}
+            onChange={setSearch}
+            placeholder={config.searchPlaceholder || 'Search records...'}
+          />
+        </div>
+        <div className="w-full sm:w-40">
+          <Select value={status} onChange={setStatus}>
+            <option>All</option>
+            {config.statuses.map(s => <option key={s}>{s}</option>)}
+          </Select>
+        </div>
+      </div>
+
+      <div className="overflow-hidden rounded-md border border-[#e5e2dc] bg-white shadow-[0_1px_2px_rgba(16,24,40,0.04)]">
         <Table
           headers={[...config.columns.map(c => c.label), 'Status', 'Actions']}
           rows={filtered.map(row => [
@@ -182,25 +183,41 @@ export default function M05M08FeaturePage({ config }: { config: FeaturePageConfi
               return <span key={`${row.id}-${col.key}`}>{String(value ?? '—')}</span>;
             }),
             <Badge key={`${row.id}-status`} tone={toneFor(row.status)}>{row.status}</Badge>,
-            <div key={`${row.id}-actions`} className="flex items-center gap-2">
-              <SecondaryButton onClick={() => setSelected(row)}>View</SecondaryButton>
+            <div key={`${row.id}-actions`} className="flex items-center gap-1">
+              <button
+                onClick={(e) => { e.stopPropagation(); setSelected(row); }}
+                title="View Details"
+                className="inline-flex h-7 w-7 items-center justify-center rounded-md text-[#7c8591] transition-colors hover:bg-[#f3f4f6] hover:text-[#1f2937]"
+              >
+                <Eye className="h-4 w-4" />
+              </button>
               {(config.progressStatuses || config.statuses).length > 1 && (
-                <SecondaryButton onClick={() => progress(row)}>
-                  {config.actionLabel || 'Advance'}
-                </SecondaryButton>
+                <button
+                  onClick={(e) => { e.stopPropagation(); progress(row); }}
+                  title={config.actionLabel || 'Advance Status'}
+                  className="inline-flex h-7 w-7 items-center justify-center rounded-md text-[#1674c4] transition-colors hover:bg-[#eef6ff]"
+                >
+                  <ArrowRight className="h-4 w-4" />
+                </button>
               )}
             </div>,
           ])}
         />
         {filtered.length === 0 && (
-          <div className="px-5 py-10 text-center text-sm text-[#7c8591]">No matching records.</div>
+          <div className="flex flex-col items-center justify-center py-16 text-center">
+            <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-[#f8faf9]">
+              <Inbox className="h-6 w-6 text-[#9aa1aa]" />
+            </div>
+            <h3 className="text-sm font-medium text-[#1f2937]">No records found</h3>
+            <p className="mt-1 text-sm text-[#7c8591]">Try adjusting your search or filter.</p>
+          </div>
         )}
-      </Card>
+      </div>
 
       <Modal
         open={open}
         title={config.modalTitle || config.primaryAction || 'Add Record'}
-        description="This change is stored only in local React state."
+        description="Enter the details below to add a new record."
         onClose={() => setOpen(false)}
         footer={
           <>

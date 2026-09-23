@@ -43,9 +43,26 @@ const config: FeaturePageConfig = {
       "order": "B2C-92020",
       "carrier": "Aramex",
       "service": "Domestic",
-      "tracking": "—",
       "label": "—",
       "status": "Pending"
+    },
+    {
+      "id": "LBL-003",
+      "order": "B2C-93050",
+      "carrier": "FedEx",
+      "service": "Same-Day",
+      "tracking": "FX-112233",
+      "label": "LBL-112233",
+      "status": "Printed"
+    },
+    {
+      "id": "LBL-004",
+      "order": "B2C-93055",
+      "carrier": "Local Courier",
+      "service": "Standard",
+      "tracking": "—",
+      "label": "LBL-PENDING",
+      "status": "Generated"
     }
   ],
   "statuses": [

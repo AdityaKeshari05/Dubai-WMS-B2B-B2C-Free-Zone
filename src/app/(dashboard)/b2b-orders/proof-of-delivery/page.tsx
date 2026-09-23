@@ -46,6 +46,24 @@ const config: FeaturePageConfig = {
       "deliveredAt": "—",
       "proof": "—",
       "status": "Pending"
+    },
+    {
+      "id": "POD-003",
+      "order": "SO-B2B-1999",
+      "customer": "Spinneys",
+      "deliveredBy": "Driver 15",
+      "deliveredAt": "24 Sep 08:15",
+      "proof": "POD-IMG-9999",
+      "status": "Delivered"
+    },
+    {
+      "id": "POD-004",
+      "order": "SO-B2B-2000",
+      "customer": "Lulu Hypermarket",
+      "deliveredBy": "Driver 99",
+      "deliveredAt": "25 Sep 18:00",
+      "proof": "POD-IMG-LOST",
+      "status": "Pending"
     }
   ],
   "statuses": [

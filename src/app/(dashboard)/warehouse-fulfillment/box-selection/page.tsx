@@ -43,9 +43,25 @@ const config: FeaturePageConfig = {
       "order": "SO-B2B-1821",
       "packageType": "Pallet + Cartons",
       "dimensions": "120×100×145 cm",
-      "weight": "418 kg",
-      "packages": 23,
       "status": "Selected"
+    },
+    {
+      "id": "BOX-003",
+      "order": "B2C-92100",
+      "packageType": "Large Box",
+      "dimensions": "50x50x50 cm",
+      "weight": "5 kg",
+      "packages": 2,
+      "status": "Verified"
+    },
+    {
+      "id": "BOX-004",
+      "order": "SO-B2B-1950",
+      "packageType": "Medium Box",
+      "dimensions": "20x20x20 cm",
+      "weight": "0.5 kg",
+      "packages": 100,
+      "status": "Pending"
     }
   ],
   "statuses": [

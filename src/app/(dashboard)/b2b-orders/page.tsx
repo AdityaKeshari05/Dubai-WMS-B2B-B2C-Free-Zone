@@ -37,9 +37,24 @@ const config: FeaturePageConfig = {
       "id": "SO-B2B-1824",
       "customer": "Dubai Stores PJSC",
       "customerPo": "PO-73310",
-      "orderValue": "AED 31,880",
       "delivery": "23 Sep 12:00–14:00",
       "status": "Allocated"
+    },
+    {
+      "id": "SO-B2B-1825",
+      "customer": "Spinneys",
+      "customerPo": "PO-99221",
+      "orderValue": "AED 12,000",
+      "delivery": "24 Sep 08:00–10:00",
+      "status": "New"
+    },
+    {
+      "id": "SO-B2B-1826",
+      "customer": "Carrefour",
+      "customerPo": "PO-10023",
+      "orderValue": "AED 45,500",
+      "delivery": "25 Sep 14:00–16:00",
+      "status": "Delivered"
     }
   ],
   "statuses": [

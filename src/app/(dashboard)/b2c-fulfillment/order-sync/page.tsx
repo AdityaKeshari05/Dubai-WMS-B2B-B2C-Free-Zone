@@ -4,7 +4,7 @@ import FeaturePage, { FeaturePageConfig } from '@/components/wms/modules/Feature
 
 const config: FeaturePageConfig = {
   "title": "Order Sync",
-  "description": "Synchronize order changes with connected channels",
+  "description": "Automatically update order and fulfillment statuses",
   "featureCode": "7.3",
   "columns": [
     {
@@ -12,8 +12,16 @@ const config: FeaturePageConfig = {
       "label": "Channel"
     },
     {
+      "key": "syncDirection",
+      "label": "Action"
+    },
+    {
+      "key": "dateRange",
+      "label": "Range"
+    },
+    {
       "key": "externalOrder",
-      "label": "External Order"
+      "label": "Order"
     },
     {
       "key": "lastSync",
@@ -32,6 +40,8 @@ const config: FeaturePageConfig = {
     {
       "id": "SYNC-001",
       "channel": "Shopify",
+      "syncDirection": "Import New Orders",
+      "dateRange": "Last 1 hour",
       "externalOrder": "SH-88120",
       "lastSync": "2 mins ago",
       "changes": "Payment + address",
@@ -41,11 +51,21 @@ const config: FeaturePageConfig = {
     {
       "id": "SYNC-002",
       "channel": "Amazon",
+      "syncDirection": "Both (Full Sync)",
+      "dateRange": "Last 24 hours",
       "externalOrder": "AMZ-77210",
-      "lastSync": "7 mins ago",
-      "changes": "Cancellation",
-      "result": "Pending",
       "status": "Pending"
+    },
+    {
+      "id": "SYNC-003",
+      "channel": "WooCommerce",
+      "syncDirection": "Export Fulfillments",
+      "dateRange": "Last 4 hours",
+      "externalOrder": "WC-1002",
+      "lastSync": "12 hours ago",
+      "changes": "Tracking updated",
+      "result": "Failed",
+      "status": "Failed"
     }
   ],
   "statuses": [
@@ -71,14 +91,35 @@ const config: FeaturePageConfig = {
     },
     {
       "key": "externalOrder",
-      "label": "External Order",
-      "placeholder": "Enter external order",
+      "label": "External Order (Optional)",
+      "placeholder": "Enter specific order ID",
       "type": "text"
+    },
+    {
+      "key": "syncDirection",
+      "label": "Sync Action",
+      "type": "select",
+      "options": [
+        "Import New Orders",
+        "Export Fulfillments",
+        "Both (Full Sync)"
+      ]
+    },
+    {
+      "key": "dateRange",
+      "label": "Date Range",
+      "type": "select",
+      "options": [
+        "Last 1 hour",
+        "Last 24 hours",
+        "Last 7 days",
+        "All pending"
+      ]
     },
     {
       "key": "lastSync",
       "label": "Last Sync",
-      "placeholder": "e.g. 2 mins ago",
+      "placeholder": "e.g. Just now",
       "type": "text"
     },
     {
@@ -90,7 +131,6 @@ const config: FeaturePageConfig = {
     {
       "key": "result",
       "label": "Result",
-      "placeholder": "Enter result",
       "type": "select",
       "options": [
         "Success",

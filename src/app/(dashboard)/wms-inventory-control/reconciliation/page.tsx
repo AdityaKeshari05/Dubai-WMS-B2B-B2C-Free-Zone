@@ -43,8 +43,25 @@ const config: FeaturePageConfig = {
       "sku": "SKU-10023",
       "systemQty": 68,
       "physicalQty": 68,
-      "variance": 0,
       "reason": "Matched",
+      "status": "Reconciled"
+    },
+    {
+      "id": "REC-0082",
+      "sku": "SKU-9901",
+      "systemQty": 400,
+      "physicalQty": 395,
+      "variance": -5,
+      "reason": "Shrinkage (or snacks for employees)",
+      "status": "Pending"
+    },
+    {
+      "id": "REC-0083",
+      "sku": "SKU-4402",
+      "systemQty": 10,
+      "physicalQty": 100,
+      "variance": 90,
+      "reason": "Magic cloning machine",
       "status": "Reconciled"
     }
   ],

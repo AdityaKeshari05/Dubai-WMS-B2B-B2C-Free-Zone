@@ -43,9 +43,25 @@ const config: FeaturePageConfig = {
       "order": "SO-B2B-1821",
       "expected": 18,
       "verified": 18,
-      "scanRef": "SCAN-7722",
-      "operator": "Rashid",
       "status": "Verified"
+    },
+    {
+      "id": "PV-003",
+      "order": "B2C-92055",
+      "expected": 1,
+      "verified": 1,
+      "scanRef": "SCAN-7723",
+      "operator": "Ahmed",
+      "status": "Waiting"
+    },
+    {
+      "id": "PV-004",
+      "order": "SO-B2B-1999",
+      "expected": 500,
+      "verified": 499,
+      "scanRef": "SCAN-7724",
+      "operator": "Mohammed",
+      "status": "Packing"
     }
   ],
   "statuses": [

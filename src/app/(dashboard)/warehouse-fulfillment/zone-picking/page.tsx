@@ -43,9 +43,26 @@ const config: FeaturePageConfig = {
       "zone": "Zone B",
       "orders": 18,
       "picker": "Team B",
-      "tasks": 24,
       "progress": "100%",
       "status": "Completed"
+    },
+    {
+      "id": "ZONE-03",
+      "zone": "Zone C",
+      "orders": 50,
+      "picker": "Team C",
+      "tasks": 100,
+      "progress": "10%",
+      "status": "Picking"
+    },
+    {
+      "id": "ZONE-04",
+      "zone": "Zone D",
+      "orders": 1,
+      "picker": "Unassigned",
+      "tasks": 2,
+      "progress": "0%",
+      "status": "Assigned"
     }
   ],
   "statuses": [

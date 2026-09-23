@@ -46,6 +46,15 @@ const config: FeaturePageConfig = {
       "items": 2,
       "reason": "Carrier cutoff",
       "status": "Completed"
+    },
+    {
+      "id": "SINGLE-096",
+      "order": "B2C-92099",
+      "priority": "Normal",
+      "picker": "John",
+      "items": 1,
+      "reason": "Replacement",
+      "status": "Queued"
     }
   ],
   "statuses": [

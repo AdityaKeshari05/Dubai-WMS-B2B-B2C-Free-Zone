@@ -46,6 +46,24 @@ const config: FeaturePageConfig = {
       "payment": "COD",
       "tracking": "AWB-882910",
       "status": "Shipped"
+    },
+    {
+      "id": "B2C-92020",
+      "channel": "Noon",
+      "customer": "Laila Ahmed",
+      "items": 5,
+      "payment": "Prepaid",
+      "tracking": "—",
+      "status": "Allocated"
+    },
+    {
+      "id": "B2C-92021",
+      "channel": "WooCommerce",
+      "customer": "Zayed Sultan",
+      "items": 1,
+      "payment": "Postpaid",
+      "tracking": "—",
+      "status": "Imported"
     }
   ],
   "statuses": [

@@ -52,6 +52,26 @@ const config: FeaturePageConfig = {
       "user": "Ahmed",
       "time": "23 Sep 10:05",
       "status": "Completed"
+    },
+    {
+      "id": "HIS-903",
+      "sku": "SKU-9901",
+      "movement": "Adjustment",
+      "reference": "ADJ-0049",
+      "qty": "-15",
+      "user": "Mohammed",
+      "time": "24 Sep 08:30",
+      "status": "Completed"
+    },
+    {
+      "id": "HIS-904",
+      "sku": "SKU-4402",
+      "movement": "Sale",
+      "reference": "SO-B2C-112",
+      "qty": "-1",
+      "user": "System",
+      "time": "24 Sep 14:22",
+      "status": "Completed"
     }
   ],
   "statuses": [

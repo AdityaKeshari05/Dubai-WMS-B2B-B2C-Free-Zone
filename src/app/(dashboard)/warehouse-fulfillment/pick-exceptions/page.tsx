@@ -44,8 +44,25 @@ const config: FeaturePageConfig = {
       "sku": "SKU-10024",
       "exception": "Damaged stock",
       "required": 8,
-      "found": 6,
       "status": "Pending"
+    },
+    {
+      "id": "PEX-003",
+      "task": "PICK-00910",
+      "sku": "SKU-9901",
+      "exception": "Location empty",
+      "required": 10,
+      "found": 0,
+      "status": "Resolved"
+    },
+    {
+      "id": "PEX-004",
+      "task": "PICK-00911",
+      "sku": "SKU-4402",
+      "exception": "Other (Item is glowing)",
+      "required": 1,
+      "found": 1,
+      "status": "Exception"
     }
   ],
   "statuses": [

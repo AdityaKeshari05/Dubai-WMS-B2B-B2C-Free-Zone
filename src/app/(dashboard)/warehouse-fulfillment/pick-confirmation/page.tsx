@@ -44,8 +44,25 @@ const config: FeaturePageConfig = {
       "sku": "SKU-10022",
       "required": 12,
       "picked": 10,
-      "location": "B-02-04",
       "status": "Exception"
+    },
+    {
+      "id": "CONF-003",
+      "task": "PICK-00899",
+      "sku": "SKU-9901",
+      "required": 100,
+      "picked": 100,
+      "location": "C-05-10",
+      "status": "Verified"
+    },
+    {
+      "id": "CONF-004",
+      "task": "PICK-00900",
+      "sku": "SKU-4402",
+      "required": 5,
+      "picked": 0,
+      "location": "D-01-01",
+      "status": "Pending"
     }
   ],
   "statuses": [

@@ -46,6 +46,24 @@ const config: FeaturePageConfig = {
       "cartons": 68,
       "progress": "100%",
       "status": "Completed"
+    },
+    {
+      "id": "BPICK-773",
+      "order": "SO-B2B-1900",
+      "picker": "Team C",
+      "pallets": 1,
+      "cartons": 5,
+      "progress": "0%",
+      "status": "Queued"
+    },
+    {
+      "id": "BPICK-774",
+      "order": "SO-B2B-1955",
+      "picker": "Team D",
+      "pallets": 20,
+      "cartons": 150,
+      "progress": "99%",
+      "status": "Picking"
     }
   ],
   "statuses": [

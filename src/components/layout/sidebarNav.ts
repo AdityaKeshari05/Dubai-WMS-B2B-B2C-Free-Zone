@@ -8,7 +8,7 @@ import {
   ChartColumnIncreasing, ArchiveX, UserRound, Building, Target, Activity,
   Route, Upload, FileCheck2, ClipboardSignature, CalendarCheck, CalendarCog, CalendarX,
   ListChecks, HandCoins, BadgeDollarSign, Wallet, UserCog, SlidersHorizontal, KeyRound,
-  Handshake, Scale, PackageCheck, History, Waves, Send, RotateCcw, CheckCircle2, AlertTriangle
+  Handshake, Scale, PackageCheck, History, Waves, Send, RotateCcw, CheckCircle2, AlertTriangle, RefreshCw, Globe
 } from 'lucide-react';
 
 export interface NavItem {
@@ -158,6 +158,44 @@ export const navItems: NavItem[] = [
       { label: 'Job Cards', href: '/manufacturing/job-cards', icon: ClipboardCheck, permission: 'manufacturing:job-cards:read' },
       { label: 'Shop Floor', href: '/manufacturing/shopfloor', icon: Activity, permission: 'manufacturing:shopfloor:read' },
       { label: 'Manufacturing Reports', href: '/manufacturing/reports', icon: ChartColumnIncreasing, permission: 'manufacturing:reports:read' },
+    ],
+  },
+  {
+    label: '3PL Warehouse', icon: Warehouse,
+    children: [
+      { label: '3PL Clients', href: '/3pl/clients', icon: Users },
+      { label: 'Client Inventory', href: '/3pl/inventory', icon: Boxes },
+      { label: 'Client Orders', href: '/3pl/orders', icon: ShoppingCart },
+      { label: 'Storage Billing', href: '/3pl/billing/storage', icon: Receipt },
+      { label: 'Handling Charges', href: '/3pl/billing/handling', icon: HandCoins },
+      { label: 'Client Statements', href: '/3pl/statements', icon: FileText },
+    ],
+  },
+  {
+    label: 'Returns & Logistics', icon: RefreshCw,
+    children: [
+      { label: 'Return Authorizations', href: '/returns/authorizations', icon: ClipboardCheck },
+      { label: 'Return Receiving', href: '/returns/receiving', icon: PackageCheck },
+      { label: 'Return Inspection', href: '/returns/inspection', icon: Archive },
+      { label: 'Restocking & RTO', href: '/returns/restocking', icon: Route },
+    ],
+  },
+  {
+    label: 'Transport & Shipments', icon: Truck,
+    children: [
+      { label: 'Shipments', href: '/shipments', icon: Truck },
+      { label: 'Carriers', href: '/shipments/carriers', icon: Building2 },
+      { label: 'Delivery Tracking', href: '/shipments/tracking', icon: Route },
+      { label: 'Proof of Delivery', href: '/shipments/pod', icon: FileCheck2 },
+    ],
+  },
+  {
+    label: 'UAE Configuration', icon: Globe,
+    children: [
+      { label: 'Currency & VAT', href: '/uae-config/currency-vat', icon: CircleDollarSign },
+      { label: 'Tax Details', href: '/uae-config/tax-details', icon: Percent },
+      { label: 'HS Code Management', href: '/uae-config/hs-codes', icon: Tags },
+      { label: 'Commercial Documents', href: '/uae-config/documents', icon: ScrollText },
     ],
   },
   { label: 'Projects', href: '/projects', icon: FolderOpen, permission: 'projects:projects:read' },

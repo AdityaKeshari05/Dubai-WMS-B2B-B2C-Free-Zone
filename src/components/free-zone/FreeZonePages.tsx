@@ -14,6 +14,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
+import { useFreeZoneRuntime } from '@/contexts/FreeZoneRuntimeContext';
 
 // ─────────────────────────────────────────────────────────
 // Shared helpers
@@ -27,17 +28,17 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
   );
 }
 
-function Sel({ placeholder, options }: { placeholder: string; options: string[] }) {
+function Sel({ placeholder, options, value, onChange, name, required }: { placeholder: string; options: string[]; value?: string; onChange?: (value: string) => void; name?: string; required?: boolean }) {
   return (
-    <select className="h-10 w-full rounded-md border border-[#e5e2dc] bg-white px-3 text-sm focus:outline-none focus:ring-2 focus:ring-[#2490ef]/30">
+    <select name={name} required={required} value={value} onChange={e => onChange?.(e.target.value)} className="h-10 w-full rounded-md border border-[#e5e2dc] bg-white px-3 text-sm focus:outline-none focus:ring-2 focus:ring-[#2490ef]/30">
       <option value="">{placeholder}</option>
-      {options.map(o => <option key={o}>{o}</option>)}
+      {options.map(o => <option key={o} value={o}>{o.replace(/_/g, ' ')}</option>)}
     </select>
   );
 }
 
-function Inp({ placeholder, type = 'text' }: { placeholder: string; type?: string }) {
-  return <Input type={type} placeholder={placeholder} />;
+function Inp({ placeholder, type = 'text', value, onChange, name, required, min }: { placeholder: string; type?: string; value?: string | number; onChange?: (value: string) => void; name?: string; required?: boolean; min?: number }) {
+  return <Input name={name} required={required} min={min} type={type} placeholder={placeholder} value={value} onChange={e => onChange?.(e.target.value)} />;
 }
 
 function EmptyRow() {
@@ -93,6 +94,7 @@ const recentActivity = [
 ];
 
 export function FreeZoneDashboardPage() {
+  const { inbounds, entries } = useFreeZoneRuntime();
   const barMax = 50;
   return (
     <div className="space-y-5">
@@ -169,7 +171,7 @@ export function FreeZoneDashboardPage() {
               { key: 'goods', label: 'Goods' }, { key: 'qty', label: 'Qty' },
               { key: 'status', label: 'Status' }, { key: 'date', label: 'Date' },
             ]}
-            rows={recentActivity.map(r => ({ ...r, status: <StatusBadge status={r.status} /> }))}
+            rows={[...inbounds.map(r => ({ ref: r.ref, type: 'Inbound', goods: r.goods, qty: `${r.qty} ${r.uom}`, status: r.status, date: new Date(r.createdAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) })), ...entries.map(r => ({ ref: r.ref, type: r.type, goods: r.fields.goods || r.fields.name || r.fields.description || '—', qty: r.fields.quantity ? `${r.fields.quantity} ${r.fields.uom || ''}` : '—', status: r.type === 'outbound' || r.type === 'reexport' ? 'PENDING_CLEARANCE' : r.type === 'transfer' ? 'IN_TRANSIT_FZ' : r.type === 'mainland' ? 'MAINLAND_BOUND' : 'DECLARED', date: new Date(r.createdAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) })), ...recentActivity].map(r => ({ ...r, status: <StatusBadge status={r.status} /> }))}
           />
         </CardContent>
       </Card>
@@ -180,15 +182,15 @@ export function FreeZoneDashboardPage() {
 // ─────────────────────────────────────────────────────────
 // 9.1 Warehouse Configuration
 // ─────────────────────────────────────────────────────────
-const warehouseSeed = [
-  { code: 'JAFZA-01', name: 'JAFZA Main Store', zone: 'Jebel Ali FZ', type: 'Free Zone', customsCode: 'JAF-001', status: 'ACTIVE', locations: 24 },
-  { code: 'DAFZA-01', name: 'DAFZA Bonded Bay', zone: 'Dubai Airport FZ', type: 'Bonded', customsCode: 'DAF-002', status: 'ACTIVE', locations: 12 },
-  { code: 'DMCC-01', name: 'DMCC Secure Store', zone: 'DMCC', type: 'Free Zone', customsCode: 'DMC-003', status: 'ACTIVE', locations: 8 },
-];
-
 export function WarehouseConfigPage() {
   const [open, setOpen] = useState(false);
-  const [rows] = useState(warehouseSeed);
+  const { warehouses, addWarehouse } = useFreeZoneRuntime();
+  const [form, setForm] = useState({ name: '', code: '', zone: '', type: '', customsCode: '', locations: '', address: '', officer: '' });
+  const saveWarehouse = () => {
+    if (!form.name.trim() || !form.code.trim() || !form.zone || !form.type || !form.customsCode.trim() || form.locations === '' || !Number.isInteger(Number(form.locations)) || Number(form.locations) < 0) { window.alert('Complete the required warehouse fields and enter a valid location count.'); return; }
+    if (!addWarehouse({ name: form.name.trim(), code: form.code.trim(), zone: form.zone, type: form.type, customsCode: form.customsCode.trim(), status: 'ACTIVE', locations: Number(form.locations) })) { window.alert('A warehouse with this code already exists.'); return; }
+    setForm({ name: '', code: '', zone: '', type: '', customsCode: '', locations: '', address: '', officer: '' }); setOpen(false);
+  };
 
   return (
     <div className="space-y-5">
@@ -199,8 +201,8 @@ export function WarehouseConfigPage() {
       />
 
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-        {rows.map(w => (
-          <Card key={w.code} className="transition hover:border-[#d5d0c8] hover:shadow-md">
+        {warehouses.map(w => (
+          <Card key={w.id} className="transition hover:border-[#d5d0c8] hover:shadow-md">
             <CardContent className="p-5">
               <div className="mb-3 flex items-start justify-between">
                 <div className="flex h-10 w-10 items-center justify-center rounded-md bg-[#eef6fd]">
@@ -233,17 +235,17 @@ export function WarehouseConfigPage() {
         <DialogContent className="max-w-lg">
           <DialogHeader><DialogTitle>Add Free Zone Warehouse</DialogTitle></DialogHeader>
           <div className="grid gap-3 pt-2 sm:grid-cols-2">
-            <Field label="Warehouse Name"><Inp placeholder="e.g. JAFZA North Wing" /></Field>
-            <Field label="Warehouse Code"><Inp placeholder="e.g. JAFZA-02" /></Field>
-            <Field label="Free Zone / Zone"><Sel placeholder="Select zone" options={['Jebel Ali FZ (JAFZA)', 'Dubai Airport FZ (DAFZA)', 'DMCC', 'DIFC', 'Dubai South', 'Sharjah Airport FZ']} /></Field>
-            <Field label="Warehouse Type"><Sel placeholder="Select type" options={['Free Zone', 'Bonded', 'Customs Bonded', 'Transit']} /></Field>
-            <Field label="Customs Code"><Inp placeholder="Customs-issued code" /></Field>
-            <Field label="Number of Locations" type="number"><Inp placeholder="0" type="number" /></Field>
-            <Field label="Address / Location" ><Inp placeholder="Street, Building" /></Field>
-            <Field label="Responsible Officer"><Inp placeholder="Name" /></Field>
+            <Field label="Warehouse Name"><Inp placeholder="e.g. JAFZA North Wing" value={form.name} onChange={name => setForm(f => ({ ...f, name }))} /></Field>
+            <Field label="Warehouse Code"><Inp placeholder="e.g. JAFZA-02" value={form.code} onChange={code => setForm(f => ({ ...f, code }))} /></Field>
+            <Field label="Free Zone / Zone"><Sel placeholder="Select zone" value={form.zone} onChange={zone => setForm(f => ({ ...f, zone }))} options={['Jebel Ali FZ (JAFZA)', 'Dubai Airport FZ (DAFZA)', 'DMCC', 'DIFC', 'Dubai South', 'Sharjah Airport FZ']} /></Field>
+            <Field label="Warehouse Type"><Sel placeholder="Select type" value={form.type} onChange={type => setForm(f => ({ ...f, type }))} options={['Free Zone', 'Bonded', 'Customs Bonded', 'Transit']} /></Field>
+            <Field label="Customs Code"><Inp placeholder="Customs-issued code" value={form.customsCode} onChange={customsCode => setForm(f => ({ ...f, customsCode }))} /></Field>
+            <Field label="Number of Locations"><Inp placeholder="0" type="number" value={form.locations} onChange={locations => setForm(f => ({ ...f, locations }))} /></Field>
+            <Field label="Address / Location"><Inp placeholder="Street, Building" value={form.address} onChange={address => setForm(f => ({ ...f, address }))} /></Field>
+            <Field label="Responsible Officer"><Inp placeholder="Name" value={form.officer} onChange={officer => setForm(f => ({ ...f, officer }))} /></Field>
             <div className="col-span-2 flex justify-end gap-2 pt-2">
-              <Button variant="outline" onClick={() => setOpen(false)}>Cancel</Button>
-              <Button onClick={() => setOpen(false)}>Save Warehouse</Button>
+              <Button type="button" variant="outline" onClick={() => setOpen(false)}>Cancel</Button>
+              <Button onClick={saveWarehouse}>Save Warehouse</Button>
             </div>
           </div>
         </DialogContent>
@@ -264,11 +266,12 @@ const bondedSeed = [
 ];
 
 export function BondedStockPage() {
+  const { inbounds } = useFreeZoneRuntime();
   const [search, setSearch] = useState('');
   const [filter, setFilter] = useState('ALL');
 
   const statuses = ['ALL', 'BONDED', 'UNDER_CUSTOMS', 'PENDING_CLEARANCE', 'CUSTOMS_CLEARED', 'DUTY_FREE'];
-  const filtered = bondedSeed.filter(r =>
+  const filtered = [...bondedSeed, ...inbounds.map(r => ({ sku: r.sku, name: r.goods, qty: r.qty, uom: r.uom, warehouse: r.warehouse, declRef: r.docRef, dutyStatus: r.status, entered: new Date(r.arrival).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) }))].filter(r =>
     (filter === 'ALL' || r.dutyStatus === filter) &&
     (r.name.toLowerCase().includes(search.toLowerCase()) || r.sku.toLowerCase().includes(search.toLowerCase()))
   );
@@ -334,6 +337,7 @@ const trackingSeed = [
 ];
 
 export function InventoryTrackingPage() {
+  const { inbounds } = useFreeZoneRuntime();
   return (
     <div className="space-y-5">
       <PageHeader title="Customs Inventory Tracking" description="Track stock subject to customs and free-zone controls" />
@@ -352,7 +356,7 @@ export function InventoryTrackingPage() {
               { key: 'expectedClearance', label: 'Expected Clearance' },
               { key: 'officer', label: 'Customs Officer' }, { key: 'status', label: 'Status' },
             ]}
-            rows={trackingSeed.map(r => ({ ...r, status: <StatusBadge status={r.status} /> }))}
+            rows={[...trackingSeed, ...inbounds.map(r => ({ ref: r.ref, product: r.goods, sku: r.sku, qty: r.qty, warehouse: r.warehouse, entryDate: new Date(r.arrival).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }), expectedClearance: '—', officer: '—', status: r.status }))].map(r => ({ ...r, status: <StatusBadge status={r.status} /> }))}
           />
         </CardContent>
       </Card>
@@ -372,6 +376,8 @@ const refSeed = [
 
 export function CustomsReferencePage() {
   const [open, setOpen] = useState(false);
+  const { inbounds, entries, addEntry, deleteEntry, warehouses } = useFreeZoneRuntime();
+  const referenceEntries = entries.filter(entry => entry.type === 'customsReference');
   return (
     <div className="space-y-5">
       <PageHeader
@@ -386,9 +392,9 @@ export function CustomsReferencePage() {
               { key: 'id', label: 'ID' }, { key: 'declarationNo', label: 'Declaration No' },
               { key: 'shipmentNo', label: 'Shipment No' }, { key: 'customsRef', label: 'Customs Ref' },
               { key: 'product', label: 'Product' }, { key: 'date', label: 'Date' },
-              { key: 'status', label: 'Status' },
+              { key: 'status', label: 'Status' }, { key: 'actions', label: 'Actions' },
             ]}
-            rows={refSeed.map(r => ({ ...r, status: <StatusBadge status={r.status} /> }))}
+            rows={[...refSeed.map(r => ({ ...r, actions: '—' })), ...inbounds.map(r => ({ id: r.ref, declarationNo: r.docRef, shipmentNo: r.bol, customsRef: r.docRef, product: r.goods, date: r.arrival, status: r.status, actions: 'Inbound' })), ...referenceEntries.map(r => ({ id: r.ref, declarationNo: r.fields.declaration, shipmentNo: r.fields.shipment, customsRef: r.fields.customsRef, product: r.fields.product, date: r.fields.date, status: 'DECLARED', actions: <button className="text-red-600 hover:underline" onClick={() => deleteEntry(r.id)}>Delete</button> }))].map(r => ({ ...r, status: <StatusBadge status={r.status} /> }))}
           />
         </CardContent>
       </Card>
@@ -396,20 +402,20 @@ export function CustomsReferencePage() {
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="max-w-lg">
           <DialogHeader><DialogTitle>Add Customs Reference</DialogTitle></DialogHeader>
-          <div className="grid gap-3 pt-2 sm:grid-cols-2">
-            <Field label="Declaration Number"><Inp placeholder="DEC-YYYY-NNNN" /></Field>
-            <Field label="Shipment Number"><Inp placeholder="SHP-YYYY-NNNN" /></Field>
-            <Field label="Customs Reference"><Inp placeholder="CUS-XXX-NNNN" /></Field>
-            <Field label="Bill of Lading / AWB"><Inp placeholder="BOL / AWB number" /></Field>
-            <Field label="Linked Product / SKU"><Inp placeholder="Product name or SKU" /></Field>
-            <Field label="Warehouse"><Sel placeholder="Select warehouse" options={['JAFZA-01', 'DAFZA-01', 'DMCC-01']} /></Field>
-            <Field label="Declaration Date" ><Inp placeholder="" type="date" /></Field>
-            <Field label="Customs Authority"><Sel placeholder="Select authority" options={['Dubai Customs', 'Abu Dhabi Customs', 'Sharjah Customs', 'JAFZA Authority']} /></Field>
+          <form className="grid gap-3 pt-2 sm:grid-cols-2" onSubmit={event => { event.preventDefault(); const f = Object.fromEntries(new FormData(event.currentTarget).entries()); addEntry('customsReference', Object.fromEntries(Object.entries(f).map(([k, v]) => [k, String(v)]))); setOpen(false); }}>
+            <Field label="Declaration Number"><Inp name="declaration" required placeholder="DEC-YYYY-NNNN" /></Field>
+            <Field label="Shipment Number"><Inp name="shipment" required placeholder="SHP-YYYY-NNNN" /></Field>
+            <Field label="Customs Reference"><Inp name="customsRef" required placeholder="CUS-XXX-NNNN" /></Field>
+            <Field label="Bill of Lading / AWB"><Inp name="bol" placeholder="BOL / AWB number" /></Field>
+            <Field label="Linked Product / SKU"><Inp name="product" required placeholder="Product name or SKU" /></Field>
+            <Field label="Warehouse"><Sel name="warehouse" required placeholder="Select warehouse" options={warehouses.map(w => w.code)} /></Field>
+            <Field label="Declaration Date" ><Inp name="date" required placeholder="" type="date" /></Field>
+            <Field label="Customs Authority"><Sel name="authority" required placeholder="Select authority" options={['Dubai Customs', 'Abu Dhabi Customs', 'Sharjah Customs', 'JAFZA Authority']} /></Field>
             <div className="col-span-2 flex justify-end gap-2 pt-2">
-              <Button variant="outline" onClick={() => setOpen(false)}>Cancel</Button>
-              <Button onClick={() => setOpen(false)}>Save Reference</Button>
+              <Button type="button" variant="outline" onClick={() => setOpen(false)}>Cancel</Button>
+              <Button type="submit">Save Reference</Button>
             </div>
-          </div>
+          </form>
         </DialogContent>
       </Dialog>
     </div>
@@ -429,8 +435,13 @@ const dutySeed = [
 
 export function DutyStatusPage() {
   const [filter, setFilter] = useState('ALL');
+  const { inbounds } = useFreeZoneRuntime();
   const statuses = ['ALL', 'DUTY_FREE', 'DUTY_APPLICABLE', 'SUSPENDED', 'BONDED', 'RELEASED'];
-  const filtered = dutySeed.filter(r => filter === 'ALL' || r.status === filter);
+  const inboundDutyRows = inbounds.map(r => {
+    const classification = r.hsCode ? dutyClassSeed.find(item => item.hsCode === r.hsCode) : undefined;
+    return { sku: r.sku, product: r.goods, hsCode: r.hsCode || '—', dutyRate: classification?.dutyRate || '—', status: r.status, lastUpdated: new Date(r.createdAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) };
+  });
+  const filtered = [...dutySeed, ...inboundDutyRows].filter(r => filter === 'ALL' || r.status === filter);
 
   return (
     <div className="space-y-5">
@@ -473,6 +484,22 @@ const inboundSeed = [
 
 export function InboundPage() {
   const [open, setOpen] = useState(false);
+  const { warehouses, inbounds, addInbound, updateInbound, deleteInbound } = useFreeZoneRuntime();
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [form, setForm] = useState({ goods: '', sku: '', hsCode: '', qty: '', uom: '', origin: '', carrier: '', bol: '', flight: '', arrival: '', warehouse: '', location: '', docRef: '', status: '' });
+  const saveInbound = () => {
+    const qty = Number(form.qty);
+    if (!form.goods.trim() || !form.sku.trim() || !Number.isFinite(qty) || qty <= 0 || !form.uom || !form.origin.trim() || !form.carrier.trim() || !form.bol.trim() || !form.arrival || !form.warehouse || !form.docRef.trim() || !form.status) { window.alert('Complete all required inbound fields and enter a quantity greater than zero.'); return; }
+    const values = { goods: form.goods.trim(), sku: form.sku.trim(), hsCode: form.hsCode.trim(), qty, uom: form.uom, origin: form.origin.trim(), carrier: form.carrier.trim(), bol: form.bol.trim(), warehouse: form.warehouse, location: form.location.trim(), arrival: form.arrival, docRef: form.docRef.trim(), status: form.status };
+    if (editingId) { updateInbound(editingId, values); setEditingId(null); }
+    else {
+      let nextReference = 46;
+      while ([...inboundSeed.map(row => row.ref), ...inbounds.map(row => row.ref)].includes(`FZ-IN-${String(nextReference).padStart(4, '0')}`)) nextReference += 1;
+      const ref = `FZ-IN-${String(nextReference).padStart(4, '0')}`;
+      if (!addInbound({ ...values, ref })) { window.alert('An inbound with this reference already exists.'); return; }
+    }
+    setForm({ goods: '', sku: '', hsCode: '', qty: '', uom: '', origin: '', carrier: '', bol: '', flight: '', arrival: '', warehouse: '', location: '', docRef: '', status: '' }); setOpen(false);
+  };
   return (
     <div className="space-y-5">
       <PageHeader
@@ -494,9 +521,9 @@ export function InboundPage() {
               { key: 'origin', label: 'Origin Country' }, { key: 'carrier', label: 'Carrier' },
               { key: 'bol', label: 'Bill of Lading' }, { key: 'warehouse', label: 'FZ Warehouse' },
               { key: 'arrival', label: 'Arrival Date' }, { key: 'docRef', label: 'Customs Doc' },
-              { key: 'status', label: 'Status' },
+              { key: 'status', label: 'Status' }, { key: 'actions', label: 'Actions' },
             ]}
-            rows={inboundSeed.map(r => ({ ...r, status: <StatusBadge status={r.status} /> }))}
+            rows={[...inboundSeed.map(r => ({ ...r, actions: '—' })), ...inbounds.map(r => ({ ref: r.ref, goods: r.goods, qty: r.qty, uom: r.uom, origin: r.origin, carrier: r.carrier, bol: r.bol, warehouse: r.warehouse, arrival: r.arrival, docRef: r.docRef, status: r.status, actions: <div className="flex gap-2"><button className="text-[#1674c4] hover:underline" onClick={() => { setEditingId(r.id); setForm({ goods: r.goods, sku: r.sku, hsCode: r.hsCode || '', qty: String(r.qty), uom: r.uom, origin: r.origin, carrier: r.carrier, bol: r.bol, flight: '', arrival: r.arrival, warehouse: r.warehouse, location: r.location, docRef: r.docRef, status: r.status }); setOpen(true); }}>Edit</button><button className="text-red-600 hover:underline" onClick={() => deleteInbound(r.id)}>Delete</button></div> }))].map(r => ({ ...r, status: <StatusBadge status={r.status} /> }))}
           />
         </CardContent>
       </Card>
@@ -505,25 +532,26 @@ export function InboundPage() {
         <DialogContent className="max-w-2xl">
           <DialogHeader><DialogTitle>Record FZ Inbound Movement</DialogTitle></DialogHeader>
           <div className="grid gap-3 pt-2 sm:grid-cols-2">
-            <Field label="Goods Description"><Inp placeholder="Description of goods" /></Field>
-            <Field label="HS Code"><Inp placeholder="e.g. 8534.00.00" /></Field>
-            <Field label="Quantity"><Inp placeholder="0" type="number" /></Field>
-            <Field label="Unit of Measure"><Sel placeholder="Select UOM" options={['PCS', 'KG', 'UNT', 'CTN', 'ROL', 'LTR', 'MTR']} /></Field>
-            <Field label="Country of Origin"><Inp placeholder="e.g. China" /></Field>
+            <Field label="Goods Description"><Inp placeholder="Description of goods" value={form.goods} onChange={goods => setForm(f => ({ ...f, goods }))} /></Field>
+            <Field label="SKU"><Inp placeholder="e.g. SKU-1001" value={form.sku} onChange={sku => setForm(f => ({ ...f, sku }))} /></Field>
+            <Field label="HS Code"><Inp placeholder="e.g. 8534.00.00" value={form.hsCode} onChange={hsCode => setForm(f => ({ ...f, hsCode }))} /></Field>
+            <Field label="Quantity"><Inp placeholder="0" type="number" value={form.qty} onChange={qty => setForm(f => ({ ...f, qty }))} /></Field>
+            <Field label="Unit of Measure"><Sel placeholder="Select UOM" value={form.uom} onChange={uom => setForm(f => ({ ...f, uom }))} options={['PCS', 'KG', 'UNT', 'CTN', 'ROL', 'LTR', 'MTR']} /></Field>
+            <Field label="Country of Origin"><Inp placeholder="e.g. China" value={form.origin} onChange={origin => setForm(f => ({ ...f, origin }))} /></Field>
             <Field label="Country of Export"><Inp placeholder="e.g. Singapore" /></Field>
-            <Field label="Carrier / Airline"><Inp placeholder="Carrier name" /></Field>
-            <Field label="Bill of Lading / AWB"><Inp placeholder="BOL-YYYY-NNNN" /></Field>
-            <Field label="Vessel / Flight No."><Inp placeholder="e.g. EK-8714" /></Field>
-            <Field label="Arrival Date" ><Inp type="date" placeholder="" /></Field>
-            <Field label="FZ Warehouse"><Sel placeholder="Select warehouse" options={['JAFZA-01', 'DAFZA-01', 'DMCC-01']} /></Field>
-            <Field label="Location / Bay"><Inp placeholder="e.g. Bay A-12" /></Field>
-            <Field label="Customs Declaration No."><Inp placeholder="DEC-YYYY-NNNN" /></Field>
-            <Field label="Customs Duty Status"><Sel placeholder="Select status" options={['Duty Free', 'Duty Applicable', 'Bonded', 'Suspended', 'Under Customs']} /></Field>
+            <Field label="Carrier / Airline"><Inp placeholder="Carrier name" value={form.carrier} onChange={carrier => setForm(f => ({ ...f, carrier }))} /></Field>
+            <Field label="Bill of Lading / AWB"><Inp placeholder="BOL-YYYY-NNNN" value={form.bol} onChange={bol => setForm(f => ({ ...f, bol }))} /></Field>
+            <Field label="Vessel / Flight No."><Inp placeholder="e.g. EK-8714" value={form.flight} onChange={flight => setForm(f => ({ ...f, flight }))} /></Field>
+            <Field label="Arrival Date" ><Inp type="date" placeholder="" value={form.arrival} onChange={arrival => setForm(f => ({ ...f, arrival }))} /></Field>
+            <Field label="FZ Warehouse"><Sel placeholder="Select warehouse" value={form.warehouse} onChange={warehouse => setForm(f => ({ ...f, warehouse }))} options={warehouses.map(w => w.code)} /></Field>
+            <Field label="Location / Bay"><Inp placeholder="e.g. Bay A-12" value={form.location} onChange={location => setForm(f => ({ ...f, location }))} /></Field>
+            <Field label="Customs Declaration No."><Inp placeholder="DEC-YYYY-NNNN" value={form.docRef} onChange={docRef => setForm(f => ({ ...f, docRef }))} /></Field>
+            <Field label="Customs Duty Status"><Sel placeholder="Select status" value={form.status} onChange={status => setForm(f => ({ ...f, status }))} options={['DUTY_FREE', 'DUTY_APPLICABLE', 'BONDED', 'SUSPENDED', 'UNDER_CUSTOMS']} /></Field>
             <Field label="Estimated Value (AED)"><Inp placeholder="0.00" type="number" /></Field>
             <Field label="Net Weight (KG)"><Inp placeholder="0.00" type="number" /></Field>
             <div className="col-span-2 flex justify-end gap-2 pt-2">
-              <Button variant="outline" onClick={() => setOpen(false)}>Cancel</Button>
-              <Button onClick={() => setOpen(false)}>Record Inbound</Button>
+              <Button type="button" variant="outline" onClick={() => setOpen(false)}>Cancel</Button>
+              <Button onClick={saveInbound}>{editingId ? 'Save Changes' : 'Record Inbound'}</Button>
             </div>
           </div>
         </DialogContent>
@@ -543,6 +571,8 @@ const outboundSeed = [
 
 export function OutboundPage() {
   const [open, setOpen] = useState(false);
+  const { entries, addEntry, deleteEntry, warehouses } = useFreeZoneRuntime();
+  const outboundEntries = entries.filter(entry => entry.type === 'outbound');
   return (
     <div className="space-y-5">
       <PageHeader
@@ -563,9 +593,9 @@ export function OutboundPage() {
               { key: 'qty', label: 'Qty' }, { key: 'uom', label: 'UOM' },
               { key: 'destination', label: 'Destination' }, { key: 'exitDocRef', label: 'Exit Doc Ref' },
               { key: 'carrier', label: 'Carrier' }, { key: 'exitDate', label: 'Exit Date' },
-              { key: 'warehouse', label: 'Warehouse' }, { key: 'status', label: 'Status' },
+              { key: 'warehouse', label: 'Warehouse' }, { key: 'status', label: 'Status' }, { key: 'actions', label: 'Actions' },
             ]}
-            rows={outboundSeed.map(r => ({ ...r, status: <StatusBadge status={r.status} /> }))}
+            rows={[...outboundSeed.map(r => ({ ...r, actions: '—' })), ...outboundEntries.map(r => ({ ref: r.ref, goods: r.fields.goods, qty: Number(r.fields.quantity), uom: r.fields.uom, destination: r.fields.destination, exitDocRef: r.fields.exitDocument, carrier: r.fields.carrier, exitDate: r.fields.exitDate, warehouse: r.fields.warehouse, status: 'PENDING_CLEARANCE', actions: <button className="text-red-600 hover:underline" onClick={() => deleteEntry(r.id)}>Delete</button> }))].map(r => ({ ...r, status: <StatusBadge status={r.status} /> }))}
           />
         </CardContent>
       </Card>
@@ -573,26 +603,26 @@ export function OutboundPage() {
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="max-w-2xl">
           <DialogHeader><DialogTitle>Record FZ Outbound Movement</DialogTitle></DialogHeader>
-          <div className="grid gap-3 pt-2 sm:grid-cols-2">
-            <Field label="Goods Description"><Inp placeholder="Description of goods" /></Field>
-            <Field label="HS Code"><Inp placeholder="e.g. 8534.00.00" /></Field>
-            <Field label="Quantity"><Inp placeholder="0" type="number" /></Field>
-            <Field label="Unit of Measure"><Sel placeholder="Select UOM" options={['PCS', 'KG', 'UNT', 'CTN', 'ROL', 'LTR', 'MTR']} /></Field>
-            <Field label="FZ Warehouse (Source)"><Sel placeholder="Select warehouse" options={['JAFZA-01', 'DAFZA-01', 'DMCC-01']} /></Field>
-            <Field label="Destination Country"><Inp placeholder="e.g. USA" /></Field>
-            <Field label="Carrier"><Inp placeholder="Carrier / Freight company" /></Field>
-            <Field label="Exit Document Reference"><Inp placeholder="EXP-YYYY-NNNN" /></Field>
-            <Field label="Export Declaration No."><Inp placeholder="EDC-YYYY-NNNN" /></Field>
-            <Field label="Exit Date" ><Inp type="date" placeholder="" /></Field>
-            <Field label="Delivery / Consignee Reference"><Inp placeholder="Consignee ref" /></Field>
-            <Field label="Net Weight (KG)"><Inp placeholder="0.00" type="number" /></Field>
-            <Field label="FOB Value (AED)"><Inp placeholder="0.00" type="number" /></Field>
-            <Field label="Remarks"><Inp placeholder="Optional notes" /></Field>
+          <form className="grid gap-3 pt-2 sm:grid-cols-2" onSubmit={event => { event.preventDefault(); const f = Object.fromEntries(new FormData(event.currentTarget).entries()); addEntry('outbound', Object.fromEntries(Object.entries(f).map(([k, v]) => [k, String(v)]))); setOpen(false); }}>
+            <Field label="Goods Description"><Inp name="goods" required placeholder="Description of goods" /></Field>
+            <Field label="HS Code"><Inp name="hsCode" placeholder="e.g. 8534.00.00" /></Field>
+            <Field label="Quantity"><Inp name="quantity" min={0.01} required placeholder="0" type="number" /></Field>
+            <Field label="Unit of Measure"><Sel name="uom" required placeholder="Select UOM" options={['PCS', 'KG', 'UNT', 'CTN', 'ROL', 'LTR', 'MTR']} /></Field>
+            <Field label="FZ Warehouse (Source)"><Sel name="warehouse" required placeholder="Select warehouse" options={warehouses.map(w => w.code)} /></Field>
+            <Field label="Destination Country"><Inp name="destination" required placeholder="e.g. USA" /></Field>
+            <Field label="Carrier"><Inp name="carrier" required placeholder="Carrier / Freight company" /></Field>
+            <Field label="Exit Document Reference"><Inp name="exitDocument" required placeholder="EXP-YYYY-NNNN" /></Field>
+            <Field label="Export Declaration No."><Inp name="exportDeclaration" placeholder="EDC-YYYY-NNNN" /></Field>
+            <Field label="Exit Date" ><Inp name="exitDate" required type="date" placeholder="" /></Field>
+            <Field label="Delivery / Consignee Reference"><Inp name="consignee" placeholder="Consignee ref" /></Field>
+            <Field label="Net Weight (KG)"><Inp name="netWeight" placeholder="0.00" type="number" /></Field>
+            <Field label="FOB Value (AED)"><Inp name="fobValue" placeholder="0.00" type="number" /></Field>
+            <Field label="Remarks"><Inp name="remarks" placeholder="Optional notes" /></Field>
             <div className="col-span-2 flex justify-end gap-2 pt-2">
-              <Button variant="outline" onClick={() => setOpen(false)}>Cancel</Button>
-              <Button onClick={() => setOpen(false)}>Record Outbound</Button>
+              <Button type="button" variant="outline" onClick={() => setOpen(false)}>Cancel</Button>
+              <Button type="submit">Record Outbound</Button>
             </div>
-          </div>
+          </form>
         </DialogContent>
       </Dialog>
     </div>
@@ -610,6 +640,8 @@ const fzTransferSeed = [
 
 export function FZTransferPage() {
   const [open, setOpen] = useState(false);
+  const { entries, addEntry, deleteEntry, warehouses } = useFreeZoneRuntime();
+  const transferEntries = entries.filter(entry => entry.type === 'transfer');
   return (
     <div className="space-y-5">
       <PageHeader
@@ -630,9 +662,9 @@ export function FZTransferPage() {
               { key: 'qty', label: 'Qty' }, { key: 'uom', label: 'UOM' },
               { key: 'sourceFZ', label: 'Source FZ' }, { key: 'destFZ', label: 'Destination FZ' },
               { key: 'transitRef', label: 'Transit Customs Ref' }, { key: 'date', label: 'Date' },
-              { key: 'status', label: 'Status' },
+              { key: 'status', label: 'Status' }, { key: 'actions', label: 'Actions' },
             ]}
-            rows={fzTransferSeed.map(r => ({ ...r, status: <StatusBadge status={r.status} /> }))}
+            rows={[...fzTransferSeed.map(r => ({ ...r, actions: '—' })), ...transferEntries.map(r => ({ ref: r.ref, goods: r.fields.goods, qty: Number(r.fields.quantity), uom: r.fields.uom, sourceFZ: r.fields.source, destFZ: r.fields.destination, transitRef: r.fields.transitRef, date: r.fields.date, status: 'IN_TRANSIT_FZ', actions: <button className="text-red-600 hover:underline" onClick={() => deleteEntry(r.id)}>Delete</button> }))].map(r => ({ ...r, status: <StatusBadge status={r.status} /> }))}
           />
         </CardContent>
       </Card>
@@ -640,22 +672,22 @@ export function FZTransferPage() {
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="max-w-lg">
           <DialogHeader><DialogTitle>Record FZ → FZ Transfer</DialogTitle></DialogHeader>
-          <div className="grid gap-3 pt-2 sm:grid-cols-2">
-            <Field label="Source Free Zone Warehouse"><Sel placeholder="Select source" options={['JAFZA-01', 'DAFZA-01', 'DMCC-01']} /></Field>
-            <Field label="Destination Free Zone Warehouse"><Sel placeholder="Select destination" options={['JAFZA-01', 'DAFZA-01', 'DMCC-01']} /></Field>
-            <Field label="Goods Description"><Inp placeholder="Description of goods" /></Field>
-            <Field label="HS Code"><Inp placeholder="e.g. 8534.00.00" /></Field>
-            <Field label="Quantity"><Inp placeholder="0" type="number" /></Field>
-            <Field label="Unit of Measure"><Sel placeholder="Select UOM" options={['PCS', 'KG', 'UNT', 'CTN', 'ROL']} /></Field>
-            <Field label="Customs Transit Reference"><Inp placeholder="TR-CUS-YYYY-NNNN" /></Field>
-            <Field label="Transfer Date"><Inp type="date" placeholder="" /></Field>
-            <Field label="Carrier / Vehicle No."><Inp placeholder="Transport details" /></Field>
-            <Field label="Sealing Reference"><Inp placeholder="Customs seal no." /></Field>
+          <form className="grid gap-3 pt-2 sm:grid-cols-2" onSubmit={event => { event.preventDefault(); const f = Object.fromEntries(new FormData(event.currentTarget).entries()); addEntry('transfer', Object.fromEntries(Object.entries(f).map(([k, v]) => [k, String(v)]))); setOpen(false); }}>
+            <Field label="Source Free Zone Warehouse"><Sel name="source" required placeholder="Select source" options={warehouses.map(w => w.code)} /></Field>
+            <Field label="Destination Free Zone Warehouse"><Sel name="destination" required placeholder="Select destination" options={warehouses.map(w => w.code)} /></Field>
+            <Field label="Goods Description"><Inp name="goods" required placeholder="Description of goods" /></Field>
+            <Field label="HS Code"><Inp name="hsCode" placeholder="e.g. 8534.00.00" /></Field>
+            <Field label="Quantity"><Inp name="quantity" min={0.01} required placeholder="0" type="number" /></Field>
+            <Field label="Unit of Measure"><Sel name="uom" required placeholder="Select UOM" options={['PCS', 'KG', 'UNT', 'CTN', 'ROL']} /></Field>
+            <Field label="Customs Transit Reference"><Inp name="transitRef" required placeholder="TR-CUS-YYYY-NNNN" /></Field>
+            <Field label="Transfer Date"><Inp name="date" required type="date" placeholder="" /></Field>
+            <Field label="Carrier / Vehicle No."><Inp name="carrier" placeholder="Transport details" /></Field>
+            <Field label="Sealing Reference"><Inp name="seal" placeholder="Customs seal no." /></Field>
             <div className="col-span-2 flex justify-end gap-2 pt-2">
-              <Button variant="outline" onClick={() => setOpen(false)}>Cancel</Button>
-              <Button onClick={() => setOpen(false)}>Record Transfer</Button>
+              <Button type="button" variant="outline" onClick={() => setOpen(false)}>Cancel</Button>
+              <Button type="submit">Record Transfer</Button>
             </div>
-          </div>
+          </form>
         </DialogContent>
       </Dialog>
     </div>
@@ -681,6 +713,9 @@ const mlStages: { key: MLStatus; label: string; color: string; bg: string }[] = 
 
 export function MainlandWorkflowPage() {
   const [open, setOpen] = useState(false);
+  const { entries, addEntry, deleteEntry, warehouses } = useFreeZoneRuntime();
+  const mainlandEntries = entries.filter(entry => entry.type === 'mainland');
+  const allMainland = [...mlSeed.map(r => ({ ...r, id: '' })), ...mainlandEntries.map(r => ({ ref: r.ref, goods: r.fields.goods, qty: Number(r.fields.quantity), uom: r.fields.uom, fzWarehouse: r.fields.warehouse, mainlandDest: r.fields.destination, importDecl: r.fields.importDecl, date: r.fields.date, stage: 'CUSTOMS_CLEARANCE' as MLStatus, id: r.id }))];
   return (
     <div className="space-y-5">
       <PageHeader
@@ -692,7 +727,7 @@ export function MainlandWorkflowPage() {
       {/* Kanban board */}
       <div className="grid gap-4 sm:grid-cols-3">
         {mlStages.map(stage => {
-          const items = mlSeed.filter(r => r.stage === stage.key);
+          const items = allMainland.filter(r => r.stage === stage.key);
           return (
             <div key={stage.key} className={`rounded-lg border p-4 ${stage.bg}`}>
               <div className="mb-3 flex items-center justify-between">
@@ -725,11 +760,12 @@ export function MainlandWorkflowPage() {
               { key: 'qty', label: 'Qty' }, { key: 'uom', label: 'UOM' },
               { key: 'fzWarehouse', label: 'FZ Warehouse' }, { key: 'mainlandDest', label: 'Mainland Destination' },
               { key: 'importDecl', label: 'Import Declaration' }, { key: 'date', label: 'Date' },
-              { key: 'stage', label: 'Stage' },
+              { key: 'stage', label: 'Stage' }, { key: 'actions', label: 'Actions' },
             ]}
-            rows={mlSeed.map(r => ({
+            rows={allMainland.map(r => ({
               ...r,
               importDecl: r.importDecl || '—',
+              actions: r.id ? <button className="text-red-600 hover:underline" onClick={() => deleteEntry(r.id)}>Delete</button> : '—',
               stage: <span className={`rounded-full px-2.5 py-0.5 text-xs font-medium border ${mlStages.find(s => s.key === r.stage)?.bg} ${mlStages.find(s => s.key === r.stage)?.color}`}>{mlStages.find(s => s.key === r.stage)?.label}</span>
             }))}
           />
@@ -739,22 +775,22 @@ export function MainlandWorkflowPage() {
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="max-w-lg">
           <DialogHeader><DialogTitle>New FZ → Mainland Movement</DialogTitle></DialogHeader>
-          <div className="grid gap-3 pt-2 sm:grid-cols-2">
-            <Field label="Goods Description"><Inp placeholder="Description of goods" /></Field>
-            <Field label="Quantity"><Inp placeholder="0" type="number" /></Field>
-            <Field label="Unit of Measure"><Sel placeholder="Select UOM" options={['PCS', 'KG', 'UNT', 'CTN', 'ROL']} /></Field>
-            <Field label="FZ Warehouse (Source)"><Sel placeholder="Select warehouse" options={['JAFZA-01', 'DAFZA-01', 'DMCC-01']} /></Field>
-            <Field label="Mainland Destination"><Inp placeholder="Address / warehouse" /></Field>
-            <Field label="Import Declaration No."><Inp placeholder="IMP-YYYY-NNNN" /></Field>
-            <Field label="Customs Duty Payment Ref"><Inp placeholder="PAY-YYYY-NNNN" /></Field>
-            <Field label="Delivery Date"><Inp type="date" placeholder="" /></Field>
-            <Field label="Transporter"><Inp placeholder="Company name" /></Field>
-            <Field label="Vehicle / Container No."><Inp placeholder="Vehicle or container ref" /></Field>
+          <form className="grid gap-3 pt-2 sm:grid-cols-2" onSubmit={event => { event.preventDefault(); const f = Object.fromEntries(new FormData(event.currentTarget).entries()); addEntry('mainland', Object.fromEntries(Object.entries(f).map(([k, v]) => [k, String(v)]))); setOpen(false); }}>
+            <Field label="Goods Description"><Inp name="goods" required placeholder="Description of goods" /></Field>
+            <Field label="Quantity"><Inp name="quantity" min={0.01} required placeholder="0" type="number" /></Field>
+            <Field label="Unit of Measure"><Sel name="uom" required placeholder="Select UOM" options={['PCS', 'KG', 'UNT', 'CTN', 'ROL']} /></Field>
+            <Field label="FZ Warehouse (Source)"><Sel name="warehouse" required placeholder="Select warehouse" options={warehouses.map(w => w.code)} /></Field>
+            <Field label="Mainland Destination"><Inp name="destination" required placeholder="Address / warehouse" /></Field>
+            <Field label="Import Declaration No."><Inp name="importDecl" placeholder="IMP-YYYY-NNNN" /></Field>
+            <Field label="Customs Duty Payment Ref"><Inp name="dutyPayment" placeholder="PAY-YYYY-NNNN" /></Field>
+            <Field label="Delivery Date"><Inp name="date" required type="date" placeholder="" /></Field>
+            <Field label="Transporter"><Inp name="transporter" placeholder="Company name" /></Field>
+            <Field label="Vehicle / Container No."><Inp name="vehicle" placeholder="Vehicle or container ref" /></Field>
             <div className="col-span-2 flex justify-end gap-2 pt-2">
-              <Button variant="outline" onClick={() => setOpen(false)}>Cancel</Button>
-              <Button onClick={() => setOpen(false)}>Create Movement</Button>
+              <Button type="button" variant="outline" onClick={() => setOpen(false)}>Cancel</Button>
+              <Button type="submit">Create Movement</Button>
             </div>
-          </div>
+          </form>
         </DialogContent>
       </Dialog>
     </div>
@@ -772,6 +808,8 @@ const reExportSeed = [
 
 export function ReExportPage() {
   const [open, setOpen] = useState(false);
+  const { entries, addEntry, deleteEntry, warehouses } = useFreeZoneRuntime();
+  const reexportEntries = entries.filter(entry => entry.type === 'reexport');
   return (
     <div className="space-y-5">
       <PageHeader
@@ -792,9 +830,9 @@ export function ReExportPage() {
               { key: 'qty', label: 'Qty' }, { key: 'uom', label: 'UOM' },
               { key: 'destCountry', label: 'Destination Country' }, { key: 'permitNo', label: 'Re-Export Permit' },
               { key: 'carrier', label: 'Carrier' }, { key: 'exitDate', label: 'Exit Date' },
-              { key: 'fzWarehouse', label: 'FZ Warehouse' }, { key: 'status', label: 'Status' },
+              { key: 'fzWarehouse', label: 'FZ Warehouse' }, { key: 'status', label: 'Status' }, { key: 'actions', label: 'Actions' },
             ]}
-            rows={reExportSeed.map(r => ({ ...r, status: <StatusBadge status={r.status} /> }))}
+            rows={[...reExportSeed.map(r => ({ ...r, actions: '—' })), ...reexportEntries.map(r => ({ ref: r.ref, goods: r.fields.goods, qty: Number(r.fields.quantity), uom: r.fields.uom, destCountry: r.fields.destination, permitNo: r.fields.permit, carrier: r.fields.carrier, exitDate: r.fields.exitDate, fzWarehouse: r.fields.warehouse, status: 'PENDING_CLEARANCE', actions: <button className="text-red-600 hover:underline" onClick={() => deleteEntry(r.id)}>Delete</button> }))].map(r => ({ ...r, status: <StatusBadge status={r.status} /> }))}
           />
         </CardContent>
       </Card>
@@ -802,24 +840,24 @@ export function ReExportPage() {
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="max-w-lg">
           <DialogHeader><DialogTitle>Record Re-Export</DialogTitle></DialogHeader>
-          <div className="grid gap-3 pt-2 sm:grid-cols-2">
-            <Field label="Goods Description"><Inp placeholder="Description of goods" /></Field>
-            <Field label="HS Code"><Inp placeholder="e.g. 8534.00.00" /></Field>
-            <Field label="Quantity"><Inp placeholder="0" type="number" /></Field>
-            <Field label="Unit of Measure"><Sel placeholder="Select UOM" options={['PCS', 'KG', 'UNT', 'CTN', 'ROL']} /></Field>
-            <Field label="FZ Warehouse (Origin)"><Sel placeholder="Select warehouse" options={['JAFZA-01', 'DAFZA-01', 'DMCC-01']} /></Field>
-            <Field label="Destination Country"><Inp placeholder="e.g. USA" /></Field>
-            <Field label="Re-Export Permit No."><Inp placeholder="REX-YYYY-NNNN" /></Field>
-            <Field label="Carrier"><Inp placeholder="Carrier / Freight company" /></Field>
-            <Field label="Flight / Vessel No."><Inp placeholder="e.g. EK-8714" /></Field>
-            <Field label="Customs Exit Declaration"><Inp placeholder="CXD-YYYY-NNNN" /></Field>
-            <Field label="Exit Date"><Inp type="date" placeholder="" /></Field>
-            <Field label="FOB Value (AED)"><Inp placeholder="0.00" type="number" /></Field>
+          <form className="grid gap-3 pt-2 sm:grid-cols-2" onSubmit={event => { event.preventDefault(); const f = Object.fromEntries(new FormData(event.currentTarget).entries()); addEntry('reexport', Object.fromEntries(Object.entries(f).map(([k, v]) => [k, String(v)]))); setOpen(false); }}>
+            <Field label="Goods Description"><Inp name="goods" required placeholder="Description of goods" /></Field>
+            <Field label="HS Code"><Inp name="hsCode" placeholder="e.g. 8534.00.00" /></Field>
+            <Field label="Quantity"><Inp name="quantity" min={0.01} required placeholder="0" type="number" /></Field>
+            <Field label="Unit of Measure"><Sel name="uom" required placeholder="Select UOM" options={['PCS', 'KG', 'UNT', 'CTN', 'ROL']} /></Field>
+            <Field label="FZ Warehouse (Origin)"><Sel name="warehouse" required placeholder="Select warehouse" options={warehouses.map(w => w.code)} /></Field>
+            <Field label="Destination Country"><Inp name="destination" required placeholder="e.g. USA" /></Field>
+            <Field label="Re-Export Permit No."><Inp name="permit" required placeholder="REX-YYYY-NNNN" /></Field>
+            <Field label="Carrier"><Inp name="carrier" required placeholder="Carrier / Freight company" /></Field>
+            <Field label="Flight / Vessel No."><Inp name="transport" placeholder="e.g. EK-8714" /></Field>
+            <Field label="Customs Exit Declaration"><Inp name="exitDeclaration" placeholder="CXD-YYYY-NNNN" /></Field>
+            <Field label="Exit Date"><Inp name="exitDate" required type="date" placeholder="" /></Field>
+            <Field label="FOB Value (AED)"><Inp name="fobValue" placeholder="0.00" type="number" /></Field>
             <div className="col-span-2 flex justify-end gap-2 pt-2">
-              <Button variant="outline" onClick={() => setOpen(false)}>Cancel</Button>
-              <Button onClick={() => setOpen(false)}>Record Re-Export</Button>
+              <Button type="button" variant="outline" onClick={() => setOpen(false)}>Cancel</Button>
+              <Button type="submit">Record Re-Export</Button>
             </div>
-          </div>
+          </form>
         </DialogContent>
       </Dialog>
     </div>
@@ -843,8 +881,10 @@ export function DocumentRepositoryPage() {
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState('');
   const [typeFilter, setTypeFilter] = useState('All Types');
+  const { entries, addEntry, deleteEntry } = useFreeZoneRuntime();
+  const tempDocs = entries.filter(entry => entry.type === 'document').map(entry => ({ name: entry.fields.name, type: entry.fields.type, linkedRef: entry.fields.linkedRef, uploadDate: entry.fields.date, size: entry.fields.fileName || '—', uploader: entry.fields.issuedBy || 'Current User', id: entry.id }));
 
-  const filtered = docSeed.filter(d =>
+  const filtered = [...docSeed.map(doc => ({ ...doc, id: '' })), ...tempDocs].filter(d =>
     (typeFilter === 'All Types' || d.type === typeFilter) &&
     (d.name.toLowerCase().includes(search.toLowerCase()) || d.linkedRef.toLowerCase().includes(search.toLowerCase()))
   );
@@ -875,7 +915,7 @@ export function DocumentRepositoryPage() {
 
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
         {filtered.map((doc, i) => (
-          <Card key={i} className="transition hover:border-[#d5d0c8] hover:shadow-md">
+          <Card key={doc.id || i} className="transition hover:border-[#d5d0c8] hover:shadow-md">
             <CardContent className="p-4">
               <div className="mb-2 flex items-start gap-3">
                 <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-[#eef6fd]">
@@ -899,6 +939,7 @@ export function DocumentRepositoryPage() {
                 <Button size="sm" variant="outline" className="flex-1 gap-1.5 text-xs">
                   <Download className="h-3 w-3" />Download
                 </Button>
+                {doc.id && <button className="px-2 text-xs text-red-600" onClick={() => deleteEntry(doc.id)}>Delete</button>}
               </div>
             </CardContent>
           </Card>
@@ -911,23 +952,23 @@ export function DocumentRepositoryPage() {
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="max-w-md">
           <DialogHeader><DialogTitle>Upload Customs Document</DialogTitle></DialogHeader>
-          <div className="grid gap-3 pt-2">
-            <Field label="Document Type"><Sel placeholder="Select type" options={docTypes.slice(1)} /></Field>
-            <Field label="Document Name / Title"><Inp placeholder="e.g. BOL for FZ-IN-0043" /></Field>
-            <Field label="Linked Transaction Reference"><Inp placeholder="FZ-IN-NNNN / FZ-OUT-NNNN etc." /></Field>
-            <Field label="Issue Date"><Inp type="date" placeholder="" /></Field>
-            <Field label="Issued By / Authority"><Inp placeholder="Issuing authority" /></Field>
+          <form className="grid gap-3 pt-2" onSubmit={event => { event.preventDefault(); const f = Object.fromEntries(new FormData(event.currentTarget).entries()); addEntry('document', Object.fromEntries(Object.entries(f).map(([k, v]) => [k, String(v)]))); setOpen(false); }}>
+            <Field label="Document Type"><Sel name="type" required placeholder="Select type" options={docTypes.slice(1)} /></Field>
+            <Field label="Document Name / Title"><Inp name="name" required placeholder="e.g. BOL for FZ-IN-0043" /></Field>
+            <Field label="Linked Transaction Reference"><Inp name="linkedRef" required placeholder="FZ-IN-NNNN / FZ-OUT-NNNN etc." /></Field>
+            <Field label="Issue Date"><Inp name="date" required type="date" placeholder="" /></Field>
+            <Field label="Issued By / Authority"><Inp name="issuedBy" required placeholder="Issuing authority" /></Field>
             <Field label="File Upload">
               <div className="flex h-24 flex-col items-center justify-center rounded-md border-2 border-dashed border-[#e5e2dc] text-sm text-[#9ca3af] hover:border-[#2490ef]/40 cursor-pointer">
                 <Upload className="mb-1 h-5 w-5" />
-                Click or drag file here (PDF, JPG, PNG)
+                <Inp name="fileName" placeholder="Optional filename (file content is not stored)" />
               </div>
             </Field>
             <div className="flex justify-end gap-2 pt-1">
-              <Button variant="outline" onClick={() => setOpen(false)}>Cancel</Button>
-              <Button onClick={() => setOpen(false)}>Upload Document</Button>
+              <Button type="button" variant="outline" onClick={() => setOpen(false)}>Cancel</Button>
+              <Button type="submit">Save Document Details</Button>
             </div>
-          </div>
+          </form>
         </DialogContent>
       </Dialog>
     </div>
@@ -1017,8 +1058,10 @@ const actionTypeColors: Record<string, string> = {
 
 export function FZAuditTrailPage() {
   const [typeFilter, setTypeFilter] = useState('ALL');
-  const types = ['ALL', ...Array.from(new Set(auditSeed.map(a => a.type)))];
-  const filtered = auditSeed.filter(r => typeFilter === 'ALL' || r.type === typeFilter);
+  const { inbounds, entries: runtimeEntries } = useFreeZoneRuntime();
+  const entries = [...inbounds.map(r => ({ timestamp: new Date(r.createdAt).toLocaleString(), action: 'Inbound Recorded', ref: r.ref, user: 'Current User', warehouse: r.warehouse, details: `${r.goods} · ${r.qty} ${r.uom} · ${r.docRef}`, type: 'INBOUND' })), ...runtimeEntries.map(r => ({ timestamp: new Date(r.createdAt).toLocaleString(), action: `${r.type.replace(/([A-Z])/g, ' $1')} Recorded`, ref: r.ref, user: 'Current User', warehouse: r.fields.warehouse || r.fields.source || '—', details: r.fields.goods || r.fields.name || r.fields.description || r.fields.linkedRef || 'Temporary frontend record', type: r.type === 'outbound' ? 'OUTBOUND' : r.type === 'transfer' ? 'TRANSFER' : r.type === 'reexport' ? 'RE_EXPORT' : r.type === 'mainland' ? 'OUTBOUND' : r.type === 'document' ? 'DOCUMENT' : r.type === 'customsReference' ? 'INBOUND' : 'STATUS_CHANGE' })), ...auditSeed];
+  const types = ['ALL', ...Array.from(new Set(entries.map(a => a.type)))];
+  const filtered = entries.filter(r => typeFilter === 'ALL' || r.type === typeFilter);
 
   return (
     <div className="space-y-5">
@@ -1078,6 +1121,8 @@ const dutyClassSeed = [
 
 export function DutyClassificationPage() {
   const [open, setOpen] = useState(false);
+  const { entries, addEntry, deleteEntry } = useFreeZoneRuntime();
+  const classes = entries.filter(entry => entry.type === 'dutyClassification');
   return (
     <div className="space-y-5">
       <PageHeader
@@ -1086,9 +1131,9 @@ export function DutyClassificationPage() {
         action={{ label: 'Add Classification', onClick: () => setOpen(true), icon: Plus }}
       />
       <div className="grid gap-3 sm:grid-cols-3">
-        <StatsCard title="Total Classifications" value={dutyClassSeed.length} icon={FileText} iconBg="bg-blue-50" iconColor="text-blue-600" />
-        <StatsCard title="Duty Free" value={dutyClassSeed.filter(d => d.status === 'DUTY_FREE').length} icon={CheckCircle2} iconBg="bg-green-50" iconColor="text-green-600" />
-        <StatsCard title="Duty Applicable" value={dutyClassSeed.filter(d => d.status === 'DUTY_APPLICABLE').length} icon={AlertTriangle} iconBg="bg-orange-50" iconColor="text-orange-600" />
+        <StatsCard title="Total Classifications" value={dutyClassSeed.length + classes.length} icon={FileText} iconBg="bg-blue-50" iconColor="text-blue-600" />
+        <StatsCard title="Duty Free" value={dutyClassSeed.filter(d => d.status === 'DUTY_FREE').length + classes.filter(d => d.fields.status === 'DUTY_FREE').length} icon={CheckCircle2} iconBg="bg-green-50" iconColor="text-green-600" />
+        <StatsCard title="Duty Applicable" value={dutyClassSeed.filter(d => d.status === 'DUTY_APPLICABLE').length + classes.filter(d => d.fields.status === 'DUTY_APPLICABLE').length} icon={AlertTriangle} iconBg="bg-orange-50" iconColor="text-orange-600" />
       </div>
       <Card>
         <CardContent className="p-4">
@@ -1097,9 +1142,9 @@ export function DutyClassificationPage() {
               { key: 'id', label: 'ID' }, { key: 'hsCode', label: 'HS Code' },
               { key: 'description', label: 'Description' }, { key: 'dutyRate', label: 'Duty Rate' },
               { key: 'vatRate', label: 'VAT Rate' }, { key: 'status', label: 'Status' },
-              { key: 'effectiveFrom', label: 'Effective From' }, { key: 'authority', label: 'Authority' },
+              { key: 'effectiveFrom', label: 'Effective From' }, { key: 'authority', label: 'Authority' }, { key: 'actions', label: 'Actions' },
             ]}
-            rows={dutyClassSeed.map(r => ({ ...r, status: <StatusBadge status={r.status} /> }))}
+            rows={[...dutyClassSeed.map(r => ({ ...r, actions: '—' })), ...classes.map(r => ({ id: r.ref, hsCode: r.fields.hsCode, description: r.fields.description, dutyRate: `${r.fields.dutyRate}%`, vatRate: `${r.fields.vatRate}%`, status: r.fields.status, effectiveFrom: r.fields.effectiveFrom, authority: r.fields.authority, actions: <button className="text-red-600 hover:underline" onClick={() => deleteEntry(r.id)}>Delete</button> }))].map(r => ({ ...r, status: <StatusBadge status={r.status} /> }))}
           />
         </CardContent>
       </Card>
@@ -1107,23 +1152,23 @@ export function DutyClassificationPage() {
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="max-w-lg">
           <DialogHeader><DialogTitle>Add Duty / Tax Classification</DialogTitle></DialogHeader>
-          <div className="grid gap-3 pt-2 sm:grid-cols-2">
-            <Field label="HS Code"><Inp placeholder="e.g. 8534.00.00" /></Field>
-            <Field label="Description"><Inp placeholder="Product/commodity description" /></Field>
-            <Field label="Duty Rate (%)"><Inp placeholder="0" type="number" /></Field>
-            <Field label="VAT Rate (%)"><Inp placeholder="0" type="number" /></Field>
-            <Field label="Classification Status"><Sel placeholder="Select status" options={['Duty Free', 'Duty Applicable', 'Suspended', 'Bonded', 'Released']} /></Field>
-            <Field label="Issuing Authority"><Sel placeholder="Select authority" options={['UAE FTA', 'UAE MOE', 'UAE MoH', 'Dubai Customs', 'JAFZA Authority']} /></Field>
-            <Field label="Effective From"><Inp type="date" placeholder="" /></Field>
-            <Field label="Effective To (optional)"><Inp type="date" placeholder="" /></Field>
+          <form className="grid gap-3 pt-2 sm:grid-cols-2" onSubmit={event => { event.preventDefault(); const f = Object.fromEntries(new FormData(event.currentTarget).entries()); addEntry('dutyClassification', Object.fromEntries(Object.entries(f).map(([k, v]) => [k, String(v)]))); setOpen(false); }}>
+            <Field label="HS Code"><Inp name="hsCode" required placeholder="e.g. 8534.00.00" /></Field>
+            <Field label="Description"><Inp name="description" required placeholder="Product/commodity description" /></Field>
+            <Field label="Duty Rate (%)"><Inp name="dutyRate" required placeholder="0" type="number" /></Field>
+            <Field label="VAT Rate (%)"><Inp name="vatRate" required placeholder="0" type="number" /></Field>
+            <Field label="Classification Status"><Sel name="status" required placeholder="Select status" options={['DUTY_FREE', 'DUTY_APPLICABLE', 'SUSPENDED', 'BONDED', 'RELEASED']} /></Field>
+            <Field label="Issuing Authority"><Sel name="authority" required placeholder="Select authority" options={['UAE FTA', 'UAE MOE', 'UAE MoH', 'Dubai Customs', 'JAFZA Authority']} /></Field>
+            <Field label="Effective From"><Inp name="effectiveFrom" required type="date" placeholder="" /></Field>
+            <Field label="Effective To (optional)"><Inp name="effectiveTo" type="date" placeholder="" /></Field>
             <div className="col-span-2">
-              <Field label="Notes / Remarks"><Inp placeholder="Additional classification notes" /></Field>
+              <Field label="Notes / Remarks"><Inp name="notes" placeholder="Additional classification notes" /></Field>
             </div>
             <div className="col-span-2 flex justify-end gap-2 pt-2">
-              <Button variant="outline" onClick={() => setOpen(false)}>Cancel</Button>
-              <Button onClick={() => setOpen(false)}>Save Classification</Button>
+              <Button type="button" variant="outline" onClick={() => setOpen(false)}>Cancel</Button>
+              <Button type="submit">Save Classification</Button>
             </div>
-          </div>
+          </form>
         </DialogContent>
       </Dialog>
     </div>

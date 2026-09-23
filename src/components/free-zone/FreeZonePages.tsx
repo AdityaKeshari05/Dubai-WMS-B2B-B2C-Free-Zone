@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   Plus, Search, Upload, FileText, X, CheckCircle2, AlertTriangle,
   BarChart3, Package, Globe, Shield, ArrowRightLeft, TrendingUp,
@@ -37,8 +37,34 @@ function Sel({ placeholder, options, value, onChange, name, required }: { placeh
   );
 }
 
-function Inp({ placeholder, type = 'text', value, onChange, name, required, min, step }: { placeholder: string; type?: string; value?: string | number; onChange?: (value: string) => void; name?: string; required?: boolean; min?: number; step?: number | 'any' }) {
-  return <Input name={name} required={required} min={min} step={step ?? (type === 'number' ? 'any' : undefined)} type={type} placeholder={placeholder} value={value} onChange={e => onChange?.(e.target.value)} />;
+function Inp({ placeholder, type = 'text', value, onChange, name, required, min, max, step }: { placeholder: string; type?: string; value?: string | number; onChange?: (value: string) => void; name?: string; required?: boolean; min?: number; max?: number; step?: number | 'any' }) {
+  return <Input name={name} required={required} min={min} max={max} step={step ?? (type === 'number' ? 'any' : undefined)} type={type} placeholder={placeholder} value={value} onChange={e => onChange?.(e.target.value)} />;
+}
+
+const FZ_UPLOAD_LIMIT_BYTES = 450 * 1024;
+
+function formatBytes(bytes: number) {
+  return bytes < 1024 * 1024 ? `${Math.max(1, Math.round(bytes / 1024))} KB` : `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+function fileAsDataUrl(file: File) {
+  return new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => typeof reader.result === 'string' ? resolve(reader.result) : reject(new Error('Could not read the selected file.'));
+    reader.onerror = () => reject(reader.error || new Error('Could not read the selected file.'));
+    reader.readAsDataURL(file);
+  });
+}
+
+function downloadFile(name: string, content: BlobPart, type = 'text/plain;charset=utf-8') {
+  const url = URL.createObjectURL(new Blob([content], { type }));
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = name;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  window.setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
 function EmptyRow() {
@@ -96,15 +122,28 @@ const recentActivity = [
 export function FreeZoneDashboardPage() {
   const { inbounds, entries } = useFreeZoneRuntime();
   const barMax = 50;
+  const pending = inbounds.filter(row => ['UNDER_CUSTOMS', 'PENDING_CLEARANCE'].includes(row.status)).length + entries.filter(entry => ['outbound', 'transfer', 'reexport', 'mainland'].includes(entry.type)).length;
+  const reExports = entries.filter(entry => entry.type === 'reexport').length;
+  const statusCounts = [
+    { label: 'Duty Free', key: 'DUTY_FREE', base: 38, color: 'bg-emerald-500' },
+    { label: 'Duty Applicable', key: 'DUTY_APPLICABLE', base: 24, color: 'bg-orange-500' },
+    { label: 'Suspended', key: 'SUSPENDED', base: 15, color: 'bg-yellow-500' },
+    { label: 'Under Customs', key: 'UNDER_CUSTOMS', base: 23, color: 'bg-violet-500' },
+  ];
+  const dutyTotal = 100 + inbounds.length;
+  const activityRows = [
+    ...inbounds.map(row => ({ ref: row.ref, type: 'Inbound', goods: row.goods, qty: `${row.qty} ${row.uom}`, status: row.status, date: new Date(row.createdAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }), createdAt: row.createdAt })),
+    ...entries.map(row => ({ ref: row.ref, type: ({ outbound: 'Outbound', transfer: 'FZ Transfer', mainland: 'FZ → Mainland', reexport: 'Re-Export', customsReference: 'Customs Reference', document: 'Document', dutyClassification: 'Duty Classification', reconciliation: 'Reconciliation' } as Record<string, string>)[row.type] || row.type, goods: row.fields.goods || row.fields.name || row.fields.description || '—', qty: row.fields.quantity ? `${row.fields.quantity} ${row.fields.uom || ''}` : '—', status: row.type === 'outbound' || row.type === 'reexport' ? 'PENDING_CLEARANCE' : row.type === 'transfer' ? 'IN_TRANSIT_FZ' : row.type === 'mainland' ? 'MAINLAND_BOUND' : 'DECLARED', date: new Date(row.createdAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }), createdAt: row.createdAt })),
+  ].sort((a, b) => b.createdAt.localeCompare(a.createdAt)).slice(0, 5);
   return (
     <div className="space-y-5">
       <PageHeader title="Free Zone Dashboard" description="Overview of all free zone and bonded warehouse operations" />
 
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
-        <StatsCard title="Total FZ Stock Items" value="1,284" subtitle="across 3 warehouses" icon={Package} iconColor="text-blue-600" iconBg="bg-blue-50" />
-        <StatsCard title="Under Customs Control" value="347" subtitle="awaiting clearance" icon={Shield} iconColor="text-violet-600" iconBg="bg-violet-50" />
-        <StatsCard title="Pending Clearances" value="23" subtitle="open customs cases" icon={Clock} iconColor="text-amber-600" iconBg="bg-amber-50" />
-        <StatsCard title="Re-Exports (Sep)" value="18" subtitle="shipments this month" icon={Globe} iconColor="text-indigo-600" iconBg="bg-indigo-50" />
+        <StatsCard title="Total FZ Stock Items" value={1284 + inbounds.length} subtitle="across registered warehouses" icon={Package} iconColor="text-blue-600" iconBg="bg-blue-50" />
+        <StatsCard title="Under Customs Control" value={347 + inbounds.filter(row => ['UNDER_CUSTOMS', 'BONDED'].includes(row.status)).length} subtitle="awaiting clearance" icon={Shield} iconColor="text-violet-600" iconBg="bg-violet-50" />
+        <StatsCard title="Pending Clearances" value={23 + pending} subtitle="open customs cases and movements" icon={Clock} iconColor="text-amber-600" iconBg="bg-amber-50" />
+        <StatsCard title="Re-Exports (Sep)" value={18 + reExports} subtitle="shipments this month" icon={Globe} iconColor="text-indigo-600" iconBg="bg-indigo-50" />
       </div>
 
       <div className="grid gap-4 xl:grid-cols-[1fr_360px]">
@@ -119,13 +158,13 @@ export function FreeZoneDashboardPage() {
                   <div className="flex w-full items-end gap-1" style={{ height: '140px' }}>
                     <div
                       className="flex-1 rounded-t bg-[#2490ef]"
-                      style={{ height: `${(row.in / barMax) * 140}px` }}
-                      title={`Inbound: ${row.in}`}
+                      style={{ height: `${((row.in + (row.m === 'Sep' ? inbounds.length : 0)) / barMax) * 140}px` }}
+                      title={`Inbound: ${row.in + (row.m === 'Sep' ? inbounds.length : 0)}`}
                     />
                     <div
                       className="flex-1 rounded-t bg-[#0f9d58]"
-                      style={{ height: `${(row.out / barMax) * 140}px` }}
-                      title={`Outbound: ${row.out}`}
+                      style={{ height: `${((row.out + (row.m === 'Sep' ? entries.filter(entry => entry.type === 'outbound').length : 0)) / barMax) * 140}px` }}
+                      title={`Outbound: ${row.out + (row.m === 'Sep' ? entries.filter(entry => entry.type === 'outbound').length : 0)}`}
                     />
                   </div>
                   <span className="text-[11px] text-[#7c8591]">{row.m}</span>
@@ -142,22 +181,21 @@ export function FreeZoneDashboardPage() {
         <Card>
           <CardHeader><CardTitle>Duty Status Breakdown</CardTitle></CardHeader>
           <CardContent className="space-y-3">
-            {[
-              { label: 'Duty Free', value: 38, color: 'bg-emerald-500' },
-              { label: 'Duty Applicable', value: 24, color: 'bg-orange-500' },
-              { label: 'Suspended', value: 15, color: 'bg-yellow-500' },
-              { label: 'Under Customs', value: 23, color: 'bg-violet-500' },
-            ].map(item => (
+            {statusCounts.map(item => {
+              const count = inbounds.filter(row => row.status === item.key).length;
+              const value = Math.round(((item.base + count) / dutyTotal) * 100);
+              return (
               <div key={item.label}>
                 <div className="mb-1 flex items-center justify-between text-sm">
                   <span className="text-[#4b5563]">{item.label}</span>
-                  <span className="font-semibold text-[#1f2937]">{item.value}%</span>
+                  <span className="font-semibold text-[#1f2937]">{value}%</span>
                 </div>
                 <div className="h-2 w-full rounded-full bg-[#f0ede8]">
-                  <div className={`h-2 rounded-full ${item.color}`} style={{ width: `${item.value}%` }} />
+                  <div className={`h-2 rounded-full ${item.color}`} style={{ width: `${value}%` }} />
                 </div>
               </div>
-            ))}
+              );
+            })}
           </CardContent>
         </Card>
       </div>
@@ -171,7 +209,7 @@ export function FreeZoneDashboardPage() {
               { key: 'goods', label: 'Goods' }, { key: 'qty', label: 'Qty' },
               { key: 'status', label: 'Status' }, { key: 'date', label: 'Date' },
             ]}
-            rows={[...inbounds.map(r => ({ ref: r.ref, type: 'Inbound', goods: r.goods, qty: `${r.qty} ${r.uom}`, status: r.status, date: new Date(r.createdAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) })), ...entries.map(r => ({ ref: r.ref, type: r.type, goods: r.fields.goods || r.fields.name || r.fields.description || '—', qty: r.fields.quantity ? `${r.fields.quantity} ${r.fields.uom || ''}` : '—', status: r.type === 'outbound' || r.type === 'reexport' ? 'PENDING_CLEARANCE' : r.type === 'transfer' ? 'IN_TRANSIT_FZ' : r.type === 'mainland' ? 'MAINLAND_BOUND' : 'DECLARED', date: new Date(r.createdAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) })), ...recentActivity].map(r => ({ ...r, status: <StatusBadge status={r.status} /> }))}
+            rows={[...activityRows.map(({ createdAt: _createdAt, ...row }) => ({ ...row, status: <StatusBadge status={row.status} /> })), ...recentActivity.map(row => ({ ...row, status: <StatusBadge status={row.status} /> }))]}
           />
         </CardContent>
       </Card>
@@ -184,12 +222,28 @@ export function FreeZoneDashboardPage() {
 // ─────────────────────────────────────────────────────────
 export function WarehouseConfigPage() {
   const [open, setOpen] = useState(false);
-  const { warehouses, addWarehouse } = useFreeZoneRuntime();
+  const { warehouses, inbounds, entries, addWarehouse, updateWarehouse, deleteWarehouse } = useFreeZoneRuntime();
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState({ name: '', code: '', zone: '', type: '', customsCode: '', locations: '', address: '', officer: '' });
   const saveWarehouse = () => {
     if (!form.name.trim() || !form.code.trim() || !form.zone || !form.type || !form.customsCode.trim() || form.locations === '' || !Number.isInteger(Number(form.locations)) || Number(form.locations) < 0) { window.alert('Complete the required warehouse fields and enter a valid location count.'); return; }
-    if (!addWarehouse({ name: form.name.trim(), code: form.code.trim(), zone: form.zone, type: form.type, customsCode: form.customsCode.trim(), status: 'ACTIVE', locations: Number(form.locations) })) { window.alert('A warehouse with this code already exists.'); return; }
-    setForm({ name: '', code: '', zone: '', type: '', customsCode: '', locations: '', address: '', officer: '' }); setOpen(false);
+    const duplicate = warehouses.some(w => w.id !== editingId && w.code.toLowerCase() === form.code.trim().toLowerCase());
+    if (duplicate) { window.alert('A warehouse with this code already exists.'); return; }
+    const values = { name: form.name.trim(), code: form.code.trim(), zone: form.zone, type: form.type, customsCode: form.customsCode.trim(), locations: Number(form.locations), address: form.address.trim(), officer: form.officer.trim() };
+    if (editingId) updateWarehouse(editingId, values);
+    else if (!addWarehouse({ ...values, status: 'ACTIVE' })) { window.alert('A warehouse with this code already exists.'); return; }
+    setEditingId(null); setForm({ name: '', code: '', zone: '', type: '', customsCode: '', locations: '', address: '', officer: '' }); setOpen(false);
+  };
+  const startEdit = (warehouse: typeof warehouses[number]) => {
+    setEditingId(warehouse.id);
+    setForm({ name: warehouse.name, code: warehouse.code, zone: warehouse.zone, type: warehouse.type, customsCode: warehouse.customsCode, locations: String(warehouse.locations), address: warehouse.address || '', officer: warehouse.officer || '' });
+    setOpen(true);
+  };
+  const removeWarehouse = (id: string, code: string) => {
+    if (id.startsWith('sample-wh-')) { window.alert('Sample warehouses are kept as the prototype baseline.'); return; }
+    const isReferenced = inbounds.some(row => row.warehouse === code) || entries.some(row => row.fields.warehouse === code || row.fields.source === code || row.fields.destination === code);
+    if (isReferenced) { window.alert('This warehouse is linked to Free Zone transactions and cannot be deleted.'); return; }
+    if (window.confirm(`Delete warehouse ${code}?`)) deleteWarehouse(id);
   };
 
   return (
@@ -212,6 +266,7 @@ export function WarehouseConfigPage() {
               </div>
               <p className="font-semibold text-[#1f2937]">{w.name}</p>
               <p className="mt-0.5 text-xs text-[#7c8591]">{w.code} · {w.zone}</p>
+              {(w.address || w.officer) && <p className="mt-1 text-xs text-[#7c8591]">{[w.address, w.officer && `Officer: ${w.officer}`].filter(Boolean).join(' · ')}</p>}
               <div className="mt-3 grid grid-cols-2 gap-2 text-xs">
                 <div className="rounded-md bg-[#f8faf9] p-2">
                   <p className="text-[#7c8591]">Type</p>
@@ -226,6 +281,10 @@ export function WarehouseConfigPage() {
                   <p className="font-medium text-[#1f2937]">{w.locations} locations configured</p>
                 </div>
               </div>
+              <div className="mt-4 flex justify-end gap-3 border-t border-[#f0ede8] pt-3 text-xs">
+                <button className="font-medium text-[#1674c4] hover:underline" onClick={() => startEdit(w)}>Edit</button>
+                {!w.id.startsWith('sample-wh-') && <button className="font-medium text-red-600 hover:underline" onClick={() => removeWarehouse(w.id, w.code)}>Delete</button>}
+              </div>
             </CardContent>
           </Card>
         ))}
@@ -233,7 +292,7 @@ export function WarehouseConfigPage() {
 
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="max-w-lg">
-          <DialogHeader><DialogTitle>Add Free Zone Warehouse</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle>{editingId ? 'Edit Free Zone Warehouse' : 'Add Free Zone Warehouse'}</DialogTitle></DialogHeader>
           <div className="grid gap-3 pt-2 sm:grid-cols-2">
             <Field label="Warehouse Name"><Inp placeholder="e.g. JAFZA North Wing" value={form.name} onChange={name => setForm(f => ({ ...f, name }))} /></Field>
             <Field label="Warehouse Code"><Inp placeholder="e.g. JAFZA-02" value={form.code} onChange={code => setForm(f => ({ ...f, code }))} /></Field>
@@ -244,8 +303,8 @@ export function WarehouseConfigPage() {
             <Field label="Address / Location"><Inp placeholder="Street, Building" value={form.address} onChange={address => setForm(f => ({ ...f, address }))} /></Field>
             <Field label="Responsible Officer"><Inp placeholder="Name" value={form.officer} onChange={officer => setForm(f => ({ ...f, officer }))} /></Field>
             <div className="col-span-2 flex justify-end gap-2 pt-2">
-              <Button type="button" variant="outline" onClick={() => setOpen(false)}>Cancel</Button>
-              <Button onClick={saveWarehouse}>Save Warehouse</Button>
+              <Button type="button" variant="outline" onClick={() => { setOpen(false); setEditingId(null); }}>Cancel</Button>
+              <Button type="button" onClick={saveWarehouse}>{editingId ? 'Save Changes' : 'Save Warehouse'}</Button>
             </div>
           </div>
         </DialogContent>
@@ -270,8 +329,9 @@ export function BondedStockPage() {
   const [search, setSearch] = useState('');
   const [filter, setFilter] = useState('ALL');
 
-  const statuses = ['ALL', 'BONDED', 'UNDER_CUSTOMS', 'PENDING_CLEARANCE', 'CUSTOMS_CLEARED', 'DUTY_FREE'];
-  const filtered = [...bondedSeed, ...inbounds.map(r => ({ sku: r.sku, name: r.goods, qty: r.qty, uom: r.uom, warehouse: r.warehouse, declRef: r.docRef, dutyStatus: r.status, entered: new Date(r.arrival).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) }))].filter(r =>
+  const allRows = [...bondedSeed, ...inbounds.map(r => ({ sku: r.sku, name: r.goods, qty: r.qty, uom: r.uom, warehouse: r.warehouse, declRef: r.docRef, dutyStatus: r.status, entered: new Date(r.arrival).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) }))];
+  const statuses = ['ALL', ...Array.from(new Set(allRows.map(row => row.dutyStatus)))];
+  const filtered = allRows.filter(r =>
     (filter === 'ALL' || r.dutyStatus === filter) &&
     (r.name.toLowerCase().includes(search.toLowerCase()) || r.sku.toLowerCase().includes(search.toLowerCase()))
   );
@@ -281,10 +341,10 @@ export function BondedStockPage() {
       <PageHeader title="Bonded / Customs Stock" description="Inventory under customs control across all free zone warehouses" />
 
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-        <StatsCard title="Total Bonded Items" value="5" icon={Package} iconBg="bg-purple-50" iconColor="text-purple-600" />
-        <StatsCard title="Under Customs" value="1" icon={Shield} iconBg="bg-violet-50" iconColor="text-violet-600" />
-        <StatsCard title="Pending Clearance" value="1" icon={Clock} iconBg="bg-amber-50" iconColor="text-amber-600" />
-        <StatsCard title="Cleared" value="2" icon={CheckCircle2} iconBg="bg-green-50" iconColor="text-green-600" />
+        <StatsCard title="Total Bonded Items" value={allRows.length} icon={Package} iconBg="bg-purple-50" iconColor="text-purple-600" />
+        <StatsCard title="Under Customs" value={allRows.filter(r => r.dutyStatus === 'UNDER_CUSTOMS').length} icon={Shield} iconBg="bg-violet-50" iconColor="text-violet-600" />
+        <StatsCard title="Pending Clearance" value={allRows.filter(r => r.dutyStatus === 'PENDING_CLEARANCE').length} icon={Clock} iconBg="bg-amber-50" iconColor="text-amber-600" />
+        <StatsCard title="Cleared" value={allRows.filter(r => ['CUSTOMS_CLEARED', 'DUTY_FREE', 'RELEASED'].includes(r.dutyStatus)).length} icon={CheckCircle2} iconBg="bg-green-50" iconColor="text-green-600" />
       </div>
 
       <Card>
@@ -338,13 +398,23 @@ const trackingSeed = [
 
 export function InventoryTrackingPage() {
   const { inbounds } = useFreeZoneRuntime();
+  const [search, setSearch] = useState('');
+  const allRows = [...trackingSeed, ...inbounds.map(r => ({ ref: r.ref, product: r.goods, sku: r.sku, qty: r.qty, warehouse: r.warehouse, entryDate: new Date(r.arrival).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }), expectedClearance: r.expectedClearance || '—', officer: '—', status: r.status }))];
+  const active = allRows.filter(row => !['CUSTOMS_CLEARED', 'DUTY_FREE', 'RELEASED'].includes(row.status));
+  const overdue = active.filter(row => row.expectedClearance !== '—' && new Date(row.expectedClearance).getTime() < new Date(new Date().toDateString()).getTime()).length;
+  const clearedThisMonth = inbounds.filter(row => ['CUSTOMS_CLEARED', 'DUTY_FREE', 'RELEASED'].includes(row.status) && new Date(row.createdAt).getMonth() === new Date().getMonth()).length;
+  const filtered = allRows.filter(row => `${row.ref} ${row.product} ${row.sku} ${row.warehouse}`.toLowerCase().includes(search.toLowerCase()));
   return (
     <div className="space-y-5">
       <PageHeader title="Customs Inventory Tracking" description="Track stock subject to customs and free-zone controls" />
       <div className="grid gap-3 sm:grid-cols-3">
-        <StatsCard title="Active Tracking Entries" value="3" icon={BarChart3} iconBg="bg-blue-50" iconColor="text-blue-600" />
-        <StatsCard title="Overdue Clearances" value="0" icon={AlertTriangle} iconBg="bg-red-50" iconColor="text-red-600" />
-        <StatsCard title="Cleared This Month" value="8" icon={CheckCircle2} iconBg="bg-green-50" iconColor="text-green-600" />
+        <StatsCard title="Active Tracking Entries" value={active.length} icon={BarChart3} iconBg="bg-blue-50" iconColor="text-blue-600" />
+        <StatsCard title="Overdue Clearances" value={overdue} icon={AlertTriangle} iconBg="bg-red-50" iconColor="text-red-600" />
+        <StatsCard title="Cleared This Month" value={8 + clearedThisMonth} icon={CheckCircle2} iconBg="bg-green-50" iconColor="text-green-600" />
+      </div>
+      <div className="relative max-w-md">
+        <Search className="absolute left-3 top-2.5 h-4 w-4 text-[#9ca3af]" />
+        <input type="search" placeholder="Search reference, product, SKU or warehouse…" value={search} onChange={event => setSearch(event.target.value)} className="h-10 w-full rounded-md border border-[#e5e2dc] pl-9 pr-3 text-sm focus:outline-none focus:ring-2 focus:ring-[#2490ef]/30" />
       </div>
       <Card>
         <CardContent className="p-4">
@@ -356,7 +426,7 @@ export function InventoryTrackingPage() {
               { key: 'expectedClearance', label: 'Expected Clearance' },
               { key: 'officer', label: 'Customs Officer' }, { key: 'status', label: 'Status' },
             ]}
-            rows={[...trackingSeed, ...inbounds.map(r => ({ ref: r.ref, product: r.goods, sku: r.sku, qty: r.qty, warehouse: r.warehouse, entryDate: new Date(r.arrival).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }), expectedClearance: '—', officer: '—', status: r.status }))].map(r => ({ ...r, status: <StatusBadge status={r.status} /> }))}
+            rows={filtered.map(r => ({ ...r, status: <StatusBadge status={r.status} /> }))}
           />
         </CardContent>
       </Card>
@@ -378,6 +448,18 @@ export function CustomsReferencePage() {
   const [open, setOpen] = useState(false);
   const { inbounds, entries, addEntry, deleteEntry, warehouses } = useFreeZoneRuntime();
   const referenceEntries = entries.filter(entry => entry.type === 'customsReference');
+  const saveReference = (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const values = Object.fromEntries(new FormData(event.currentTarget).entries());
+    const customsRef = String(values.customsRef).trim().toLowerCase();
+    const declaration = String(values.declaration).trim().toLowerCase();
+    const duplicate = refSeed.some(row => row.customsRef.toLowerCase() === customsRef || row.declarationNo.toLowerCase() === declaration)
+      || inbounds.some(row => row.customsRef?.toLowerCase() === customsRef || row.docRef.toLowerCase() === declaration)
+      || referenceEntries.some(row => row.fields.customsRef.toLowerCase() === customsRef || row.fields.declaration.toLowerCase() === declaration);
+    if (duplicate) { window.alert('A customs reference or declaration number with those details already exists.'); return; }
+    addEntry('customsReference', Object.fromEntries(Object.entries(values).map(([key, value]) => [key, String(value)])));
+    setOpen(false);
+  };
   return (
     <div className="space-y-5">
       <PageHeader
@@ -389,12 +471,12 @@ export function CustomsReferencePage() {
         <CardContent className="p-4">
           <Table
             cols={[
-              { key: 'id', label: 'ID' }, { key: 'declarationNo', label: 'Declaration No' },
+              { key: 'id', label: 'Inbound / Reference ID' }, { key: 'declarationNo', label: 'Declaration No' },
               { key: 'shipmentNo', label: 'Shipment No' }, { key: 'customsRef', label: 'Customs Ref' },
               { key: 'product', label: 'Product' }, { key: 'date', label: 'Date' },
               { key: 'status', label: 'Status' }, { key: 'actions', label: 'Actions' },
             ]}
-            rows={[...refSeed.map(r => ({ ...r, actions: '—' })), ...inbounds.map(r => ({ id: r.ref, declarationNo: r.docRef, shipmentNo: r.bol, customsRef: r.docRef, product: r.goods, date: r.arrival, status: r.status, actions: 'Inbound' })), ...referenceEntries.map(r => ({ id: r.ref, declarationNo: r.fields.declaration, shipmentNo: r.fields.shipment, customsRef: r.fields.customsRef, product: r.fields.product, date: r.fields.date, status: 'DECLARED', actions: <button className="text-red-600 hover:underline" onClick={() => deleteEntry(r.id)}>Delete</button> }))].map(r => ({ ...r, status: <StatusBadge status={r.status} /> }))}
+            rows={[...refSeed.map(r => ({ ...r, actions: '—' })), ...inbounds.map(r => ({ id: r.ref, declarationNo: r.docRef, shipmentNo: r.bol, customsRef: r.customsRef || '—', product: r.goods, date: r.arrival, status: r.status, actions: 'Inbound' })), ...referenceEntries.map(r => ({ id: r.ref, declarationNo: r.fields.declaration, shipmentNo: r.fields.shipment, customsRef: r.fields.customsRef, product: r.fields.product, date: r.fields.date, status: 'DECLARED', actions: <button className="text-red-600 hover:underline" onClick={() => deleteEntry(r.id)}>Delete</button> }))].map(r => ({ ...r, status: <StatusBadge status={r.status} /> }))}
           />
         </CardContent>
       </Card>
@@ -402,7 +484,7 @@ export function CustomsReferencePage() {
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="max-w-lg">
           <DialogHeader><DialogTitle>Add Customs Reference</DialogTitle></DialogHeader>
-          <form className="grid gap-3 pt-2 sm:grid-cols-2" onSubmit={event => { event.preventDefault(); const f = Object.fromEntries(new FormData(event.currentTarget).entries()); addEntry('customsReference', Object.fromEntries(Object.entries(f).map(([k, v]) => [k, String(v)]))); setOpen(false); }}>
+          <form className="grid gap-3 pt-2 sm:grid-cols-2" onSubmit={saveReference}>
             <Field label="Declaration Number"><Inp name="declaration" required placeholder="DEC-YYYY-NNNN" /></Field>
             <Field label="Shipment Number"><Inp name="shipment" required placeholder="SHP-YYYY-NNNN" /></Field>
             <Field label="Customs Reference"><Inp name="customsRef" required placeholder="CUS-XXX-NNNN" /></Field>
@@ -435,13 +517,15 @@ const dutySeed = [
 
 export function DutyStatusPage() {
   const [filter, setFilter] = useState('ALL');
-  const { inbounds } = useFreeZoneRuntime();
-  const statuses = ['ALL', 'DUTY_FREE', 'DUTY_APPLICABLE', 'SUSPENDED', 'BONDED', 'RELEASED'];
+  const [search, setSearch] = useState('');
+  const { inbounds, entries } = useFreeZoneRuntime();
+  const statuses = ['ALL', 'DUTY_FREE', 'DUTY_APPLICABLE', 'SUSPENDED', 'BONDED', 'UNDER_CUSTOMS', 'PENDING_CLEARANCE', 'CUSTOMS_CLEARED', 'RELEASED'];
   const inboundDutyRows = inbounds.map(r => {
-    const classification = r.hsCode ? dutyClassSeed.find(item => item.hsCode === r.hsCode) : undefined;
+    const classification = r.hsCode ? [...dutyClassSeed, ...entries.filter(entry => entry.type === 'dutyClassification').map(entry => ({ hsCode: entry.fields.hsCode, dutyRate: `${entry.fields.dutyRate}%`, status: entry.fields.status }))].find(item => item.hsCode === r.hsCode) : undefined;
     return { sku: r.sku, product: r.goods, hsCode: r.hsCode || '—', dutyRate: classification?.dutyRate || '—', status: r.status, lastUpdated: new Date(r.createdAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) };
   });
-  const filtered = [...dutySeed, ...inboundDutyRows].filter(r => filter === 'ALL' || r.status === filter);
+  const classificationRows = entries.filter(entry => entry.type === 'dutyClassification').map(entry => ({ sku: entry.fields.hsCode, product: entry.fields.description, hsCode: entry.fields.hsCode, dutyRate: `${entry.fields.dutyRate}%`, status: entry.fields.status, lastUpdated: entry.fields.effectiveFrom }));
+  const filtered = [...dutySeed, ...inboundDutyRows, ...classificationRows].filter(r => (filter === 'ALL' || r.status === filter) && `${r.sku} ${r.product} ${r.hsCode}`.toLowerCase().includes(search.toLowerCase()));
 
   return (
     <div className="space-y-5">
@@ -486,11 +570,17 @@ export function InboundPage() {
   const [open, setOpen] = useState(false);
   const { warehouses, inbounds, addInbound, updateInbound, deleteInbound } = useFreeZoneRuntime();
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [form, setForm] = useState({ goods: '', sku: '', hsCode: '', qty: '', uom: '', origin: '', carrier: '', bol: '', flight: '', arrival: '', warehouse: '', location: '', docRef: '', status: '' });
+  const emptyInboundForm = { goods: '', sku: '', hsCode: '', qty: '', uom: '', origin: '', exportCountry: '', carrier: '', bol: '', flight: '', arrival: '', expectedClearance: '', warehouse: '', location: '', docRef: '', customsRef: '', status: '', estimatedValue: '', netWeight: '' };
+  const [form, setForm] = useState(emptyInboundForm);
   const saveInbound = () => {
     const qty = Number(form.qty);
+    const estimatedValue = form.estimatedValue ? Number(form.estimatedValue) : undefined;
+    const netWeight = form.netWeight ? Number(form.netWeight) : undefined;
     if (!form.goods.trim() || !form.sku.trim() || !Number.isFinite(qty) || qty <= 0 || !form.uom || !form.origin.trim() || !form.carrier.trim() || !form.bol.trim() || !form.arrival || !form.warehouse || !form.docRef.trim() || !form.status) { window.alert('Complete all required inbound fields and enter a quantity greater than zero.'); return; }
-    const values = { goods: form.goods.trim(), sku: form.sku.trim(), hsCode: form.hsCode.trim(), qty, uom: form.uom, origin: form.origin.trim(), carrier: form.carrier.trim(), bol: form.bol.trim(), warehouse: form.warehouse, location: form.location.trim(), arrival: form.arrival, docRef: form.docRef.trim(), status: form.status };
+    if ((estimatedValue !== undefined && (!Number.isFinite(estimatedValue) || estimatedValue < 0)) || (netWeight !== undefined && (!Number.isFinite(netWeight) || netWeight < 0))) { window.alert('Estimated value and net weight must be zero or greater.'); return; }
+    if (form.expectedClearance && form.expectedClearance < form.arrival) { window.alert('Expected customs clearance cannot be before the arrival date.'); return; }
+    if (form.customsRef.trim() && inbounds.some(row => row.id !== editingId && row.customsRef?.toLowerCase() === form.customsRef.trim().toLowerCase())) { window.alert('That customs reference is already linked to another inbound.'); return; }
+    const values = { goods: form.goods.trim(), sku: form.sku.trim(), hsCode: form.hsCode.trim(), qty, uom: form.uom, origin: form.origin.trim(), exportCountry: form.exportCountry.trim(), carrier: form.carrier.trim(), bol: form.bol.trim(), flight: form.flight.trim(), warehouse: form.warehouse, location: form.location.trim(), arrival: form.arrival, expectedClearance: form.expectedClearance, docRef: form.docRef.trim(), customsRef: form.customsRef.trim(), status: form.status, estimatedValue, netWeight };
     if (editingId) { updateInbound(editingId, values); setEditingId(null); }
     else {
       let nextReference = 46;
@@ -498,19 +588,19 @@ export function InboundPage() {
       const ref = `FZ-IN-${String(nextReference).padStart(4, '0')}`;
       if (!addInbound({ ...values, ref })) { window.alert('An inbound with this reference already exists.'); return; }
     }
-    setForm({ goods: '', sku: '', hsCode: '', qty: '', uom: '', origin: '', carrier: '', bol: '', flight: '', arrival: '', warehouse: '', location: '', docRef: '', status: '' }); setOpen(false);
+    setForm(emptyInboundForm); setOpen(false);
   };
   return (
     <div className="space-y-5">
       <PageHeader
         title="FZ Inbound"
         description="Receive goods entering the free zone and record relevant documentation"
-        action={{ label: 'Record Inbound', onClick: () => setOpen(true), icon: Plus }}
+        action={{ label: 'Record Inbound', onClick: () => { setEditingId(null); setForm(emptyInboundForm); setOpen(true); }, icon: Plus }}
       />
       <div className="grid gap-3 sm:grid-cols-3">
-        <StatsCard title="Total Inbound (Sep)" value="45" icon={Package} iconBg="bg-blue-50" iconColor="text-blue-600" />
-        <StatsCard title="Pending Customs" value="2" icon={Clock} iconBg="bg-amber-50" iconColor="text-amber-600" />
-        <StatsCard title="Cleared" value="43" icon={CheckCircle2} iconBg="bg-green-50" iconColor="text-green-600" />
+        <StatsCard title="Total Inbound (Sep)" value={45 + inbounds.length} icon={Package} iconBg="bg-blue-50" iconColor="text-blue-600" />
+        <StatsCard title="Pending Customs" value={2 + inbounds.filter(row => ['UNDER_CUSTOMS', 'PENDING_CLEARANCE'].includes(row.status)).length} icon={Clock} iconBg="bg-amber-50" iconColor="text-amber-600" />
+        <StatsCard title="Cleared" value={43 + inbounds.filter(row => ['CUSTOMS_CLEARED', 'DUTY_FREE'].includes(row.status)).length} icon={CheckCircle2} iconBg="bg-green-50" iconColor="text-green-600" />
       </div>
       <Card>
         <CardContent className="p-4">
@@ -518,39 +608,42 @@ export function InboundPage() {
             cols={[
               { key: 'ref', label: 'Reference' }, { key: 'goods', label: 'Goods Description' },
               { key: 'qty', label: 'Qty' }, { key: 'uom', label: 'UOM' },
-              { key: 'origin', label: 'Origin Country' }, { key: 'carrier', label: 'Carrier' },
-              { key: 'bol', label: 'Bill of Lading' }, { key: 'warehouse', label: 'FZ Warehouse' },
-              { key: 'arrival', label: 'Arrival Date' }, { key: 'docRef', label: 'Customs Doc' },
+              { key: 'origin', label: 'Origin Country' }, { key: 'exportCountry', label: 'Export Country' }, { key: 'carrier', label: 'Carrier' },
+              { key: 'bol', label: 'Bill of Lading' }, { key: 'flight', label: 'Flight / Vessel' }, { key: 'warehouse', label: 'FZ Warehouse' }, { key: 'location', label: 'Bay / Location' },
+              { key: 'arrival', label: 'Arrival Date' }, { key: 'expectedClearance', label: 'Expected Clearance' }, { key: 'docRef', label: 'Customs Declaration' }, { key: 'customsRef', label: 'Customs Ref' },
+              { key: 'estimatedValue', label: 'Est. Value (AED)' }, { key: 'netWeight', label: 'Net Weight (KG)' },
               { key: 'status', label: 'Status' }, { key: 'actions', label: 'Actions' },
             ]}
-            rows={[...inboundSeed.map(r => ({ ...r, actions: '—' })), ...inbounds.map(r => ({ ref: r.ref, goods: r.goods, qty: r.qty, uom: r.uom, origin: r.origin, carrier: r.carrier, bol: r.bol, warehouse: r.warehouse, arrival: r.arrival, docRef: r.docRef, status: r.status, actions: <div className="flex gap-2"><button className="text-[#1674c4] hover:underline" onClick={() => { setEditingId(r.id); setForm({ goods: r.goods, sku: r.sku, hsCode: r.hsCode || '', qty: String(r.qty), uom: r.uom, origin: r.origin, carrier: r.carrier, bol: r.bol, flight: '', arrival: r.arrival, warehouse: r.warehouse, location: r.location, docRef: r.docRef, status: r.status }); setOpen(true); }}>Edit</button><button className="text-red-600 hover:underline" onClick={() => deleteInbound(r.id)}>Delete</button></div> }))].map(r => ({ ...r, status: <StatusBadge status={r.status} /> }))}
+            rows={[...inboundSeed.map(r => ({ ...r, exportCountry: '—', flight: '—', location: '—', expectedClearance: '—', customsRef: '—', estimatedValue: '—', netWeight: '—', actions: '—' })), ...inbounds.map(r => ({ ref: r.ref, goods: r.goods, qty: r.qty, uom: r.uom, origin: r.origin, exportCountry: r.exportCountry || '—', carrier: r.carrier, bol: r.bol, flight: r.flight || '—', warehouse: r.warehouse, location: r.location || '—', arrival: r.arrival, expectedClearance: r.expectedClearance || '—', docRef: r.docRef, customsRef: r.customsRef || '—', estimatedValue: r.estimatedValue === undefined ? '—' : r.estimatedValue.toLocaleString('en-AE'), netWeight: r.netWeight ?? '—', status: r.status, actions: <div className="flex gap-2"><button className="text-[#1674c4] hover:underline" onClick={() => { setEditingId(r.id); setForm({ goods: r.goods, sku: r.sku, hsCode: r.hsCode || '', qty: String(r.qty), uom: r.uom, origin: r.origin, exportCountry: r.exportCountry || '', carrier: r.carrier, bol: r.bol, flight: r.flight || '', arrival: r.arrival, expectedClearance: r.expectedClearance || '', warehouse: r.warehouse, location: r.location, docRef: r.docRef, customsRef: r.customsRef || '', status: r.status, estimatedValue: r.estimatedValue === undefined ? '' : String(r.estimatedValue), netWeight: r.netWeight === undefined ? '' : String(r.netWeight) }); setOpen(true); }}>Edit</button><button className="text-red-600 hover:underline" onClick={() => deleteInbound(r.id)}>Delete</button></div> }))].map(r => ({ ...r, status: <StatusBadge status={r.status} /> }))}
           />
         </CardContent>
       </Card>
 
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="max-w-2xl">
-          <DialogHeader><DialogTitle>Record FZ Inbound Movement</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle>{editingId ? 'Edit FZ Inbound Movement' : 'Record FZ Inbound Movement'}</DialogTitle></DialogHeader>
           <div className="grid gap-3 pt-2 sm:grid-cols-2">
             <Field label="Goods Description"><Inp placeholder="Description of goods" value={form.goods} onChange={goods => setForm(f => ({ ...f, goods }))} /></Field>
             <Field label="SKU"><Inp placeholder="e.g. SKU-1001" value={form.sku} onChange={sku => setForm(f => ({ ...f, sku }))} /></Field>
             <Field label="HS Code"><Inp placeholder="e.g. 8534.00.00" value={form.hsCode} onChange={hsCode => setForm(f => ({ ...f, hsCode }))} /></Field>
-            <Field label="Quantity"><Inp placeholder="0" type="number" value={form.qty} onChange={qty => setForm(f => ({ ...f, qty }))} /></Field>
+            <Field label="Quantity"><Inp placeholder="0" type="number" min={0.01} value={form.qty} onChange={qty => setForm(f => ({ ...f, qty }))} /></Field>
             <Field label="Unit of Measure"><Sel placeholder="Select UOM" value={form.uom} onChange={uom => setForm(f => ({ ...f, uom }))} options={['PCS', 'KG', 'UNT', 'CTN', 'ROL', 'LTR', 'MTR']} /></Field>
             <Field label="Country of Origin"><Inp placeholder="e.g. China" value={form.origin} onChange={origin => setForm(f => ({ ...f, origin }))} /></Field>
-            <Field label="Country of Export"><Inp placeholder="e.g. Singapore" /></Field>
+            <Field label="Country of Export"><Inp placeholder="e.g. Singapore" value={form.exportCountry} onChange={exportCountry => setForm(f => ({ ...f, exportCountry }))} /></Field>
             <Field label="Carrier / Airline"><Inp placeholder="Carrier name" value={form.carrier} onChange={carrier => setForm(f => ({ ...f, carrier }))} /></Field>
             <Field label="Bill of Lading / AWB"><Inp placeholder="BOL-YYYY-NNNN" value={form.bol} onChange={bol => setForm(f => ({ ...f, bol }))} /></Field>
             <Field label="Vessel / Flight No."><Inp placeholder="e.g. EK-8714" value={form.flight} onChange={flight => setForm(f => ({ ...f, flight }))} /></Field>
             <Field label="Arrival Date" ><Inp type="date" placeholder="" value={form.arrival} onChange={arrival => setForm(f => ({ ...f, arrival }))} /></Field>
+            <Field label="Expected Customs Clearance"><Inp type="date" placeholder="" value={form.expectedClearance} onChange={expectedClearance => setForm(f => ({ ...f, expectedClearance }))} /></Field>
             <Field label="FZ Warehouse"><Sel placeholder="Select warehouse" value={form.warehouse} onChange={warehouse => setForm(f => ({ ...f, warehouse }))} options={warehouses.map(w => w.code)} /></Field>
             <Field label="Location / Bay"><Inp placeholder="e.g. Bay A-12" value={form.location} onChange={location => setForm(f => ({ ...f, location }))} /></Field>
             <Field label="Customs Declaration No."><Inp placeholder="DEC-YYYY-NNNN" value={form.docRef} onChange={docRef => setForm(f => ({ ...f, docRef }))} /></Field>
+            <Field label="Customs Reference No."><Inp placeholder="CUS-XXX-NNNN" value={form.customsRef} onChange={customsRef => setForm(f => ({ ...f, customsRef }))} /></Field>
             <Field label="Customs Duty Status"><Sel placeholder="Select status" value={form.status} onChange={status => setForm(f => ({ ...f, status }))} options={['DUTY_FREE', 'DUTY_APPLICABLE', 'BONDED', 'SUSPENDED', 'UNDER_CUSTOMS']} /></Field>
-            <Field label="Estimated Value (AED)"><Inp placeholder="0.00" type="number" /></Field>
-            <Field label="Net Weight (KG)"><Inp placeholder="0.00" type="number" /></Field>
+            <Field label="Estimated Value (AED)"><Inp placeholder="0.00" type="number" min={0} value={form.estimatedValue} onChange={estimatedValue => setForm(f => ({ ...f, estimatedValue }))} /></Field>
+            <Field label="Net Weight (KG)"><Inp placeholder="0.00" type="number" min={0} value={form.netWeight} onChange={netWeight => setForm(f => ({ ...f, netWeight }))} /></Field>
             <div className="col-span-2 flex justify-end gap-2 pt-2">
-              <Button type="button" variant="outline" onClick={() => setOpen(false)}>Cancel</Button>
+              <Button type="button" variant="outline" onClick={() => { setOpen(false); setEditingId(null); setForm(emptyInboundForm); }}>Cancel</Button>
               <Button onClick={saveInbound}>{editingId ? 'Save Changes' : 'Record Inbound'}</Button>
             </div>
           </div>
@@ -571,7 +664,7 @@ const outboundSeed = [
 
 export function OutboundPage() {
   const [open, setOpen] = useState(false);
-  const { entries, addEntry, deleteEntry, warehouses } = useFreeZoneRuntime();
+  const { entries, addEntry, updateEntry, deleteEntry, warehouses } = useFreeZoneRuntime();
   const outboundEntries = entries.filter(entry => entry.type === 'outbound');
   return (
     <div className="space-y-5">
@@ -581,9 +674,9 @@ export function OutboundPage() {
         action={{ label: 'Record Outbound', onClick: () => setOpen(true), icon: Plus }}
       />
       <div className="grid gap-3 sm:grid-cols-3">
-        <StatsCard title="Total Outbound (Sep)" value="31" icon={Package} iconBg="bg-indigo-50" iconColor="text-indigo-600" />
-        <StatsCard title="Pending Exit Clearance" value="1" icon={Clock} iconBg="bg-amber-50" iconColor="text-amber-600" />
-        <StatsCard title="Successfully Released" value="30" icon={CheckCircle2} iconBg="bg-green-50" iconColor="text-green-600" />
+        <StatsCard title="Total Outbound (Sep)" value={31 + outboundEntries.length} icon={Package} iconBg="bg-indigo-50" iconColor="text-indigo-600" />
+        <StatsCard title="Pending Exit Clearance" value={1 + outboundEntries.filter(entry => !['RELEASED', 'CUSTOMS_CLEARED'].includes(entry.fields.status || '')).length} icon={Clock} iconBg="bg-amber-50" iconColor="text-amber-600" />
+        <StatsCard title="Successfully Released" value={30 + outboundEntries.filter(entry => ['RELEASED', 'CUSTOMS_CLEARED'].includes(entry.fields.status || '')).length} icon={CheckCircle2} iconBg="bg-green-50" iconColor="text-green-600" />
       </div>
       <Card>
         <CardContent className="p-4">
@@ -595,7 +688,7 @@ export function OutboundPage() {
               { key: 'carrier', label: 'Carrier' }, { key: 'exitDate', label: 'Exit Date' },
               { key: 'warehouse', label: 'Warehouse' }, { key: 'status', label: 'Status' }, { key: 'actions', label: 'Actions' },
             ]}
-            rows={[...outboundSeed.map(r => ({ ...r, actions: '—' })), ...outboundEntries.map(r => ({ ref: r.ref, goods: r.fields.goods, qty: Number(r.fields.quantity), uom: r.fields.uom, destination: r.fields.destination, exitDocRef: r.fields.exitDocument, carrier: r.fields.carrier, exitDate: r.fields.exitDate, warehouse: r.fields.warehouse, status: 'PENDING_CLEARANCE', actions: <button className="text-red-600 hover:underline" onClick={() => deleteEntry(r.id)}>Delete</button> }))].map(r => ({ ...r, status: <StatusBadge status={r.status} /> }))}
+            rows={[...outboundSeed.map(r => ({ ...r, actions: '—' })), ...outboundEntries.map(r => ({ ref: r.ref, goods: r.fields.goods, qty: Number(r.fields.quantity), uom: r.fields.uom, destination: r.fields.destination, exitDocRef: r.fields.exitDocument, carrier: r.fields.carrier, exitDate: r.fields.exitDate, warehouse: r.fields.warehouse, status: r.fields.status || 'PENDING_CLEARANCE', actions: <div className="flex gap-2">{!['RELEASED', 'CUSTOMS_CLEARED'].includes(r.fields.status || '') && <button className="text-[#1674c4] hover:underline" onClick={() => updateEntry(r.id, { status: 'RELEASED' })}>Mark Released</button>}<button className="text-red-600 hover:underline" onClick={() => deleteEntry(r.id)}>Delete</button></div> }))].map(r => ({ ...r, status: <StatusBadge status={r.status} /> }))}
           />
         </CardContent>
       </Card>
@@ -603,7 +696,7 @@ export function OutboundPage() {
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="max-w-2xl">
           <DialogHeader><DialogTitle>Record FZ Outbound Movement</DialogTitle></DialogHeader>
-          <form className="grid gap-3 pt-2 sm:grid-cols-2" onSubmit={event => { event.preventDefault(); const f = Object.fromEntries(new FormData(event.currentTarget).entries()); addEntry('outbound', Object.fromEntries(Object.entries(f).map(([k, v]) => [k, String(v)]))); setOpen(false); }}>
+          <form className="grid gap-3 pt-2 sm:grid-cols-2" onSubmit={event => { event.preventDefault(); const f = Object.fromEntries(new FormData(event.currentTarget).entries()); addEntry('outbound', { ...Object.fromEntries(Object.entries(f).map(([k, v]) => [k, String(v)])), status: 'PENDING_CLEARANCE' }); setOpen(false); }}>
             <Field label="Goods Description"><Inp name="goods" required placeholder="Description of goods" /></Field>
             <Field label="HS Code"><Inp name="hsCode" placeholder="e.g. 8534.00.00" /></Field>
             <Field label="Quantity"><Inp name="quantity" min={0.01} required placeholder="0" type="number" /></Field>
@@ -640,8 +733,15 @@ const fzTransferSeed = [
 
 export function FZTransferPage() {
   const [open, setOpen] = useState(false);
-  const { entries, addEntry, deleteEntry, warehouses } = useFreeZoneRuntime();
+  const { entries, addEntry, updateEntry, deleteEntry, warehouses } = useFreeZoneRuntime();
   const transferEntries = entries.filter(entry => entry.type === 'transfer');
+  const recordTransfer = (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const values = Object.fromEntries(new FormData(event.currentTarget).entries());
+    if (values.source === values.destination) { window.alert('Choose two different warehouses for an inter-zone transfer.'); return; }
+    addEntry('transfer', { ...Object.fromEntries(Object.entries(values).map(([key, value]) => [key, String(value)])), status: 'IN_TRANSIT_FZ' });
+    setOpen(false);
+  };
   return (
     <div className="space-y-5">
       <PageHeader
@@ -650,9 +750,9 @@ export function FZTransferPage() {
         action={{ label: 'Record Transfer', onClick: () => setOpen(true), icon: Plus }}
       />
       <div className="grid gap-3 sm:grid-cols-3">
-        <StatsCard title="Transfers (Sep)" value="19" icon={ArrowRightLeft} iconBg="bg-sky-50" iconColor="text-sky-600" />
-        <StatsCard title="In Transit" value="1" icon={Clock} iconBg="bg-amber-50" iconColor="text-amber-600" />
-        <StatsCard title="Completed" value="17" icon={CheckCircle2} iconBg="bg-green-50" iconColor="text-green-600" />
+        <StatsCard title="Transfers (Sep)" value={19 + transferEntries.length} icon={ArrowRightLeft} iconBg="bg-sky-50" iconColor="text-sky-600" />
+        <StatsCard title="In Transit" value={1 + transferEntries.filter(entry => (entry.fields.status || 'IN_TRANSIT_FZ') === 'IN_TRANSIT_FZ').length} icon={Clock} iconBg="bg-amber-50" iconColor="text-amber-600" />
+        <StatsCard title="Completed" value={17 + transferEntries.filter(entry => ['CUSTOMS_CLEARED', 'RELEASED'].includes(entry.fields.status || '')).length} icon={CheckCircle2} iconBg="bg-green-50" iconColor="text-green-600" />
       </div>
       <Card>
         <CardContent className="p-4">
@@ -664,7 +764,7 @@ export function FZTransferPage() {
               { key: 'transitRef', label: 'Transit Customs Ref' }, { key: 'date', label: 'Date' },
               { key: 'status', label: 'Status' }, { key: 'actions', label: 'Actions' },
             ]}
-            rows={[...fzTransferSeed.map(r => ({ ...r, actions: '—' })), ...transferEntries.map(r => ({ ref: r.ref, goods: r.fields.goods, qty: Number(r.fields.quantity), uom: r.fields.uom, sourceFZ: r.fields.source, destFZ: r.fields.destination, transitRef: r.fields.transitRef, date: r.fields.date, status: 'IN_TRANSIT_FZ', actions: <button className="text-red-600 hover:underline" onClick={() => deleteEntry(r.id)}>Delete</button> }))].map(r => ({ ...r, status: <StatusBadge status={r.status} /> }))}
+            rows={[...fzTransferSeed.map(r => ({ ...r, actions: '—' })), ...transferEntries.map(r => ({ ref: r.ref, goods: r.fields.goods, qty: Number(r.fields.quantity), uom: r.fields.uom, sourceFZ: r.fields.source, destFZ: r.fields.destination, transitRef: r.fields.transitRef, date: r.fields.date, status: r.fields.status || 'IN_TRANSIT_FZ', actions: <div className="flex gap-2">{(r.fields.status || 'IN_TRANSIT_FZ') === 'IN_TRANSIT_FZ' && <button className="text-[#1674c4] hover:underline" onClick={() => updateEntry(r.id, { status: 'CUSTOMS_CLEARED' })}>Mark Received</button>}<button className="text-red-600 hover:underline" onClick={() => deleteEntry(r.id)}>Delete</button></div> }))].map(r => ({ ...r, status: <StatusBadge status={r.status} /> }))}
           />
         </CardContent>
       </Card>
@@ -672,7 +772,7 @@ export function FZTransferPage() {
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="max-w-lg">
           <DialogHeader><DialogTitle>Record FZ → FZ Transfer</DialogTitle></DialogHeader>
-          <form className="grid gap-3 pt-2 sm:grid-cols-2" onSubmit={event => { event.preventDefault(); const f = Object.fromEntries(new FormData(event.currentTarget).entries()); addEntry('transfer', Object.fromEntries(Object.entries(f).map(([k, v]) => [k, String(v)]))); setOpen(false); }}>
+          <form className="grid gap-3 pt-2 sm:grid-cols-2" onSubmit={recordTransfer}>
             <Field label="Source Free Zone Warehouse"><Sel name="source" required placeholder="Select source" options={warehouses.map(w => w.code)} /></Field>
             <Field label="Destination Free Zone Warehouse"><Sel name="destination" required placeholder="Select destination" options={warehouses.map(w => w.code)} /></Field>
             <Field label="Goods Description"><Inp name="goods" required placeholder="Description of goods" /></Field>
@@ -697,7 +797,7 @@ export function FZTransferPage() {
 // ─────────────────────────────────────────────────────────
 // 9.9 FZ → Mainland Workflow
 // ─────────────────────────────────────────────────────────
-type MLStatus = 'FZ_STOCK' | 'CUSTOMS_CLEARANCE' | 'MAINLAND_DELIVERY';
+type MLStatus = 'FZ_STOCK' | 'CUSTOMS_CLEARANCE' | 'MAINLAND_DELIVERY' | 'DELIVERED';
 const mlSeed: { ref: string; goods: string; qty: number; uom: string; fzWarehouse: string; mainlandDest: string; importDecl: string; date: string; stage: MLStatus }[] = [
   { ref: 'FZ-ML-0019', goods: 'Consumer Electronics', qty: 200, uom: 'PCS', fzWarehouse: 'JAFZA-01', mainlandDest: 'Al Quoz Warehouse, Dubai', importDecl: 'IMP-2026-1011', date: '20 Sep 2026', stage: 'MAINLAND_DELIVERY' },
   { ref: 'FZ-ML-0020', goods: 'Luxury Accessories', qty: 40, uom: 'PCS', fzWarehouse: 'DMCC-01', mainlandDest: 'Mall of Emirates, Dubai', importDecl: 'IMP-2026-1018', date: '21 Sep 2026', stage: 'CUSTOMS_CLEARANCE' },
@@ -709,13 +809,18 @@ const mlStages: { key: MLStatus; label: string; color: string; bg: string }[] = 
   { key: 'FZ_STOCK', label: 'FZ Stock', color: 'text-violet-700', bg: 'bg-violet-50 border-violet-200' },
   { key: 'CUSTOMS_CLEARANCE', label: 'Customs Clearance', color: 'text-amber-700', bg: 'bg-amber-50 border-amber-200' },
   { key: 'MAINLAND_DELIVERY', label: 'Mainland Delivery', color: 'text-green-700', bg: 'bg-green-50 border-green-200' },
+  { key: 'DELIVERED', label: 'Delivered', color: 'text-slate-700', bg: 'bg-slate-100 border-slate-200' },
 ];
 
 export function MainlandWorkflowPage() {
   const [open, setOpen] = useState(false);
-  const { entries, addEntry, deleteEntry, warehouses } = useFreeZoneRuntime();
+  const { entries, addEntry, updateEntry, deleteEntry, warehouses } = useFreeZoneRuntime();
   const mainlandEntries = entries.filter(entry => entry.type === 'mainland');
-  const allMainland = [...mlSeed.map(r => ({ ...r, id: '' })), ...mainlandEntries.map(r => ({ ref: r.ref, goods: r.fields.goods, qty: Number(r.fields.quantity), uom: r.fields.uom, fzWarehouse: r.fields.warehouse, mainlandDest: r.fields.destination, importDecl: r.fields.importDecl, date: r.fields.date, stage: 'CUSTOMS_CLEARANCE' as MLStatus, id: r.id }))];
+  const allMainland = [...mlSeed.map(r => ({ ...r, id: '' })), ...mainlandEntries.map(r => ({ ref: r.ref, goods: r.fields.goods, qty: Number(r.fields.quantity), uom: r.fields.uom, fzWarehouse: r.fields.warehouse, mainlandDest: r.fields.destination, importDecl: r.fields.importDecl, date: r.fields.date, stage: (r.fields.stage || 'FZ_STOCK') as MLStatus, id: r.id }))];
+  const advanceMovement = (id: string, stage: MLStatus) => {
+    const nextStage: Record<MLStatus, MLStatus> = { FZ_STOCK: 'CUSTOMS_CLEARANCE', CUSTOMS_CLEARANCE: 'MAINLAND_DELIVERY', MAINLAND_DELIVERY: 'DELIVERED', DELIVERED: 'DELIVERED' };
+    updateEntry(id, { stage: nextStage[stage] });
+  };
   return (
     <div className="space-y-5">
       <PageHeader
@@ -742,6 +847,7 @@ export function MainlandWorkflowPage() {
                     <p className="mt-0.5 text-xs text-[#6b7280]">{item.goods}</p>
                     <p className="mt-0.5 text-xs text-[#9ca3af]">{item.qty} {item.uom} · {item.fzWarehouse}</p>
                     {item.importDecl && <p className="mt-1 text-[10px] text-[#1674c4]">{item.importDecl}</p>}
+                    {item.id && item.stage !== 'DELIVERED' && <button className="mt-2 text-xs font-medium text-[#1674c4] hover:underline" onClick={() => advanceMovement(item.id, item.stage)}>{item.stage === 'MAINLAND_DELIVERY' ? 'Mark Delivered' : 'Advance Stage'}</button>}
                   </div>
                 ))}
               </div>
@@ -780,6 +886,7 @@ export function MainlandWorkflowPage() {
             <Field label="Quantity"><Inp name="quantity" min={0.01} required placeholder="0" type="number" /></Field>
             <Field label="Unit of Measure"><Sel name="uom" required placeholder="Select UOM" options={['PCS', 'KG', 'UNT', 'CTN', 'ROL']} /></Field>
             <Field label="FZ Warehouse (Source)"><Sel name="warehouse" required placeholder="Select warehouse" options={warehouses.map(w => w.code)} /></Field>
+            <Field label="Workflow Stage"><Sel name="stage" required placeholder="Select stage" options={mlStages.filter(stage => stage.key !== 'DELIVERED').map(stage => stage.key)} /></Field>
             <Field label="Mainland Destination"><Inp name="destination" required placeholder="Address / warehouse" /></Field>
             <Field label="Import Declaration No."><Inp name="importDecl" placeholder="IMP-YYYY-NNNN" /></Field>
             <Field label="Customs Duty Payment Ref"><Inp name="dutyPayment" placeholder="PAY-YYYY-NNNN" /></Field>
@@ -808,7 +915,7 @@ const reExportSeed = [
 
 export function ReExportPage() {
   const [open, setOpen] = useState(false);
-  const { entries, addEntry, deleteEntry, warehouses } = useFreeZoneRuntime();
+  const { entries, addEntry, updateEntry, deleteEntry, warehouses } = useFreeZoneRuntime();
   const reexportEntries = entries.filter(entry => entry.type === 'reexport');
   return (
     <div className="space-y-5">
@@ -818,9 +925,9 @@ export function ReExportPage() {
         action={{ label: 'Record Re-Export', onClick: () => setOpen(true), icon: Plus }}
       />
       <div className="grid gap-3 sm:grid-cols-3">
-        <StatsCard title="Re-Exports (Sep)" value="8" icon={Globe} iconBg="bg-indigo-50" iconColor="text-indigo-600" />
-        <StatsCard title="Pending Exit" value="1" icon={Clock} iconBg="bg-amber-50" iconColor="text-amber-600" />
-        <StatsCard title="Completed" value="7" icon={CheckCircle2} iconBg="bg-green-50" iconColor="text-green-600" />
+        <StatsCard title="Re-Exports (Sep)" value={8 + reexportEntries.length} icon={Globe} iconBg="bg-indigo-50" iconColor="text-indigo-600" />
+        <StatsCard title="Pending Exit" value={1 + reexportEntries.filter(entry => !['CUSTOMS_CLEARED', 'RELEASED'].includes(entry.fields.status || '')).length} icon={Clock} iconBg="bg-amber-50" iconColor="text-amber-600" />
+        <StatsCard title="Completed" value={7 + reexportEntries.filter(entry => ['CUSTOMS_CLEARED', 'RELEASED'].includes(entry.fields.status || '')).length} icon={CheckCircle2} iconBg="bg-green-50" iconColor="text-green-600" />
       </div>
       <Card>
         <CardContent className="p-4">
@@ -832,7 +939,7 @@ export function ReExportPage() {
               { key: 'carrier', label: 'Carrier' }, { key: 'exitDate', label: 'Exit Date' },
               { key: 'fzWarehouse', label: 'FZ Warehouse' }, { key: 'status', label: 'Status' }, { key: 'actions', label: 'Actions' },
             ]}
-            rows={[...reExportSeed.map(r => ({ ...r, actions: '—' })), ...reexportEntries.map(r => ({ ref: r.ref, goods: r.fields.goods, qty: Number(r.fields.quantity), uom: r.fields.uom, destCountry: r.fields.destination, permitNo: r.fields.permit, carrier: r.fields.carrier, exitDate: r.fields.exitDate, fzWarehouse: r.fields.warehouse, status: 'PENDING_CLEARANCE', actions: <button className="text-red-600 hover:underline" onClick={() => deleteEntry(r.id)}>Delete</button> }))].map(r => ({ ...r, status: <StatusBadge status={r.status} /> }))}
+            rows={[...reExportSeed.map(r => ({ ...r, actions: '—' })), ...reexportEntries.map(r => ({ ref: r.ref, goods: r.fields.goods, qty: Number(r.fields.quantity), uom: r.fields.uom, destCountry: r.fields.destination, permitNo: r.fields.permit, carrier: r.fields.carrier, exitDate: r.fields.exitDate, fzWarehouse: r.fields.warehouse, status: r.fields.status || 'PENDING_CLEARANCE', actions: <div className="flex gap-2">{!['CUSTOMS_CLEARED', 'RELEASED'].includes(r.fields.status || '') && <button className="text-[#1674c4] hover:underline" onClick={() => updateEntry(r.id, { status: 'CUSTOMS_CLEARED' })}>Mark Complete</button>}<button className="text-red-600 hover:underline" onClick={() => deleteEntry(r.id)}>Delete</button></div> }))].map(r => ({ ...r, status: <StatusBadge status={r.status} /> }))}
           />
         </CardContent>
       </Card>
@@ -840,7 +947,7 @@ export function ReExportPage() {
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="max-w-lg">
           <DialogHeader><DialogTitle>Record Re-Export</DialogTitle></DialogHeader>
-          <form className="grid gap-3 pt-2 sm:grid-cols-2" onSubmit={event => { event.preventDefault(); const f = Object.fromEntries(new FormData(event.currentTarget).entries()); addEntry('reexport', Object.fromEntries(Object.entries(f).map(([k, v]) => [k, String(v)]))); setOpen(false); }}>
+          <form className="grid gap-3 pt-2 sm:grid-cols-2" onSubmit={event => { event.preventDefault(); const f = Object.fromEntries(new FormData(event.currentTarget).entries()); addEntry('reexport', { ...Object.fromEntries(Object.entries(f).map(([k, v]) => [k, String(v)])), status: 'PENDING_CLEARANCE' }); setOpen(false); }}>
             <Field label="Goods Description"><Inp name="goods" required placeholder="Description of goods" /></Field>
             <Field label="HS Code"><Inp name="hsCode" placeholder="e.g. 8534.00.00" /></Field>
             <Field label="Quantity"><Inp name="quantity" min={0.01} required placeholder="0" type="number" /></Field>
@@ -876,18 +983,77 @@ const docSeed = [
   { name: 'Certificate of Origin - FZ-IN-0044', type: 'Certificate of Origin', linkedRef: 'FZ-IN-0044', uploadDate: '12 Sep 2026', size: '155 KB', uploader: 'Ahmed Al Mansoori' },
   { name: 'Commercial Invoice - FZ-ML-0019', type: 'Commercial Invoice', linkedRef: 'FZ-ML-0019', uploadDate: '20 Sep 2026', size: '290 KB', uploader: 'Sara Al Yabhouni' },
 ];
+type RepositoryDoc = { id: string; name: string; type: string; linkedRef: string; uploadDate: string; size: string; uploader: string; fileName?: string; fileData?: string; fileType?: string };
 
 export function DocumentRepositoryPage() {
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState('');
   const [typeFilter, setTypeFilter] = useState('All Types');
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [fileError, setFileError] = useState('');
+  const [storageWarning, setStorageWarning] = useState('');
+  const [previewDoc, setPreviewDoc] = useState<RepositoryDoc | null>(null);
   const { entries, addEntry, deleteEntry } = useFreeZoneRuntime();
-  const tempDocs = entries.filter(entry => entry.type === 'document').map(entry => ({ name: entry.fields.name, type: entry.fields.type, linkedRef: entry.fields.linkedRef, uploadDate: entry.fields.date, size: entry.fields.fileName || '—', uploader: entry.fields.issuedBy || 'Current User', id: entry.id }));
+  useEffect(() => {
+    const handleStorageError = () => setStorageWarning('Browser storage is full. This document was added for this session but may not remain after refresh. Remove older large attachments and try again.');
+    window.addEventListener('free-zone-storage-error', handleStorageError);
+    return () => window.removeEventListener('free-zone-storage-error', handleStorageError);
+  }, []);
+  const tempDocs: RepositoryDoc[] = entries.filter(entry => entry.type === 'document').map(entry => ({
+    id: entry.id,
+    name: entry.fields.name,
+    type: entry.fields.type,
+    linkedRef: entry.fields.linkedRef,
+    uploadDate: entry.fields.date,
+    size: entry.fields.fileSize || '—',
+    uploader: entry.fields.issuedBy || 'Current User',
+    fileName: entry.fields.fileName,
+    fileData: entry.fields.fileData,
+    fileType: entry.fields.fileType,
+  }));
 
-  const filtered = [...docSeed.map(doc => ({ ...doc, id: '' })), ...tempDocs].filter(d =>
+  const filtered: RepositoryDoc[] = [...docSeed.map(doc => ({ ...doc, id: '' })), ...tempDocs].filter(d =>
     (typeFilter === 'All Types' || d.type === typeFilter) &&
     (d.name.toLowerCase().includes(search.toLowerCase()) || d.linkedRef.toLowerCase().includes(search.toLowerCase()))
   );
+
+  const saveDocument = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (!selectedFile) { setFileError('Choose a file to attach to this document.'); return; }
+    if (selectedFile.size > FZ_UPLOAD_LIMIT_BYTES) { setFileError(`Choose a file smaller than ${formatBytes(FZ_UPLOAD_LIMIT_BYTES)} so it can be kept in this browser.`); return; }
+    try {
+      const values = Object.fromEntries(new FormData(event.currentTarget).entries());
+      const fileData = await fileAsDataUrl(selectedFile);
+      addEntry('document', {
+        ...Object.fromEntries(Object.entries(values).map(([key, value]) => [key, String(value)])),
+        fileName: selectedFile.name,
+        fileSize: formatBytes(selectedFile.size),
+        fileType: selectedFile.type || 'application/octet-stream',
+        fileData,
+      });
+      setSelectedFile(null);
+      setFileError('');
+      setStorageWarning('');
+      setOpen(false);
+    } catch {
+      setFileError('The selected file could not be read. Try another file.');
+    }
+  };
+
+  const downloadDocument = (doc: RepositoryDoc) => {
+    const safeName = (doc.fileName || doc.name).replace(/[^\w.-]+/g, '_');
+    if (doc.fileData) {
+      const anchor = document.createElement('a');
+      anchor.href = doc.fileData;
+      anchor.download = safeName;
+      document.body.appendChild(anchor);
+      anchor.click();
+      anchor.remove();
+      return;
+    }
+    const metadata = [`Document: ${doc.name}`, `Type: ${doc.type}`, `Linked reference: ${doc.linkedRef}`, `Date: ${doc.uploadDate}`, `Uploaded by: ${doc.uploader}`, '', 'This sample repository record contains metadata only; no original file was provided.'].join('\n');
+    downloadFile(`${safeName}.txt`, metadata);
+  };
 
   return (
     <div className="space-y-5">
@@ -933,10 +1099,10 @@ export function DocumentRepositoryPage() {
                 <span>{doc.uploadDate}</span>
               </div>
               <div className="mt-3 flex gap-2">
-                <Button size="sm" variant="outline" className="flex-1 gap-1.5 text-xs">
+                <Button size="sm" variant="outline" className="flex-1 gap-1.5 text-xs" onClick={() => setPreviewDoc(doc)}>
                   <Eye className="h-3 w-3" />View
                 </Button>
-                <Button size="sm" variant="outline" className="flex-1 gap-1.5 text-xs">
+                <Button size="sm" variant="outline" className="flex-1 gap-1.5 text-xs" onClick={() => downloadDocument(doc)}>
                   <Download className="h-3 w-3" />Download
                 </Button>
                 {doc.id && <button className="px-2 text-xs text-red-600" onClick={() => deleteEntry(doc.id)}>Delete</button>}
@@ -948,29 +1114,53 @@ export function DocumentRepositoryPage() {
           <div className="col-span-3 flex min-h-32 items-center justify-center text-sm text-[#9ca3af]">No documents found</div>
         )}
       </div>
+      <div className="relative max-w-md">
+        <Search className="absolute left-3 top-2.5 h-4 w-4 text-[#9ca3af]" />
+        <input type="search" placeholder="Search SKU, product or HS code…" value={search} onChange={event => setSearch(event.target.value)} className="h-10 w-full rounded-md border border-[#e5e2dc] pl-9 pr-3 text-sm focus:outline-none focus:ring-2 focus:ring-[#2490ef]/30" />
+      </div>
 
-      <Dialog open={open} onOpenChange={setOpen}>
+      <Dialog open={open} onOpenChange={value => { setOpen(value); if (!value) { setSelectedFile(null); setFileError(''); } }}>
         <DialogContent className="max-w-md">
           <DialogHeader><DialogTitle>Upload Customs Document</DialogTitle></DialogHeader>
-          <form className="grid gap-3 pt-2" onSubmit={event => { event.preventDefault(); const f = Object.fromEntries(new FormData(event.currentTarget).entries()); addEntry('document', Object.fromEntries(Object.entries(f).map(([k, v]) => [k, String(v)]))); setOpen(false); }}>
+          <form className="grid gap-3 pt-2" onSubmit={saveDocument}>
             <Field label="Document Type"><Sel name="type" required placeholder="Select type" options={docTypes.slice(1)} /></Field>
             <Field label="Document Name / Title"><Inp name="name" required placeholder="e.g. BOL for FZ-IN-0043" /></Field>
             <Field label="Linked Transaction Reference"><Inp name="linkedRef" required placeholder="FZ-IN-NNNN / FZ-OUT-NNNN etc." /></Field>
             <Field label="Issue Date"><Inp name="date" required type="date" placeholder="" /></Field>
             <Field label="Issued By / Authority"><Inp name="issuedBy" required placeholder="Issuing authority" /></Field>
             <Field label="File Upload">
-              <div className="flex h-24 flex-col items-center justify-center rounded-md border-2 border-dashed border-[#e5e2dc] text-sm text-[#9ca3af] hover:border-[#2490ef]/40 cursor-pointer">
-                <Upload className="mb-1 h-5 w-5" />
-                <Inp name="fileName" placeholder="Optional filename (file content is not stored)" />
+              <div className="rounded-md border-2 border-dashed border-[#e5e2dc] p-3 text-sm hover:border-[#2490ef]/40">
+                <label className="flex cursor-pointer flex-col items-center gap-1 text-center text-[#6b7280]">
+                  <Upload className="h-5 w-5 text-[#1674c4]" />
+                  <span>{selectedFile ? selectedFile.name : 'Choose a file from your device'}</span>
+                  <span className="text-xs text-[#9ca3af]">PDF, image, Office, text or CSV · up to {formatBytes(FZ_UPLOAD_LIMIT_BYTES)}</span>
+                  <input className="sr-only" type="file" accept=".pdf,.png,.jpg,.jpeg,.webp,.doc,.docx,.xls,.xlsx,.txt,.csv" required onChange={event => { const file = event.target.files?.[0] || null; setSelectedFile(file); setFileError(file && file.size > FZ_UPLOAD_LIMIT_BYTES ? `Choose a file smaller than ${formatBytes(FZ_UPLOAD_LIMIT_BYTES)}.` : ''); }} />
+                </label>
               </div>
             </Field>
+            {fileError && <p className="text-sm text-red-600" role="alert">{fileError}</p>}
             <div className="flex justify-end gap-2 pt-1">
-              <Button type="button" variant="outline" onClick={() => setOpen(false)}>Cancel</Button>
-              <Button type="submit">Save Document Details</Button>
+              <Button type="button" variant="outline" onClick={() => { setOpen(false); setSelectedFile(null); setFileError(''); }}>Cancel</Button>
+              <Button type="submit">Upload Document</Button>
             </div>
           </form>
         </DialogContent>
       </Dialog>
+
+      <Dialog open={Boolean(previewDoc)} onOpenChange={open => { if (!open) setPreviewDoc(null); }}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader><DialogTitle>{previewDoc?.name || 'Document details'}</DialogTitle></DialogHeader>
+          {previewDoc && <div className="space-y-3 text-sm">
+            <p><span className="font-medium">Type:</span> {previewDoc.type}</p>
+            <p><span className="font-medium">Linked reference:</span> {previewDoc.linkedRef}</p>
+            <p><span className="font-medium">Date:</span> {previewDoc.uploadDate}</p>
+            <p><span className="font-medium">File:</span> {previewDoc.fileName || 'Sample record (metadata only)'}</p>
+            <p><span className="font-medium">Size:</span> {previewDoc.size}</p>
+            {previewDoc.fileData ? <button className="font-medium text-[#1674c4] hover:underline" onClick={() => window.open(previewDoc.fileData, '_blank', 'noopener,noreferrer')}>Open attached file</button> : <p className="text-xs text-[#7c8591]">The sample record has no original attachment. Download creates a text summary of its metadata.</p>}
+          </div>}
+        </DialogContent>
+      </Dialog>
+      {storageWarning && <div className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800" role="status">{storageWarning}</div>}
     </div>
   );
 }
@@ -987,22 +1177,52 @@ const reconSeed = [
 ];
 
 export function CustomsReconciliationPage() {
-  const matched = reconSeed.filter(r => r.variance === 0).length;
-  const variances = reconSeed.filter(r => r.variance !== 0).length;
+  const { inbounds, customsCounts, setCustomsCount, entries, addEntry } = useFreeZoneRuntime();
+  const stockMap = new Map<string, { sku: string; product: string; systemQty: number; defaultCustomsQty: number; warehouse: string; lastReconciled: string }>();
+  for (const row of reconSeed) {
+    const key = `${row.sku}@${row.warehouse}`;
+    stockMap.set(key, { sku: row.sku, product: row.product, systemQty: row.systemQty, defaultCustomsQty: row.customsQty, warehouse: row.warehouse, lastReconciled: row.lastReconciled });
+  }
+  for (const inbound of inbounds) {
+    const key = `${inbound.sku}@${inbound.warehouse}`;
+    const existing = stockMap.get(key);
+    if (existing) {
+      existing.systemQty += inbound.qty;
+      existing.defaultCustomsQty += inbound.qty;
+    } else {
+      stockMap.set(key, { sku: inbound.sku, product: inbound.goods, systemQty: inbound.qty, defaultCustomsQty: inbound.qty, warehouse: inbound.warehouse, lastReconciled: 'Not reconciled' });
+    }
+  }
+  const rows = Array.from(stockMap.values()).map(row => {
+    const key = `${row.sku}@${row.warehouse}`;
+    const customsQty = customsCounts[key] ?? row.defaultCustomsQty;
+    return { ...row, customsQty, variance: customsQty - row.systemQty, key };
+  });
+  const matched = rows.filter(row => row.variance === 0).length;
+  const variances = rows.length - matched;
+  const lastRun = entries.filter(entry => entry.type === 'reconciliation').at(-1);
+  const runReconciliation = () => {
+    const checked = rows;
+    const matchedCount = checked.filter(row => row.variance === 0).length;
+    const varianceCount = checked.length - matchedCount;
+    addEntry('reconciliation', { date: new Date().toISOString(), checked: String(checked.length), matched: String(matchedCount), variances: String(varianceCount) });
+  };
 
   return (
     <div className="space-y-5">
       <PageHeader
         title="Customs Stock Reconciliation"
         description="Reconcile system inventory against customs-controlled inventory records"
-        action={{ label: 'Run Reconciliation', onClick: () => {}, icon: FileCheck2 }}
+        action={{ label: 'Run Reconciliation', onClick: runReconciliation, icon: FileCheck2 }}
       />
 
       <div className="grid gap-3 sm:grid-cols-3">
-        <StatsCard title="Items Reconciled" value={reconSeed.length} icon={Package} iconBg="bg-blue-50" iconColor="text-blue-600" />
+        <StatsCard title="Items Reconciled" value={rows.length} icon={Package} iconBg="bg-blue-50" iconColor="text-blue-600" />
         <StatsCard title="Matched (No Variance)" value={matched} icon={CheckCircle2} iconBg="bg-green-50" iconColor="text-green-600" />
         <StatsCard title="Variances Found" value={variances} icon={AlertTriangle} iconBg="bg-red-50" iconColor="text-red-600" />
       </div>
+      {lastRun && <div className="rounded-md border border-[#dbeafe] bg-[#eff6ff] px-3 py-2 text-sm text-[#1e40af]" role="status">Last run: {new Date(lastRun.fields.date).toLocaleString()} · {lastRun.fields.checked} counted items · {lastRun.fields.matched} matched · {lastRun.fields.variances} variances</div>}
+      <p className="text-xs text-[#7c8591]">Enter the quantity shown by customs for each SKU and warehouse, then run reconciliation. Counts and run history are kept in this browser.</p>
 
       <Card>
         <CardContent className="p-4">
@@ -1013,14 +1233,19 @@ export function CustomsReconciliationPage() {
               { key: 'customsQty', label: 'Customs Qty' }, { key: 'variance', label: 'Variance' },
               { key: 'lastReconciled', label: 'Last Reconciled' }, { key: 'reconciliationStatus', label: 'Status' },
             ]}
-            rows={reconSeed.map(r => ({
-              ...r,
+            rows={rows.map(r => ({
+              sku: r.sku,
+              product: r.product,
+              warehouse: r.warehouse,
+              systemQty: r.systemQty,
+              customsQty: <Input aria-label={`Customs quantity for ${r.sku} at ${r.warehouse}`} className="w-28" type="number" min={0} step="any" value={r.customsQty} onChange={event => { const next = Number(event.target.value); if (event.target.value === '' || (Number.isFinite(next) && next >= 0)) setCustomsCount(r.key, next); }} />,
               variance: (
                 <span className={`font-semibold ${r.variance === 0 ? 'text-[#0f9d58]' : r.variance > 0 ? 'text-[#d98324]' : 'text-[#c3423f]'}`}>
                   {r.variance === 0 ? '—' : r.variance > 0 ? `+${r.variance}` : r.variance}
                 </span>
               ),
-              reconciliationStatus: r.variance === 0
+              lastReconciled: lastRun ? new Date(lastRun.fields.date).toLocaleDateString() : r.lastReconciled,
+              reconciliationStatus: lastRun && r.variance === 0
                 ? <StatusBadge status="APPROVED" />
                 : <StatusBadge status="PENDING" />,
             }))}
@@ -1054,12 +1279,15 @@ const actionTypeColors: Record<string, string> = {
   CLEARANCE: 'bg-emerald-100 text-emerald-700',
   RE_EXPORT: 'bg-violet-100 text-violet-700',
   RECONCILIATION: 'bg-gray-100 text-gray-700',
+  WAREHOUSE: 'bg-cyan-100 text-cyan-700',
+  WORKFLOW: 'bg-sky-100 text-sky-700',
+  RECORD_CHANGE: 'bg-red-100 text-red-700',
 };
 
 export function FZAuditTrailPage() {
   const [typeFilter, setTypeFilter] = useState('ALL');
-  const { inbounds, entries: runtimeEntries } = useFreeZoneRuntime();
-  const entries = [...inbounds.map(r => ({ timestamp: new Date(r.createdAt).toLocaleString(), action: 'Inbound Recorded', ref: r.ref, user: 'Current User', warehouse: r.warehouse, details: `${r.goods} · ${r.qty} ${r.uom} · ${r.docRef}`, type: 'INBOUND' })), ...runtimeEntries.map(r => ({ timestamp: new Date(r.createdAt).toLocaleString(), action: `${r.type.replace(/([A-Z])/g, ' $1')} Recorded`, ref: r.ref, user: 'Current User', warehouse: r.fields.warehouse || r.fields.source || '—', details: r.fields.goods || r.fields.name || r.fields.description || r.fields.linkedRef || 'Temporary frontend record', type: r.type === 'outbound' ? 'OUTBOUND' : r.type === 'transfer' ? 'TRANSFER' : r.type === 'reexport' ? 'RE_EXPORT' : r.type === 'mainland' ? 'OUTBOUND' : r.type === 'document' ? 'DOCUMENT' : r.type === 'customsReference' ? 'INBOUND' : 'STATUS_CHANGE' })), ...auditSeed];
+  const { auditEvents } = useFreeZoneRuntime();
+  const entries = [...auditEvents.map(event => ({ timestamp: new Date(event.createdAt).toLocaleString(), action: event.action, ref: event.ref, user: event.user, warehouse: event.warehouse, details: event.details, type: event.type })), ...auditSeed];
   const types = ['ALL', ...Array.from(new Set(entries.map(a => a.type)))];
   const filtered = entries.filter(r => typeFilter === 'ALL' || r.type === typeFilter);
 
@@ -1123,6 +1351,18 @@ export function DutyClassificationPage() {
   const [open, setOpen] = useState(false);
   const { entries, addEntry, deleteEntry } = useFreeZoneRuntime();
   const classes = entries.filter(entry => entry.type === 'dutyClassification');
+  const saveClassification = (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const values = Object.fromEntries(new FormData(event.currentTarget).entries());
+    const hsCode = String(values.hsCode).trim().toLowerCase();
+    const dutyRate = Number(values.dutyRate);
+    const vatRate = Number(values.vatRate);
+    if (!Number.isFinite(dutyRate) || dutyRate < 0 || dutyRate > 100 || !Number.isFinite(vatRate) || vatRate < 0 || vatRate > 100) { window.alert('Duty and VAT rates must be between 0 and 100.'); return; }
+    if (dutyClassSeed.some(row => row.hsCode.toLowerCase() === hsCode) || classes.some(row => row.fields.hsCode.toLowerCase() === hsCode)) { window.alert('A classification for that HS code already exists.'); return; }
+    if (values.effectiveTo && String(values.effectiveTo) < String(values.effectiveFrom)) { window.alert('The end date cannot be before the effective date.'); return; }
+    addEntry('dutyClassification', Object.fromEntries(Object.entries(values).map(([key, value]) => [key, String(value)])));
+    setOpen(false);
+  };
   return (
     <div className="space-y-5">
       <PageHeader
@@ -1142,9 +1382,9 @@ export function DutyClassificationPage() {
               { key: 'id', label: 'ID' }, { key: 'hsCode', label: 'HS Code' },
               { key: 'description', label: 'Description' }, { key: 'dutyRate', label: 'Duty Rate' },
               { key: 'vatRate', label: 'VAT Rate' }, { key: 'status', label: 'Status' },
-              { key: 'effectiveFrom', label: 'Effective From' }, { key: 'authority', label: 'Authority' }, { key: 'actions', label: 'Actions' },
+              { key: 'effectiveFrom', label: 'Effective From' }, { key: 'effectiveTo', label: 'Effective To' }, { key: 'authority', label: 'Authority' }, { key: 'notes', label: 'Notes' }, { key: 'actions', label: 'Actions' },
             ]}
-            rows={[...dutyClassSeed.map(r => ({ ...r, actions: '—' })), ...classes.map(r => ({ id: r.ref, hsCode: r.fields.hsCode, description: r.fields.description, dutyRate: `${r.fields.dutyRate}%`, vatRate: `${r.fields.vatRate}%`, status: r.fields.status, effectiveFrom: r.fields.effectiveFrom, authority: r.fields.authority, actions: <button className="text-red-600 hover:underline" onClick={() => deleteEntry(r.id)}>Delete</button> }))].map(r => ({ ...r, status: <StatusBadge status={r.status} /> }))}
+            rows={[...dutyClassSeed.map(r => ({ ...r, effectiveTo: '—', notes: '—', actions: '—' })), ...classes.map(r => ({ id: r.ref, hsCode: r.fields.hsCode, description: r.fields.description, dutyRate: `${r.fields.dutyRate}%`, vatRate: `${r.fields.vatRate}%`, status: r.fields.status, effectiveFrom: r.fields.effectiveFrom, effectiveTo: r.fields.effectiveTo || '—', authority: r.fields.authority, notes: r.fields.notes || '—', actions: <button className="text-red-600 hover:underline" onClick={() => deleteEntry(r.id)}>Delete</button> }))].map(r => ({ ...r, status: <StatusBadge status={r.status} /> }))}
           />
         </CardContent>
       </Card>
@@ -1152,11 +1392,11 @@ export function DutyClassificationPage() {
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="max-w-lg">
           <DialogHeader><DialogTitle>Add Duty / Tax Classification</DialogTitle></DialogHeader>
-          <form className="grid gap-3 pt-2 sm:grid-cols-2" onSubmit={event => { event.preventDefault(); const f = Object.fromEntries(new FormData(event.currentTarget).entries()); addEntry('dutyClassification', Object.fromEntries(Object.entries(f).map(([k, v]) => [k, String(v)]))); setOpen(false); }}>
+          <form className="grid gap-3 pt-2 sm:grid-cols-2" onSubmit={saveClassification}>
             <Field label="HS Code"><Inp name="hsCode" required placeholder="e.g. 8534.00.00" /></Field>
             <Field label="Description"><Inp name="description" required placeholder="Product/commodity description" /></Field>
-            <Field label="Duty Rate (%)"><Inp name="dutyRate" required placeholder="0" type="number" /></Field>
-            <Field label="VAT Rate (%)"><Inp name="vatRate" required placeholder="0" type="number" /></Field>
+            <Field label="Duty Rate (%)"><Inp name="dutyRate" required min={0} max={100} placeholder="0" type="number" /></Field>
+            <Field label="VAT Rate (%)"><Inp name="vatRate" required min={0} max={100} placeholder="0" type="number" /></Field>
             <Field label="Classification Status"><Sel name="status" required placeholder="Select status" options={['DUTY_FREE', 'DUTY_APPLICABLE', 'SUSPENDED', 'BONDED', 'RELEASED']} /></Field>
             <Field label="Issuing Authority"><Sel name="authority" required placeholder="Select authority" options={['UAE FTA', 'UAE MOE', 'UAE MoH', 'Dubai Customs', 'JAFZA Authority']} /></Field>
             <Field label="Effective From"><Inp name="effectiveFrom" required type="date" placeholder="" /></Field>

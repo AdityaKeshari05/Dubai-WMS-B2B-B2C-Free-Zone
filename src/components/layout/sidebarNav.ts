@@ -56,6 +56,11 @@ export const navItems: NavItem[] = [
 	      { label: 'Item-wise Sales', href: '/inventory/reports/item-wise-sales', icon: ChartColumnIncreasing, permission: 'inventory:stock-balance:read' },
 	      { label: 'Gross Profit', href: '/inventory/reports/gross-profit', icon: CircleDollarSign, permission: 'inventory:stock-balance:read' },
 	      { label: 'Slow Moving Stock', href: '/inventory/reports/slow-moving-stock', icon: ArchiveX, permission: 'inventory:stock-balance:read' },
+	      { label: 'WMS Stock', href: '/inventory/wms-stock', icon: Boxes },
+	      { label: 'WMS Transfers', href: '/inventory/wms-transfers', icon: ArrowLeftRight },
+	      { label: 'WMS Adjustments', href: '/inventory/wms-adjustments', icon: SlidersHorizontal },
+	      { label: 'WMS Cycle Counts', href: '/inventory/wms-counts', icon: ClipboardCheck },
+	      { label: 'WMS History', href: '/inventory/wms-history', icon: History },
     ],
   },
   {
@@ -101,6 +106,30 @@ export const navItems: NavItem[] = [
       { label: 'Fulfilment', href: '/sales/fulfilment', icon: PackageCheck },
       { label: 'Sales Reports', href: '/sales/reports', icon: BarChart3 },
       { label: 'Sales Configuration', href: '/sales/settings', icon: Settings },
+    ],
+  },
+  {
+    label: 'WMS', icon: Warehouse,
+    children: [
+      {
+        label: 'B2B Orders', icon: Building2,
+        children: [
+          { label: 'Orders', href: '/wms/b2b', icon: Building2 },
+          { label: 'Customers', href: '/wms/b2b/customers', icon: Users },
+          { label: 'ASN', href: '/wms/b2b/asn', icon: FileCheck2 },
+        ],
+      },
+      {
+        label: 'B2C Fulfillment', icon: ShoppingBag,
+        children: [
+          { label: 'Orders', href: '/wms/b2c', icon: ShoppingBag },
+          { label: 'Waves', href: '/wms/b2c/waves', icon: Layers },
+          { label: 'Returns', href: '/wms/b2c/returns', icon: PackageCheck },
+        ],
+      },
+      { label: 'Picking', href: '/wms/fulfillment/picking', icon: ClipboardList },
+      { label: 'Packing', href: '/wms/fulfillment/packing', icon: Archive },
+      { label: 'Dispatch', href: '/wms/fulfillment/dispatch', icon: Truck },
     ],
   },
   {

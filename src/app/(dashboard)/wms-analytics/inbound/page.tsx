@@ -1,0 +1,21 @@
+'use client';
+import { useMemo, useState } from 'react';
+import { AlertTriangle, CalendarDays, Clock3, PackageCheck } from 'lucide-react';
+import { AnalyticsHeader, Badge, DataTable, ExportButton, MetricCard, Panel, ProgressBar, SearchField, SelectField } from '@/components/wms/analytics/AnalyticsUi';
+
+type InboundRow = { ref:string; supplier:string; issue:string; qty:string; owner:string; status:'Review'|'Blocked'|'Requested'|'Resolved' };
+const rows: InboundRow[] = [
+  { ref:'RCV-00122', supplier:'Gulf Trading', issue:'Short received', qty:'-12', owner:'Ahmed', status:'Review' },
+  { ref:'RCV-00119', supplier:'Global Foods', issue:'Damaged cartons', qty:'6', owner:'Sara', status:'Blocked' },
+  { ref:'ASN-00974', supplier:'Al Noor', issue:'Missing packing list', qty:'—', owner:'Omar', status:'Requested' },
+  { ref:'RCV-00108', supplier:'Emirates Supply', issue:'Excess received', qty:'+8', owner:'Ahmed', status:'Resolved' },
+];
+export default function InboundDashboard(){
+  const [search,setSearch]=useState(''); const [status,setStatus]=useState('All Statuses');
+  const filtered=useMemo(()=>rows.filter(r=>(!search || `${r.ref} ${r.supplier} ${r.issue}`.toLowerCase().includes(search.toLowerCase())) && (status==='All Statuses'||r.status===status)),[search,status]);
+  return <div className="space-y-5"><AnalyticsHeader title="Inbound Dashboard" description="Expected arrivals, dock activity, receiving progress and inbound exceptions." icon={PackageCheck}><ExportButton filename="inbound-exceptions" rows={filtered.map(r=>({Reference:r.ref,Supplier:r.supplier,Issue:r.issue,Quantity:r.qty,Owner:r.owner,Status:r.status}))}/></AnalyticsHeader>
+    <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4"><MetricCard label="Expected Today" value="28" hint="9 currently at dock" icon={CalendarDays}/><MetricCard label="Units Expected" value="6,420" hint="Across 28 receipts" icon={PackageCheck}/><MetricCard label="Avg. Receive Time" value="34 min" hint="-6 min vs last week" icon={Clock3}/><MetricCard label="Overdue ASNs" value="4" hint="Requires follow-up" icon={AlertTriangle}/></div>
+    <div className="grid gap-5 xl:grid-cols-[.8fr_1.2fr]"><Panel title="Dock schedule" description="Today's arrival slots"><div className="divide-y divide-[#f0eee9]">{[['09:30','ASN-00981','Gulf Trading','Dock 2','At Dock'],['10:15','ASN-00984','Emirates Supply','Dock 1','Receiving'],['11:00','ASN-00986','Global Foods','Dock 3','Scheduled'],['13:30','ASN-00990','Al Noor','Dock 2','Scheduled']].map(r=><div key={r[1]} className="flex items-center gap-4 px-5 py-3.5"><div className="w-14 text-sm font-semibold text-[#1f2937]">{r[0]}</div><div className="min-w-0 flex-1"><p className="text-sm font-medium text-[#1674c4]">{r[1]}</p><p className="truncate text-xs text-[#7c8591]">{r[2]} · {r[3]}</p></div><Badge tone={r[4]==='At Dock'?'green':r[4]==='Receiving'?'blue':'gray'}>{r[4]}</Badge></div>)}</div></Panel><Panel title="Receiving progress" description="Active receipts by completion"><div className="space-y-5 p-5"><ProgressBar label="RCV-00128 · Gulf Trading" value={72} right="144 / 200 units"/><ProgressBar label="RCV-00131 · Emirates Supply" value={45} right="90 / 200 units"/><ProgressBar label="RCV-00135 · Global Foods" value={91} right="364 / 400 units"/><ProgressBar label="RCV-00139 · Al Noor" value={28} right="56 / 200 units"/></div></Panel></div>
+    <Panel title="Inbound exceptions" description="Short, excess, damaged and document issues" action={<div className="flex gap-2"><div className="w-64"><SearchField value={search} onChange={setSearch} placeholder="Search exception..."/></div><SelectField value={status} onChange={setStatus}><option>All Statuses</option><option>Review</option><option>Blocked</option><option>Requested</option><option>Resolved</option></SelectField></div>}><DataTable rows={filtered} rowKey={r=>r.ref} columns={[{label:'Reference',render:r=><b className="text-[#1674c4]">{r.ref}</b>},{label:'Supplier',render:r=>r.supplier},{label:'Issue',render:r=>r.issue},{label:'Qty',render:r=>r.qty},{label:'Owner',render:r=>r.owner},{label:'Status',render:r=><Badge tone={r.status==='Blocked'?'red':r.status==='Review'?'amber':r.status==='Resolved'?'green':'blue'}>{r.status}</Badge>}]}/></Panel>
+  </div>;
+}

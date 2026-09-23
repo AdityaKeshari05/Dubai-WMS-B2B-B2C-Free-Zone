@@ -17,16 +17,19 @@ function NavItemComponent({ item, depth = 0 }: { item: NavItem; depth?: number }
   const pathname = usePathname();
   const [isExpanded, setIsExpanded] = useState(() => {
     if (!item.children) return false;
-    return item.children.some(child => child.href === pathname || (Boolean(child.href) && child.href !== '/settings' && child.href !== '/warehouse-locations' && pathname.startsWith(child.href + '/')));
+    return item.children.some(child => child.href === pathname || pathname.startsWith(child.href + '/'));
   });
 
-  const isActive = item.href === pathname || (
-    Boolean(item.href) &&
-    item.href !== '/dashboard' &&
-    item.href !== '/settings' &&
-    item.href !== '/warehouse-locations' &&
-    pathname.startsWith(item.href + '/')
-  );
+  const isActive = (() => {
+    if (!item.href) return false;
+    if (item.href === pathname) return true;
+    if (item.href === '/dashboard') return false;
+    
+    // Find the longest matching href to prevent parent routes from highlighting alongside children
+    const allHrefs = navItems.flatMap(nav => nav.children ? nav.children.map(c => c.href) : [nav.href]).filter(Boolean) as string[];
+    const bestMatch = allHrefs.filter(href => pathname === href || pathname.startsWith(href + '/')).sort((a, b) => b.length - a.length)[0];
+    return item.href === bestMatch;
+  })();
 
   if (item.children) {
     return (

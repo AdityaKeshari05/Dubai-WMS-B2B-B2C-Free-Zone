@@ -9,7 +9,8 @@ import {
   Route, Upload, FileCheck2, ClipboardSignature, CalendarCheck, CalendarCog, CalendarX,
   ListChecks, HandCoins, BadgeDollarSign, Wallet, UserCog, SlidersHorizontal, KeyRound,
   Handshake, Scale, PackageCheck, History,
-  Gauge, MapPin, Settings2, Grid3X3, AlertTriangle
+  Gauge, MapPin, Settings2, Grid3X3, AlertTriangle, ScanLine, Bell, Plug, Database, RotateCcw,
+  FileClock, Send, Store, RefreshCw, Globe, CheckCircle2
 } from 'lucide-react';
 
 export interface NavItem {
@@ -21,41 +22,62 @@ export interface NavItem {
 }
 
 export const navItems: NavItem[] = [
-  { label: 'Dashboard', href: '/dashboard', icon: LayoutDashboard, permission: 'dashboard:dashboard:read' },
-  { label: 'Audit Trail', href: '/audit-trail', icon: History, permission: 'access:audit:read' },
   {
-    label: 'Accounting', icon: Landmark,
+    label: 'Dashboard',
+    href: '/dashboard',
+    icon: LayoutDashboard,
+    permission: 'dashboard:dashboard:read',
+  },
+
+  {
+    label: 'Audit Trail',
+    href: '/audit-trail',
+    icon: History,
+    permission: 'access:audit:read',
+  },
+
+  // =========================================================
+  // ACCOUNTING
+  // =========================================================
+  {
+    label: 'Accounting',
+    icon: Landmark,
     children: [
-	      { label: 'Chart of Accounts', href: '/accounting/accounts', icon: Network, permission: 'accounting:accounts:read' },
-	      { label: 'Journal Entries', href: '/accounting/journal-entries', icon: ScrollText, permission: 'accounting:journal-entries:read' },
-	      { label: 'Fiscal Years', href: '/accounting/fiscal-years', icon: CalendarRange, permission: 'accounting:fiscal-years:read' },
-	      { label: 'Cost Centers', href: '/accounting/cost-centers', icon: Building2, permission: 'accounting:cost-centers:read' },
-	      { label: 'Budgets', href: '/accounting/budgets', icon: WalletCards, permission: 'accounting:budgets:read' },
-	      { label: 'Bank Reconciliation', href: '/accounting/bank-reconciliation', icon: ShieldCheck, permission: 'accounting:reconciliation:read' },
-	      { label: 'Financial Reports', href: '/accounting/reports', icon: BarChart3, permission: 'accounting:reports:read' },
+      { label: 'Chart of Accounts', href: '/accounting/accounts', icon: Network, permission: 'accounting:accounts:read' },
+      { label: 'Journal Entries', href: '/accounting/journal-entries', icon: ScrollText, permission: 'accounting:journal-entries:read' },
+      { label: 'Fiscal Years', href: '/accounting/fiscal-years', icon: CalendarRange, permission: 'accounting:fiscal-years:read' },
+      { label: 'Cost Centers', href: '/accounting/cost-centers', icon: Building2, permission: 'accounting:cost-centers:read' },
+      { label: 'Budgets', href: '/accounting/budgets', icon: WalletCards, permission: 'accounting:budgets:read' },
+      { label: 'Bank Reconciliation', href: '/accounting/bank-reconciliation', icon: ShieldCheck, permission: 'accounting:reconciliation:read' },
+      { label: 'Financial Reports', href: '/accounting/reports', icon: BarChart3, permission: 'accounting:reports:read' },
     ],
   },
+
+  // =========================================================
+  // INVENTORY
+  // =========================================================
   {
-    label: 'Inventory', icon: Package,
+    label: 'Inventory',
+    icon: Package,
     children: [
-	      { label: 'Products', href: '/inventory/products', icon: Package, permission: 'inventory:products:read' },
-	      { label: 'Categories', href: '/inventory/categories', icon: Layers, permission: 'inventory:categories:read' },
-	      { label: 'Warehouses', href: '/inventory/warehouses', icon: Warehouse, permission: 'inventory:warehouses:read' },
-	      { label: 'Stock Entries', href: '/inventory/stock-entries', icon: ClipboardList, permission: 'inventory:stock-entries:read' },
-	      { label: 'Stock Movements', href: '/inventory/stock-movements', icon: ArrowLeftRight, permission: 'inventory:stock-movements:read' },
-	      { label: 'Pricing', href: '/inventory/pricing', icon: Tags, permission: 'inventory:price-lists:read' },
-	      { label: 'Reconciliation', href: '/inventory/reconciliations', icon: ClipboardCheck },
-	      { label: 'Transfer Orders', href: '/inventory/transfers', icon: ArrowLeftRight },
-	      { label: 'Traceability', href: '/inventory/traceability', icon: Route },
-	      { label: 'Inventory Monitoring', href: '/inventory/reports/advanced', icon: BarChart3 },
-	      { label: 'Stock Balance', href: '/inventory/reports/stock-balance', icon: Boxes, permission: 'inventory:stock-balance:read' },
-	      { label: 'Stock Ledger', href: '/inventory/reports/stock-ledger', icon: BookOpen, permission: 'inventory:stock-ledger:read' },
-	      { label: 'Projected Stock', href: '/inventory/reports/projected-stock', icon: TrendingUp, permission: 'inventory:projected-stock:read' },
-	      { label: 'Reserved Stock', href: '/inventory/reports/reserved-stock', icon: LockKeyhole, permission: 'inventory:stock-balance:read' },
-	      { label: 'Warehouse Valuation', href: '/inventory/reports/warehouse-valuation', icon: Calculator, permission: 'inventory:stock-balance:read' },
-	      { label: 'Item-wise Sales', href: '/inventory/reports/item-wise-sales', icon: ChartColumnIncreasing, permission: 'inventory:stock-balance:read' },
-	      { label: 'Gross Profit', href: '/inventory/reports/gross-profit', icon: CircleDollarSign, permission: 'inventory:stock-balance:read' },
-	      { label: 'Slow Moving Stock', href: '/inventory/reports/slow-moving-stock', icon: ArchiveX, permission: 'inventory:stock-balance:read' },
+      { label: 'Products', href: '/inventory/products', icon: Package, permission: 'inventory:products:read' },
+      { label: 'Categories', href: '/inventory/categories', icon: Layers, permission: 'inventory:categories:read' },
+      { label: 'Warehouses', href: '/inventory/warehouses', icon: Warehouse, permission: 'inventory:warehouses:read' },
+      { label: 'Stock Entries', href: '/inventory/stock-entries', icon: ClipboardList, permission: 'inventory:stock-entries:read' },
+      { label: 'Stock Movements', href: '/inventory/stock-movements', icon: ArrowLeftRight, permission: 'inventory:stock-movements:read' },
+      { label: 'Pricing', href: '/inventory/pricing', icon: Tags, permission: 'inventory:price-lists:read' },
+      { label: 'Reconciliation', href: '/inventory/reconciliations', icon: ClipboardCheck },
+      { label: 'Transfer Orders', href: '/inventory/transfers', icon: ArrowLeftRight },
+      { label: 'Traceability', href: '/inventory/traceability', icon: Route },
+      { label: 'Inventory Monitoring', href: '/inventory/reports/advanced', icon: BarChart3 },
+      { label: 'Stock Balance', href: '/inventory/reports/stock-balance', icon: Boxes, permission: 'inventory:stock-balance:read' },
+      { label: 'Stock Ledger', href: '/inventory/reports/stock-ledger', icon: BookOpen, permission: 'inventory:stock-ledger:read' },
+      { label: 'Projected Stock', href: '/inventory/reports/projected-stock', icon: TrendingUp, permission: 'inventory:projected-stock:read' },
+      { label: 'Reserved Stock', href: '/inventory/reports/reserved-stock', icon: LockKeyhole, permission: 'inventory:stock-balance:read' },
+      { label: 'Warehouse Valuation', href: '/inventory/reports/warehouse-valuation', icon: Calculator, permission: 'inventory:stock-balance:read' },
+      { label: 'Item-wise Sales', href: '/inventory/reports/item-wise-sales', icon: ChartColumnIncreasing, permission: 'inventory:stock-balance:read' },
+      { label: 'Gross Profit', href: '/inventory/reports/gross-profit', icon: CircleDollarSign, permission: 'inventory:stock-balance:read' },
+      { label: 'Slow Moving Stock', href: '/inventory/reports/slow-moving-stock', icon: ArchiveX, permission: 'inventory:stock-balance:read' },
     ],
   },
   {
@@ -106,6 +128,10 @@ export const navItems: NavItem[] = [
       { label: 'GRN Generation', href: '/inbound/grn', icon: FileCheck2 },
     ],
   },
+
+  // =========================================================
+  // HR
+  // =========================================================
   {
     label: 'HR', icon: Users,
     children: [
@@ -125,6 +151,10 @@ export const navItems: NavItem[] = [
       { label: 'Payroll', href: '/hr/payroll', icon: Wallet, permission: 'hr:payroll:read' },
     ],
   },
+
+  // =========================================================
+  // CRM
+  // =========================================================
   {
     label: 'CRM', icon: Handshake,
     children: [
@@ -140,6 +170,10 @@ export const navItems: NavItem[] = [
       { label: 'CRM Configuration', href: '/crm/settings', icon: Settings },
     ],
   },
+
+  // =========================================================
+  // SALES
+  // =========================================================
   {
     label: 'Sales', icon: ShoppingCart,
     children: [
@@ -151,6 +185,10 @@ export const navItems: NavItem[] = [
       { label: 'Sales Configuration', href: '/sales/settings', icon: Settings },
     ],
   },
+
+  // =========================================================
+  // INVOICING
+  // =========================================================
   {
     label: 'Invoicing', icon: FileText,
     children: [
@@ -170,6 +208,10 @@ export const navItems: NavItem[] = [
       { label: 'Revenue by Period', href: '/invoicing/reports/revenue-by-period', icon: CalendarDays },
     ],
   },
+
+  // =========================================================
+  // PROCUREMENT
+  // =========================================================
   {
     label: 'Procurement', icon: ShoppingBag,
     children: [
@@ -192,6 +234,10 @@ export const navItems: NavItem[] = [
       { label: 'Buying Settings', href: '/procurement/settings', icon: Settings, permission: 'procurement:settings:read' },
     ],
   },
+
+  // =========================================================
+  // MANUFACTURING
+  // =========================================================
   {
     label: 'Manufacturing', icon: Settings,
     children: [
@@ -223,7 +269,7 @@ export function inferredPermission(href?: string) {
     if (!href) return undefined;
     const parts = href.split('/').filter(Boolean);
     if (href === '/dashboard') return 'dashboard:dashboard:read';
-    if (parts[0] === 'settings') return parts[1] === 'access' ? 'access:users:read' : 'company:company:read';
+    if (parts[0] === 'settings') return parts[1] === 'access' || parts[1] === 'user-access' ? 'access:users:read' : 'company:company:read';
     if (parts[0] === 'audit-trail') return 'access:audit:read';
     if (parts[0] === 'customers') return 'customers:customers:read';
     if (parts[0] === 'suppliers') return 'suppliers:suppliers:read';

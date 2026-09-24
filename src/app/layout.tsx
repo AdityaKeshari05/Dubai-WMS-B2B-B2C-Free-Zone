@@ -6,7 +6,7 @@ import { Toaster } from 'react-hot-toast';
 import Chatbot from '@/components/Chatbot';
 
 export const metadata: Metadata = {
-  title: 'Orus ERP',
+  title: 'WMS Desk',
   description: 'Orus Enterprise Resource Planning System',
 };
 

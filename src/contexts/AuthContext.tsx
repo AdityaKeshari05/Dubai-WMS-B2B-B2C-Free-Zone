@@ -34,7 +34,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     firstName: 'Demo',
     lastName: 'Admin',
     email: 'admin@example.com',
-    role: 'Super Admin',
+    role: 'Warehouse Admin',
   } as any);
 
   const [token, setToken] = useState<string | null>('demo-token');

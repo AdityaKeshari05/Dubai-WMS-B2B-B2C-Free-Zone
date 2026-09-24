@@ -1,197 +1,186 @@
 'use client';
 
+import React from 'react';
 import Link from 'next/link';
-import { useEffect, useState } from 'react';
-import { AlertTriangle, DollarSign, FileText, Package, TrendingUp, UserCheck, Users } from 'lucide-react';
-import { Area, AreaChart, Bar, BarChart, CartesianGrid, Cell, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { StatusBadge } from '@/components/shared/StatusBadge';
-import { formatCurrency, formatDateTime } from '@/lib/utils';
-import api from '@/lib/api';
-import { Skeleton } from '@/components/ui/skeleton';
+import {
+  AlertTriangle,
+  ArrowRight,
+  BarChart3,
+  Bell,
+  Boxes,
+  Building2,
+  CheckCircle2,
+  ClipboardCheck,
+  Globe,
+  PackageCheck,
+  Plug,
+  RefreshCw,
+  ScanLine,
+  Settings,
+  Settings2,
+  ShieldCheck,
+  ShoppingBag,
+  Truck,
+  Warehouse,
+} from 'lucide-react';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 
-const colors = ['#2490ef', '#0f9d58', '#d98324', '#c3423f', '#6350b8', '#0f7a8a'];
+const WMS_FACILITIES = [
+  { name: 'Jebel Ali Free Zone (JAFZA-WH01)', zone: 'Free Zone / Bonded', occupancy: '84%', picked: 1248, dispatched: 1102, health: 'Healthy' },
+  { name: 'Dubai South Hub (DWC-WH02)', zone: 'Automated High-Bay', occupancy: '92%', picked: 842, dispatched: 790, health: 'Healthy' },
+  { name: 'Dubai Central Depot (DXB-WH03)', zone: 'Cold Storage & General', occupancy: '68%', picked: 412, dispatched: 395, health: 'Healthy' },
+  { name: 'KIZAD Transit Yard (KIZAD-WH04)', zone: '3PL Transit Facility', occupancy: '45%', picked: 209, dispatched: 188, health: 'Watch' },
+];
+
+const WMS_SECTIONS = [
+  { title: 'Warehouse & Locations', desc: 'Hierarchy, zones, bin-level inventory & putaway rules', icon: Warehouse, href: '/warehouse-locations/warehouses', color: '#2490ef' },
+  { title: 'Product & Inventory Master', desc: 'SKU master, barcodes, UOM, batches & serials', icon: Boxes, href: '/product-master/sku-master', color: '#0f9d58' },
+  { title: 'Inbound / Receiving', desc: 'PO receiving, ASN, dock scheduling & GRN generation', icon: Truck, href: '/inbound/po-receiving', color: '#d98324' },
+  { title: '3PL Warehouse', desc: 'Multi-client management, client stock & storage billing', icon: Warehouse, href: '/3pl/clients', color: '#6350b8' },
+  { title: 'Returns & Logistics', desc: 'Return authorizations, inspection, restocking & RTO', icon: RefreshCw, href: '/returns/authorizations', color: '#0f7a8a' },
+  { title: 'Transport & Shipments', desc: 'Carriers, delivery tracking & proof of delivery', icon: Truck, href: '/shipments', color: '#1674c4' },
+  { title: 'UAE Configuration', desc: 'Currency, 5% VAT tax details & HS codes', icon: Globe, href: '/uae-config/currency-vat', color: '#059669' },
+  { title: 'Free Zone', desc: 'Bonded stock, customs tracking & duty classification', icon: ShieldCheck, href: '/free-zone/dashboard', color: '#4f46e5' },
+  { title: 'Inventory Control', desc: 'Real-time stock, cycle counts & stock transfers', icon: Boxes, href: '/wms-inventory-control', color: '#ea580c' },
+  { title: 'B2B Orders', desc: 'Sales order allocation, pallet handling & backorders', icon: Building2, href: '/b2b-orders', color: '#2563eb' },
+  { title: 'B2C Fulfillment', desc: 'E-commerce order sync, wave picking & shipping labels', icon: ShoppingBag, href: '/b2c-fulfillment', color: '#db2777' },
+  { title: 'Picking & Dispatch', desc: 'Wave planning, zone picking & packing station', icon: ClipboardCheck, href: '/warehouse-fulfillment', color: '#16a34a' },
+  { title: 'Mobile Operations', desc: 'RF Scanner receiving, putaway, picking & dispatch', icon: ScanLine, href: '/mobile-operations', color: '#7c3aed' },
+  { title: 'WMS Analytics', desc: 'Inbound, outbound, B2B, B2C & Free Zone reports', icon: BarChart3, href: '/wms-analytics', color: '#0891b2' },
+  { title: 'Integrations', desc: 'REST API, e-commerce, ERP sync & webhooks', icon: Plug, href: '/integrations', color: '#4b5563' },
+  { title: 'Notifications', desc: 'Low stock alerts, picking exceptions & order alerts', icon: Bell, href: '/notifications', color: '#dc2626' },
+  { title: 'System Configuration', desc: 'Approvals, numbering, automated backups & activity logs', icon: Settings2, href: '/system/configuration', color: '#475569' },
+  { title: 'Settings', desc: 'User & Access Management, role permissions', icon: Settings, href: '/settings/user-access', color: '#1e293b' },
+];
 
 export default function DashboardPage() {
-  const [stats, setStats] = useState<any>(null);
-  const [chartMode, setChartMode] = useState<'revenue' | 'invoice' | 'lead'>('revenue');
-  const [isLoading, setIsLoading] = useState(true);
-
-  useEffect(() => {
-    api.get('/dashboard/stats')
-      .then(res => setStats(res.data.data))
-      .catch(console.error)
-      .finally(() => setIsLoading(false));
-  }, []);
-
-  if (isLoading) return <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">{Array.from({ length: 8 }).map((_, i) => <Skeleton key={i} className="h-28" />)}</div>;
-
-  const monthlyData = Array.isArray(stats?.monthlyRevenue)
-    ? stats.monthlyRevenue.map((d: any) => ({ month: new Date(d.month).toLocaleString('default', { month: 'short' }), revenue: Number(d.revenue) || 0 }))
-    : [];
-  const invoiceStatus = stats?.invoiceStatus || [];
-  const leadStatus = stats?.leadStatus || [];
-  const pipelineRows = Object.entries(stats?.pipeline?.stages || {}).map(([stage, row]: any) => ({ stage, ...row }));
-
   return (
-    <div className="space-y-5">
-      <div>
-        <h1 className="text-xl font-semibold leading-7 text-[#1f2937]">Dashboard</h1>
-        <p className="text-sm text-[#6b7280]">Live ERP desk for revenue, receivables, CRM, stock, and people operations.</p>
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between border-b border-[#e5e2dc] pb-4">
+        <div>
+          <h1 className="text-2xl font-bold leading-7 text-[#1f2937]">WMS Operations Desk</h1>
+          <p className="mt-1 text-sm text-[#6b7280]">
+            Live warehouse management overview for UAE/Dubai operations: B2B, B2C, Free Zone bonded stock, 3PL, picking, packing, and dispatch.
+          </p>
+        </div>
+        <Link
+          href="/wms-analytics"
+          className="inline-flex items-center rounded-md bg-[#2490ef] px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-[#1674c4] transition-colors"
+        >
+          <BarChart3 className="mr-2 h-4 w-4" /> View Analytics
+        </Link>
       </div>
 
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
-        <Kpi href="/invoicing/reports/revenue-by-period" title="Revenue" value={formatCurrency(stats?.revenue?.total || 0)} note={`${formatCurrency(stats?.revenue?.thisMonth || 0)} this month`} icon={DollarSign} tone="green" />
-        <Kpi href="/invoicing/reports/outstanding" title="Receivables" value={formatCurrency(stats?.pendingInvoices?.amount || 0)} note={`${stats?.pendingInvoices?.count || 0} open invoices`} icon={FileText} tone="amber" />
-        <Kpi href="/invoicing/reports/aging" title="Overdue" value={formatCurrency(stats?.overdueInvoices?.amount || 0)} note={`${stats?.overdueInvoices?.count || 0} risky invoices`} icon={AlertTriangle} tone="red" />
-        <Kpi href="/crm/opportunities" title="CRM Pipeline" value={formatCurrency(stats?.pipeline?.openValue || 0)} note={`${formatCurrency(stats?.pipeline?.weightedValue || 0)} weighted`} icon={TrendingUp} tone="blue" />
-        <Kpi href="/customers" title="Customers" value={stats?.activeCustomers || 0} note="active accounts" icon={Users} tone="blue" />
-        <Kpi href="/hr/employees" title="Employees" value={stats?.activeEmployees || 0} note="active workforce" icon={UserCheck} tone="purple" />
-        <Kpi href="/crm/leads" title="Open Leads" value={stats?.openLeads || 0} note="needs sales action" icon={TrendingUp} tone="blue" />
-        <Kpi href="/inventory/reports/stock-balance" title="Low Stock" value={stats?.lowStock?.length || 0} note="below reorder level" icon={Package} tone="amber" />
+      {/* KPI Stats Grid */}
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <KpiCard title="Active Warehouses" value="4 Facilities" note="JAFZA, DWC, DXB, KIZAD" icon={Warehouse} tone="blue" href="/warehouse-locations/warehouses" />
+        <KpiCard title="Total Inventory" value="48,920 Units" note="Real-time stock balance" icon={Boxes} tone="green" href="/wms-inventory-control" />
+        <KpiCard title="Inbound Shipments" value="24 Orders" note="PO & ASN receiving" icon={Truck} tone="amber" href="/inbound/po-receiving" />
+        <KpiCard title="Outbound Dispatch" value="312 Orders" note="B2B & B2C fulfillment" icon={PackageCheck} tone="purple" href="/b2b-orders" />
       </div>
 
-      <div className="grid grid-cols-1 gap-4 xl:grid-cols-[1fr_360px]">
+      {/* Workload Completion & Facility Health */}
+      <div className="grid grid-cols-1 gap-5 xl:grid-cols-[1.35fr_0.65fr]">
         <Card>
           <CardHeader>
-            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-              <CardTitle>Business Movement</CardTitle>
-              <div className="flex rounded-md border border-[#e5e2dc] bg-[#f8faf9] p-1 text-xs">
-                {(['revenue', 'invoice', 'lead'] as const).map(mode => (
-                  <button key={mode} onClick={() => setChartMode(mode)} className={chartMode === mode ? 'rounded bg-white px-2.5 py-1 font-medium text-[#1674c4] shadow-sm' : 'px-2.5 py-1 text-[#6b7280]'}>
-                    {mode}
-                  </button>
-                ))}
-              </div>
-            </div>
+            <CardTitle className="text-base font-semibold">Warehouse Workload Completion</CardTitle>
+            <CardDescription className="text-xs text-[#6b7280]">Real-time operational task progress across active shifts</CardDescription>
           </CardHeader>
-          <CardContent>
-            {chartMode === 'revenue' && <RevenueChart rows={monthlyData} />}
-            {chartMode === 'invoice' && <Donut rows={invoiceStatus} nameKey="status" valueKey="count" />}
-            {chartMode === 'lead' && <Donut rows={leadStatus} nameKey="status" valueKey="count" />}
+          <CardContent className="space-y-4">
+            <StageBar label="Inbound PO & ASN Receiving" count="126 / 150 Units" pct={84} color="#2490ef" />
+            <StageBar label="Bin Putaway & Stock Storage" count="92 / 130 Bins" pct={71} color="#0f9d58" />
+            <StageBar label="Wave & Order Picking" count="267 / 300 Lines" pct={89} color="#d98324" />
+            <StageBar label="Pack Station Verification" count="181 / 238 Packages" pct={76} color="#6350b8" />
+            <StageBar label="Outbound Dispatch & Labels" count="95 / 150 Shipments" pct={63} color="#1674c4" />
           </CardContent>
         </Card>
 
         <Card>
-          <CardHeader><CardTitle>Pipeline by Stage</CardTitle></CardHeader>
-          <CardContent>
-            {pipelineRows.length ? (
-              <ResponsiveContainer width="100%" height={260}>
-                <BarChart data={pipelineRows} layout="vertical" margin={{ left: 16 }}>
-                  <XAxis type="number" hide />
-                  <YAxis type="category" dataKey="stage" tick={{ fontSize: 11 }} width={96} />
-                  <Tooltip formatter={(v: any) => formatCurrency(Number(v || 0))} />
-                  <Bar dataKey="value" fill="#2490ef" radius={[0, 4, 4, 0]} />
-                </BarChart>
-              </ResponsiveContainer>
-            ) : <EmptyCopy text="No pipeline data yet." />}
+          <CardHeader>
+            <CardTitle className="text-base font-semibold">Facility Status Snapshot</CardTitle>
+            <CardDescription className="text-xs text-[#6b7280]">Capacity & dispatch health across UAE sites</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {WMS_FACILITIES.map((facility) => (
+              <div key={facility.name} className="flex items-center justify-between rounded-md border border-[#f0ede8] p-2.5 text-xs">
+                <div>
+                  <p className="font-semibold text-[#1f2937]">{facility.name}</p>
+                  <p className="text-[#6b7280]">{facility.zone} · {facility.occupancy} Capacity</p>
+                </div>
+                <span className={`rounded-full px-2 py-0.5 font-semibold text-[11px] ${facility.health === 'Healthy' ? 'bg-[#dcfce7] text-[#166534]' : 'bg-[#fef3c7] text-[#92400e]'}`}>
+                  {facility.health}
+                </span>
+              </div>
+            ))}
           </CardContent>
         </Card>
       </div>
 
-      <div className="grid grid-cols-1 gap-4 xl:grid-cols-3">
-        <ListCard title="Top Customers" href="/invoicing/reports/revenue-by-customer">
-          {stats?.topCustomers?.length ? stats.topCustomers.map((row: any) => (
-            <Link key={row.customerId} href={`/customers/${row.customerId}`} className="flex items-center justify-between rounded-md border border-[#f0ede8] px-3 py-2 hover:bg-[#f8faf9]">
-              <div><p className="text-sm font-medium">{row.customerName}</p><p className="text-xs text-[#8a929d]">{row.invoiceCount} paid invoices</p></div>
-              <p className="text-sm font-semibold">{formatCurrency(row.revenue)}</p>
+      {/* WMS Desk Modules Grid (Matches sidebarNav.ts) */}
+      <div>
+        <div className="mb-3">
+          <h2 className="text-lg font-bold text-[#1f2937]">WMS Desk Sections</h2>
+          <p className="text-xs text-[#6b7280]">Direct access to all active warehouse management modules</p>
+        </div>
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
+          {WMS_SECTIONS.map((sec) => (
+            <Link
+              key={sec.title}
+              href={sec.href}
+              className="group flex flex-col justify-between rounded-lg border border-[#e5e2dc] bg-white p-4 shadow-sm transition-all hover:border-[#2490ef] hover:shadow-md"
+            >
+              <div>
+                <div className="flex items-center justify-between">
+                  <span className="flex h-8 w-8 items-center justify-center rounded-md bg-[#f8faf9] text-[#1674c4] group-hover:bg-[#e8f3ff]">
+                    <sec.icon className="h-4 w-4" style={{ color: sec.color }} />
+                  </span>
+                  <ArrowRight className="h-4 w-4 text-[#9ca3af] transition-transform group-hover:translate-x-1 group-hover:text-[#2490ef]" />
+                </div>
+                <h3 className="mt-3 text-sm font-semibold text-[#1f2937] group-hover:text-[#2490ef]">{sec.title}</h3>
+                <p className="mt-1 text-xs text-[#6b7280] leading-relaxed">{sec.desc}</p>
+              </div>
             </Link>
-          )) : <EmptyCopy text="No customer revenue yet." />}
-        </ListCard>
-
-        <ListCard title="Recent Invoices" href="/invoicing/sales-invoices">
-          {stats?.recentInvoices?.length ? stats.recentInvoices.map((inv: any) => (
-            <Link key={inv.id} href={`/invoicing/sales-invoices/${inv.id}`} className="flex items-center justify-between rounded-md border border-[#f0ede8] px-3 py-2 hover:bg-[#f8faf9]">
-              <div><p className="text-sm font-medium">{inv.invoiceNo}</p><p className="text-xs text-[#8a929d]">{inv.customer?.name}</p></div>
-              <div className="text-right"><p className="text-sm font-semibold">{formatCurrency(inv.total, inv.currency)}</p><StatusBadge status={inv.status} /></div>
-            </Link>
-          )) : <EmptyCopy text="No invoices yet." />}
-        </ListCard>
-
-        <ListCard title="CRM Actions" href="/crm/activities">
-          {stats?.recentActivities?.length ? stats.recentActivities.map((item: any) => (
-            <Link key={item.id} href="/crm/activities" className="block rounded-md border border-[#f0ede8] px-3 py-2 hover:bg-[#f8faf9]">
-              <div className="flex items-center justify-between"><p className="text-sm font-medium">{item.subject}</p><StatusBadge status={item.type} /></div>
-              <p className="mt-1 text-xs text-[#8a929d]">{item.dueDate ? formatDateTime(item.dueDate) : 'No due date'} · {item.lead?.title || item.opportunity?.title || 'General CRM'}</p>
-            </Link>
-          )) : <EmptyCopy text="No activities due today." />}
-        </ListCard>
-      </div>
-
-      <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
-        <ListCard title="Low Stock Alerts" href="/inventory/reports/stock-balance">
-          {stats?.lowStock?.length ? stats.lowStock.slice(0, 8).map((item: any) => (
-            <Link key={item.id} href={`/inventory/products`} className="flex items-center justify-between rounded-md border border-[#f0ede8] px-3 py-2 hover:bg-[#f8faf9]">
-              <div><p className="text-sm font-medium">{item.name}</p><p className="text-xs text-[#8a929d]">{item.sku}</p></div>
-              <div className="text-right"><p className="text-sm font-semibold text-[#c3423f]">{item.currentStock}</p><p className="text-xs text-[#8a929d]">min {item.minStockLevel}</p></div>
-            </Link>
-          )) : <EmptyCopy text="All products are well stocked." />}
-        </ListCard>
-
-        <ListCard title="Recent Leads" href="/crm/leads">
-          {stats?.recentLeads?.length ? stats.recentLeads.map((lead: any) => (
-            <Link key={lead.id} href={`/crm/leads/${lead.id}`} className="flex items-center justify-between rounded-md border border-[#f0ede8] px-3 py-2 hover:bg-[#f8faf9]">
-              <div><p className="text-sm font-medium">{lead.title || `${lead.firstName} ${lead.lastName}`}</p><p className="text-xs text-[#8a929d]">{lead.company || lead.source || 'Individual'}</p></div>
-              <StatusBadge status={lead.status} />
-            </Link>
-          )) : <EmptyCopy text="No leads yet." />}
-        </ListCard>
+          ))}
+        </div>
       </div>
     </div>
   );
 }
 
-function Kpi({ href, fallbackHref, title, value, note, icon: Icon, tone }: any) {
-  const tones: any = {
+function KpiCard({ title, value, note, icon: Icon, tone, href }: any) {
+  const tones: Record<string, string> = {
+    blue: 'bg-[#e8f3ff] text-[#1674c4]',
     green: 'bg-[#eefaf3] text-[#0f9d58]',
     amber: 'bg-[#fff7ed] text-[#d98324]',
-    red: 'bg-[#fff1f0] text-[#c3423f]',
-    blue: 'bg-[#eef6fd] text-[#1674c4]',
     purple: 'bg-[#f4f1ff] text-[#6350b8]',
   };
   return (
-    <Link href={href || fallbackHref} className="rounded-md border border-[#e5e2dc] bg-white p-4 shadow-[0_1px_2px_rgba(16,24,40,0.04)] hover:border-[#cfd7df] hover:bg-[#fbfcfd]">
-      <div className="flex items-start justify-between gap-3">
-        <div><p className="text-xs font-semibold uppercase text-[#7c8591]">{title}</p><p className="mt-1 truncate text-2xl font-semibold text-[#1f2937]">{value}</p><p className="mt-1 text-xs text-[#6b7280]">{note}</p></div>
-        <span className={`rounded-md p-2 ${tones[tone] || tones.blue}`}><Icon className="h-5 w-5" /></span>
+    <Link href={href} className="block rounded-lg border border-[#e5e2dc] bg-white p-4 shadow-sm transition-all hover:border-[#2490ef] hover:shadow-md">
+      <div className="flex items-start justify-between">
+        <div>
+          <p className="text-xs font-semibold uppercase text-[#7c8591]">{title}</p>
+          <p className="mt-1 text-2xl font-bold text-[#1f2937]">{value}</p>
+          <p className="mt-0.5 text-xs text-[#6b7280]">{note}</p>
+        </div>
+        <span className={`rounded-md p-2 ${tones[tone] || tones.blue}`}>
+          <Icon className="h-5 w-5" />
+        </span>
       </div>
     </Link>
   );
 }
 
-function RevenueChart({ rows }: { rows: any[] }) {
-  if (!rows.length) return <EmptyCopy text="No revenue data yet." />;
+function StageBar({ label, count, pct, color }: { label: string; count: string; pct: number; color: string }) {
   return (
-    <ResponsiveContainer width="100%" height={280}>
-      <AreaChart data={rows}>
-        <CartesianGrid strokeDasharray="3 3" stroke="#f0ede8" />
-        <XAxis dataKey="month" tick={{ fontSize: 12 }} />
-        <YAxis tick={{ fontSize: 12 }} tickFormatter={(v) => `$${(Number(v) / 1000).toFixed(0)}k`} />
-        <Tooltip formatter={(v: any) => formatCurrency(Number(v || 0))} />
-        <Area type="monotone" dataKey="revenue" stroke="#2490ef" fill="#dff0ff" strokeWidth={2} />
-      </AreaChart>
-    </ResponsiveContainer>
+    <div>
+      <div className="flex items-center justify-between text-xs mb-1">
+        <span className="font-medium text-[#1f2937]">{label}</span>
+        <span className="text-[#6b7280]">{count} ({pct}%)</span>
+      </div>
+      <div className="h-2 w-full rounded-full bg-[#f0ede8]">
+        <div className="h-2 rounded-full transition-all" style={{ width: `${pct}%`, backgroundColor: color }} />
+      </div>
+    </div>
   );
-}
-
-function Donut({ rows, nameKey, valueKey }: { rows: any[]; nameKey: string; valueKey: string }) {
-  if (!rows.length) return <EmptyCopy text="No chart data yet." />;
-  return (
-    <ResponsiveContainer width="100%" height={280}>
-      <PieChart>
-        <Pie data={rows} dataKey={valueKey} nameKey={nameKey} innerRadius={64} outerRadius={102} paddingAngle={2}>
-          {rows.map((_: any, index: number) => <Cell key={index} fill={colors[index % colors.length]} />)}
-        </Pie>
-        <Tooltip />
-      </PieChart>
-    </ResponsiveContainer>
-  );
-}
-
-function ListCard({ title, href, children }: { title: string; href: string; children: React.ReactNode }) {
-  return <Card><CardHeader><div className="flex items-center justify-between"><CardTitle>{title}</CardTitle><Link href={href} className="text-xs font-medium text-[#1674c4] hover:underline">View all</Link></div></CardHeader><CardContent className="space-y-2">{children}</CardContent></Card>;
-}
-
-function EmptyCopy({ text }: { text: string }) {
-  return <div className="flex min-h-[120px] items-center justify-center rounded-md border border-dashed border-[#e5e2dc] text-sm text-[#8a929d]">{text}</div>;
 }

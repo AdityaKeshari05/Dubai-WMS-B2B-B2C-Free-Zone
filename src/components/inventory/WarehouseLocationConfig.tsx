@@ -2235,8 +2235,8 @@ export default function WarehouseLocationConfig({ defaultTab = 'overview' }: { d
       </div>
 
       {/* Fixed Save Changes bar at bottom-right */}
-      <div className="fixed bottom-4 right-6 bg-slate-900 text-white p-3 rounded-xl shadow-xl flex items-center gap-3 border border-slate-700 z-50">
-        <span className="text-xs font-medium text-slate-300">Warehouse Operating Policy</span>
+      <div className="fixed bottom-4 right-6 bg-white text-[#1f2937] p-3 rounded-xl shadow-xl flex items-center gap-3 border border-[#e5e2dc] z-50">
+        <span className="text-xs font-medium text-[#4b5563]">Warehouse Operating Policy</span>
         <Button size="sm" className="bg-blue-600 hover:bg-blue-700 text-white font-semibold gap-1.5 h-8 text-xs" onClick={() => toast.success(`Saved all operational rules for ${selWH?.name}`)}>
           <Save className="h-3.5 w-3.5" /> Save Changes
         </Button>

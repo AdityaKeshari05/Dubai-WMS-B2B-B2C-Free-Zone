@@ -651,7 +651,7 @@ export function UserAccessManagementPage() {
         <div>
           <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-[#1674c4]">
             <ShieldCheck className="h-4 w-4" />
-            M01 Security & Access Backbone
+            Security & Access Backbone
           </div>
           <h1 className="text-2xl font-bold tracking-tight text-[#1f2937] mt-1">User & Access Management</h1>
           <p className="text-sm text-[#6b7280]">
@@ -741,25 +741,25 @@ export function UserAccessManagementPage() {
       <Tabs defaultValue="1.1-users" className="space-y-4">
         <TabsList className="flex flex-wrap h-auto p-1 bg-[#f1f5f9] border rounded-lg gap-1">
           <TabsTrigger value="1.1-users" className="flex items-center gap-1.5 text-xs py-2 px-3">
-            <Users className="h-3.5 w-3.5" /> 1.1 User Management
+            <Users className="h-3.5 w-3.5" /> User Management
           </TabsTrigger>
           <TabsTrigger value="1.2-rbac" className="flex items-center gap-1.5 text-xs py-2 px-3">
-            <ShieldCheck className="h-3.5 w-3.5" /> 1.2 Role-Based Access (RBAC)
+            <ShieldCheck className="h-3.5 w-3.5" /> Role-Based Access (RBAC)
           </TabsTrigger>
           <TabsTrigger value="1.3-warehouse" className="flex items-center gap-1.5 text-xs py-2 px-3">
-            <Warehouse className="h-3.5 w-3.5" /> 1.3 Warehouse Access
+            <Warehouse className="h-3.5 w-3.5" /> Warehouse Access
           </TabsTrigger>
           <TabsTrigger value="1.4-permissions" className="flex items-center gap-1.5 text-xs py-2 px-3">
-            <Layers className="h-3.5 w-3.5" /> 1.4 Module Permissions
+            <Layers className="h-3.5 w-3.5" />  Module Permissions
           </TabsTrigger>
           <TabsTrigger value="1.5-approvals" className="flex items-center gap-1.5 text-xs py-2 px-3">
-            <CheckCircle2 className="h-3.5 w-3.5" /> 1.5 Approval Workflows
+            <CheckCircle2 className="h-3.5 w-3.5" />  Approval Workflows
           </TabsTrigger>
           <TabsTrigger value="1.6-audit" className="flex items-center gap-1.5 text-xs py-2 px-3">
-            <Clock className="h-3.5 w-3.5" /> 1.6 Audit Trail
+            <Clock className="h-3.5 w-3.5" />  Audit Trail
           </TabsTrigger>
           <TabsTrigger value="1.7-security" className="flex items-center gap-1.5 text-xs py-2 px-3">
-            <Lock className="h-3.5 w-3.5" /> 1.7 Session & Security
+            <Lock className="h-3.5 w-3.5" />  Session & Security
           </TabsTrigger>
         </TabsList>
 
